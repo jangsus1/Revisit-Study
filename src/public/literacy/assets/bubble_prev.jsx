@@ -9,7 +9,6 @@ function bubble({ parameters, setAnswer }) {
   const ref = useRef(null)
   const { image, question, radius } = parameters
   const [clicked, setClicked] = useState(null);
-  const [clickedList, setClickedList] = useState([]);
   const [size, setSize] = useState({ width: 0, height: 0 })
   const containerRef = useRef(null);
 
@@ -34,22 +33,16 @@ function bubble({ parameters, setAnswer }) {
   const clickCallback = useCallback((e) => {
     const svg = d3.select(ref.current)
     const point = d3.pointer(e, svg.node())
-    const clickedCircle = { x: parseInt(point[0]), y: parseInt(point[1]) }
+    const clickedCircle = { x: point[0], y: point[1] }
     setClicked(clickedCircle)
     const clickRecord = { x: clickedCircle.x, y: clickedCircle.y, radius: radius, multiplier: size.multiplier }
     trrack.apply('click', actions.clickAction(clickRecord));
-
-    const newClickedList = [...clickedList, clickRecord]
-    setClickedList(newClickedList)
-    
     setAnswer({
       status: true,
       provenanceGraph: trrack.graph.backend,
-      answers: {
-        answer: JSON.stringify(newClickedList),
-      },
+      answers: {},
     });
-  }, [actions, trrack, clicked, setAnswer, size, question, clickedList]);
+  }, [actions, trrack, clicked, setAnswer, size, question]);
 
 
 

@@ -304,6 +304,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -335,6 +342,13 @@
                         "None of Them",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -366,6 +380,13 @@
                         "50-60km",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -396,6 +417,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -427,6 +455,13 @@
                         "35.2%",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -458,6 +493,13 @@
                         "None of Them",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -489,6 +531,13 @@
                         "$4.5",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -520,6 +569,13 @@
                         "$43.48",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -551,6 +607,13 @@
                         "16.16 Mbps",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -582,6 +645,13 @@
                         "$0.63",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -613,6 +683,13 @@
                         "1 to 4",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -643,6 +720,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -674,6 +758,13 @@
                         "80%",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -704,6 +795,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -735,6 +833,13 @@
                         "None of the above",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -766,6 +871,13 @@
                         "It is less prevalent in region C than in D.",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -797,6 +909,13 @@
                         "None of the above.",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -828,6 +947,13 @@
                         "80%",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -858,6 +984,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -889,6 +1022,13 @@
                         "None of the above.",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -920,6 +1060,13 @@
                         "None of the above.",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -950,6 +1097,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -981,6 +1135,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -1012,6 +1173,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -1042,6 +1210,13 @@
                         "Cannot be inferred / inadequate information",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -1073,6 +1248,13 @@
                         "Too early to say.",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
@@ -1104,6 +1286,13 @@
                         "500",
                         "Skip"
                     ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
                 }
             ],
             "correctAnswer": [
