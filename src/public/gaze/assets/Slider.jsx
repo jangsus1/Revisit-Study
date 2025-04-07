@@ -29,7 +29,7 @@ export default function DivergingSlider({ value, setValue, leftLabel = "", right
   const tickMarks = [];
   for (let i = center; i <= max; i += tickInterval) tickMarks.push(i);
   for (let i = center - tickInterval; i >= min; i -= tickInterval) tickMarks.push(i);
-
+  console.log(tickMarks);
   return (
     <div style={{ position: "relative", width: "100%", maxWidth: "600px", margin: "50px auto" }}>
       <input
@@ -91,8 +91,9 @@ export default function DivergingSlider({ value, setValue, leftLabel = "", right
             style={{
               position: "absolute",
               left: `${((mark - min) / (max - min)) * 100}%`,
-              transform: "translateX(-50%)",
+              transform: "translateX(-10%)",
               top: "15px",
+              width: "50px",
             }}
           > <>
           {mark.toFixed(1)}

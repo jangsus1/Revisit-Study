@@ -23,7 +23,7 @@ In this experiment, you will see the scatterplot with two variable's correlation
 
 ---
 
-![ex](../public/gaze/assets/phase2_intro.png)
+![ex](../gaze/assets/phase2_intro.png)
 
 ---
 

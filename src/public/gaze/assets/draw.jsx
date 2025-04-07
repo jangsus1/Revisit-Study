@@ -76,6 +76,10 @@ function Draw({ parameters, setAnswer }) {
     const svg = d3.select(ref.current)
     const point = d3.pointer(e, svg.node())
     const clickedCircle = { x: parseInt(point[0]), y: parseInt(point[1]) }
+    if (clicked.length >= 20) {
+      alert("You have already clicked 20 points. Please click Done Button.");
+      return;
+    }
     const newClicked = [...clicked, clickedCircle]
     setClicked(newClicked)
     // Create a click record with current radius and image scale multiplier
@@ -140,26 +144,20 @@ function Draw({ parameters, setAnswer }) {
           <h3>X: {X}</h3>
           <h3>Y: {Y}</h3>
 
-          <div style={{ marginBottom: 30, marginTop: 100 }}>
-            <Slider
+          <div style={{ marginBottom: 100, marginTop: 100 }}>
+
+            <DivergingSlider
               value={remember}
-              onChange={setRemember}
+              setValue={setRemember}
               min={1}
               max={7}
-              defaultValue={4}
-              size="xl"
-              color="blue"
-              step="0.01"
-              marks={[
-                { value: 1, label: 'Definitely No' },
-                { value: 2, label: '' },
-                { value: 3, label: '' },
-                { value: 4, label: '' },
-                { value: 5, label: '' },
-                { value: 6, label: '' },
-                { value: 7, label: 'Definitely Yes' },
-              ]}
+              center={4}
+              step={1}
+              leftLabel="Definitely No"
+              rightLabel="Definitely Yes"
+              tickInterval={1}
             />
+
           </div>
           <Button onClick={() => setView("draw")}>Done</Button>
         </div>

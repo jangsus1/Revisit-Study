@@ -25,7 +25,7 @@ You'll estimate the **correlation coefficient (r-value)** of 10 scatterplots by 
   - The actual correlation value.
 
 ---
-![example](../public/gaze/assets/phase1_intro.png)
+![example](../gaze/assets/phase1_intro.png)
 
 
 ---
