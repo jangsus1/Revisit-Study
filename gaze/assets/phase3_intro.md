@@ -16,7 +16,7 @@ In this experiment, you will assess the relationship between two variables by re
    - Estimate the correlation of the scatterplot you recalled (**-1.0 to +1.0**).  
 
 ---
-![ex](../public/gaze/assets/phase3_intro.png)
+![ex](../gaze/assets/phase3_intro.png)
 ---
 
 Press **Next** to begin.

@@ -1098,7 +1098,6 @@
             {
                 "id": "phase1",
                 "order": "latinSquare",
-                "numSamples": 10,
                 "components": [
                     "plain_1_1_pos",
                     "plain_1_1_neg",
