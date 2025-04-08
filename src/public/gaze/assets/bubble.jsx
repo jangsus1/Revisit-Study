@@ -2,7 +2,7 @@ import * as d3 from "d3";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Box, Button, Slider } from "@mantine/core";
 import React from "react";
-import _ from "lodash";
+import _, { set } from "lodash";
 import DivergingSlider from "./Slider";
 import { Registry, initializeTrrack } from "@trrack/core";
 
@@ -19,6 +19,7 @@ function Bubble({ parameters, setAnswer }) {
   const [corrAfter, setCorrAfter] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [draggedPoint, setDraggedPoint] = useState(null);
+  const [startedBubble, setStartedBubble] = useState(false);
 
   // Initialize ttrack with a registry and a "click" action (we reuse this action for drag recordings)
   const { actions, trrack } = useMemo(() => {
@@ -37,11 +38,12 @@ function Bubble({ parameters, setAnswer }) {
   // Timer to change view after a delay when in scatter view
   useEffect(() => {
     if (view !== "scatter") return;
+    if (startedBubble == false) return;
     const timer = setTimeout(() => {
       setView("corrafter");
     }, seconds * 1000);
     return () => clearTimeout(timer);
-  }, [view, seconds]);
+  }, [view, seconds, startedBubble]);
 
   // Answer callback for the slider in the "corrafter" view
   const answerCallback = useCallback((newCorrAfter) => {
@@ -112,6 +114,7 @@ function Bubble({ parameters, setAnswer }) {
     const svg = d3.select(ref.current);
     const point = d3.pointer(e, svg.node());
     setIsDragging(true);
+    setStartedBubble(true);
     setDraggedPoint({ x: parseInt(point[0]), y: parseInt(point[1]) });
     debouncedRecordPoint(point[0], point[1]);
   }, [debouncedRecordPoint]);
@@ -139,7 +142,7 @@ function Bubble({ parameters, setAnswer }) {
       )}
       {view === "scatter" && (
         <div>
-          <h3>Explore the scatterplot of the two variables</h3>
+          <h3>Explore the scatterplot of the two variables through dragging with your mouse!</h3>
           <h3>X: {X} &nbsp;&nbsp; / &nbsp;&nbsp; Y: {Y}</h3>
           <h3></h3>
           <Box ref={containerRef} className="ImageWrapper" style={{
