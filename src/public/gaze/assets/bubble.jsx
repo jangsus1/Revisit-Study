@@ -40,11 +40,12 @@ function Bubble({ parameters, setAnswer }) {
   useEffect(() => {
     if (view !== "scatter") return;
     if (startedBubble == false) return;
+    if (!size.width) return; // Wait for image to be loaded and sized
     const timer = setTimeout(() => {
       setView("corrafter");
     }, seconds * 1000);
     return () => clearTimeout(timer);
-  }, [view, seconds, startedBubble]);
+  }, [view, seconds, startedBubble, size.width]);
 
   // Answer callback for the slider in the "corrafter" view
   const answerCallback = useCallback((newCorrAfter) => {

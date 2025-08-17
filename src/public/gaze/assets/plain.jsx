@@ -19,13 +19,14 @@ function Plain({ parameters, setAnswer }) {
   const [slider, setSlider] = useState(0)
 
 
-  // timer for 5 seconds to change view
+  // timer for 5 seconds to change view - starts after image is loaded
   useEffect(() => {
+    if (!size.width) return; // Wait for image to be loaded and sized
     const timer = setTimeout(() => {
       setView("slider")
     }, seconds * 1000)
     return () => clearTimeout(timer)
-  }, [])
+  }, [size.width, seconds])
 
 
   const answerCallback = useCallback(() => {
