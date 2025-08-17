@@ -1,7 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.0.1/src/parser/GlobalConfigSchema.json",
   "configsList": [
-    "literacy",
     "gaze"
   ],
   "configs": {

@@ -18,4 +18,4 @@ r = -0.9 (very strong)   vs.    r = -0.1 (very weak)
 
 ## 3. Example plots for each correlation
 ![example1](../gaze/assets/positive.png)
-![example2](..s/gaze/assets/negative.png)
+![example2](../gaze/assets/negative.png)
