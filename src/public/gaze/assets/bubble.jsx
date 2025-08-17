@@ -4,8 +4,6 @@ import { Box, Button, Slider } from "@mantine/core";
 import React from "react";
 import _ from "lodash";
 import DivergingSlider from "./Slider";
-import { Registry, initializeTrrack } from "@trrack/core";
-
 function Bubble({ parameters, setAnswer }) {
   const ref = useRef(null);
   const { image, radius, ratio, example, seconds, correlation, label, X, Y } = parameters;
@@ -14,38 +12,25 @@ function Bubble({ parameters, setAnswer }) {
   const [view, setView] = useState("belief"); // belief, corrbefore, scatter, corrafter
   const [circleRatio, setCircleRatio] = useState(ratio);
   const [newRadius, setNewRadius] = useState(0);
+  const [currentMousePos, setCurrentMousePos] = useState(null);
   const containerRef = useRef(null);
   const [belief, setBelief] = useState(4);
   const [corrBefore, setCorrBefore] = useState(0);
   const [corrAfter, setCorrAfter] = useState(0);
-  const [isRevealing, setIsRevealing] = useState(false);
-  const [draggedPoint, setDraggedPoint] = useState(null);
-  const [startedBubble, setStartedBubble] = useState(false);
-
-  // Initialize ttrack with a registry and a "click" action (we reuse this action for drag recordings)
-  const { actions, trrack } = useMemo(() => {
-    const reg = Registry.create();
-    const clickAction = reg.register('click', (state, clickRecord) => {
-      state.clickRecord = clickRecord;
-      return state;
-    });
-    const trrackInst = initializeTrrack({
-      registry: reg,
-      initialState: { clickRecord: {} },
-    });
-    return { actions: { clickAction }, trrack: trrackInst };
-  }, []);
+  const [hasClicked, setHasClicked] = useState(false);
+  const [beliefInteracted, setBeliefInteracted] = useState(false);
+  const [corrBeforeInteracted, setCorrBeforeInteracted] = useState(false);
 
   // Timer to change view after a delay when in scatter view
   useEffect(() => {
     if (view !== "scatter") return;
-    if (startedBubble == false) return;
+    if (!hasClicked) return;
     if (!size.width) return; // Wait for image to be loaded and sized
     const timer = setTimeout(() => {
       setView("corrafter");
     }, seconds * 1000);
     return () => clearTimeout(timer);
-  }, [view, seconds, startedBubble, size.width]);
+  }, [view, seconds, hasClicked, size.width]);
 
   // Answer callback for the slider in the "corrafter" view
   const answerCallback = useCallback((newCorrAfter) => {
@@ -59,11 +44,10 @@ function Bubble({ parameters, setAnswer }) {
           corrAfter: newCorrAfter,
           belief: (belief - 1) / 6
         })
-      },
-      provenanceGraph: trrack.graph.backend,
+      }
     });
     setCorrAfter(newCorrAfter);
-  }, [clicked, corrBefore, correlation, trrack, setAnswer, belief]);
+  }, [clicked, corrBefore, correlation, setAnswer, belief]);
 
   // Adjust image size when in scatter view
   useEffect(() => {
@@ -103,57 +87,55 @@ function Bubble({ parameters, setAnswer }) {
     setNewRadius(circleRatio * size.width);
   }, [size.width, circleRatio]);
 
-  // Function to record a point: update state and log via ttrack
+  // Function to record a point in clicked variable
   const recordPoint = useCallback((x, y) => {
     const clickedCircle = { x: parseInt(x), y: parseInt(y) };
-    setClicked(old => [...old, clickedCircle]);
-    const clickRecord = {
-      x: clickedCircle.x,
-      y: clickedCircle.y,
-      radius: newRadius,
-      multiplier: size.multiplier
-    };
-    trrack.apply('click', actions.clickAction(clickRecord));
-  }, [newRadius, size, trrack, actions]);
+    setClicked(old => {
+      const newArray = [...old, clickedCircle];
+      return newArray;
+    });
+  }, [setClicked]);
 
-  // Debounced version to control the capture rate
-  const debouncedRecordPoint = useMemo(() => _.debounce((x, y) => {
-    recordPoint(x, y);
-  }, 200), [recordPoint]);
+  // Throttled version for mouse movement recording after click
+  const throttledRecordPoint = useMemo(
+  () => _.throttle((x, y) => recordPoint(x, y), 100, { leading: true, trailing: true }),
+  [recordPoint]
+);
 
-  useEffect(() => {
-    return () => debouncedRecordPoint.cancel();
-  }, [debouncedRecordPoint]);
+// cancel when component unmounts
+useEffect(() => {
+  return () => throttledRecordPoint.cancel();
+}, [throttledRecordPoint]);
 
-  // Handle mouse down: start dragging and record the initial position.
+
+  // Handle mouse down: start recording mouse movements
   const handleMouseDown = useCallback((e) => {
     const svg = d3.select(ref.current);
     const point = d3.pointer(e, svg.node());
-    setIsRevealing(true);
-    setStartedBubble(true);
-    setDraggedPoint({ x: parseInt(point[0]), y: parseInt(point[1]) });
-    debouncedRecordPoint(point[0], point[1]);
-  }, [debouncedRecordPoint]);
+    setHasClicked(true);
+    throttledRecordPoint(point[0], point[1]);
+  }, [throttledRecordPoint]);
 
-  // Handle mouse move: if dragging, update circle position and record via the debounced function.
+  // Handle mouse move: record coordinates only if user has clicked
   const handleMouseMove = useCallback((e) => {
-    if (!isRevealing) return;
+    if (!hasClicked) {
+      return;
+    }
     const svg = d3.select(ref.current);
     const point = d3.pointer(e, svg.node());
-    setDraggedPoint({ x: parseInt(point[0]), y: parseInt(point[1]) });
-    debouncedRecordPoint(point[0], point[1]);
-  }, [isRevealing, debouncedRecordPoint]);
+    setCurrentMousePos({ x: parseInt(point[0]), y: parseInt(point[1]) });
+    throttledRecordPoint(point[0], point[1]);
+  }, [hasClicked, throttledRecordPoint]);
 
-  // Handle mouse up: stop dragging and flush any pending recording.
+  // Handle mouse up: flush any pending recording
   const handleMouseUp = useCallback(() => {
-    // Keep revealing mode active after a single click; just flush pending records
-    debouncedRecordPoint.flush();
-  }, [debouncedRecordPoint]);
+    throttledRecordPoint.flush();
+  }, [throttledRecordPoint]);
 
   const handleMouseLeave = useCallback(() => {
-    // Hide reveal when leaving the image area
-    setDraggedPoint(null);
-  }, []);
+    throttledRecordPoint.flush();
+    setCurrentMousePos(null);
+  }, [throttledRecordPoint]);
 
   return (
     <div>
@@ -162,9 +144,9 @@ function Bubble({ parameters, setAnswer }) {
       )}
       {view === "scatter" && (
         <div>
-          <h3>Explore the scatterplot of the two variables through dragging with your mouse!</h3>
+          <h3>Explore the scatterplot of the two variables for {seconds} seconds through clicking and moving your mouse!</h3>
           <h3>X: {X} &nbsp;&nbsp; / &nbsp;&nbsp; Y: {Y}</h3>
-          <h3></h3>
+          
           <Box ref={containerRef} className="ImageWrapper" style={{
             display: "flex",
             justifyContent: "center",  // Centers horizontally
@@ -182,45 +164,50 @@ function Bubble({ parameters, setAnswer }) {
               onMouseLeave={handleMouseLeave}
             >
               <defs>
-                <filter id="imageBlurFilter">
-                  <feGaussianBlur in="SourceGraphic" stdDeviation={17} />
-                </filter>
-                <mask id="unblurMask">
-                  {/* Start fully blurred: mask is entirely white until user reveals */}
+                <mask id="revealMask">
+                  {/* Start with white background (visible), cut holes with black circles */}
                   <rect width="100%" height="100%" fill="white" />
-                  {draggedPoint && (
+                  {currentMousePos && (
                     <circle
-                      key={0}
-                      cx={draggedPoint.x}
-                      cy={draggedPoint.y}
+                      cx={currentMousePos.x}
+                      cy={currentMousePos.y}
                       r={newRadius}
                       fill="black"
                     />
                   )}
                 </mask>
               </defs>
+              
+              {/* Scatter plot image */}
               <image
                 href={image}
                 width={size.width}
                 height={size.height}
               />
-              <image
-                href={image}
+              
+              {/* White overlay that gets holes cut through it to reveal the image */}
+              <rect
+                x="0"
+                y="0"
                 width={size.width}
                 height={size.height}
-                filter="url(#imageBlurFilter)"
-                mask="url(#unblurMask)"
+                fill="white"
+                mask="url(#revealMask)"
               />
-              {draggedPoint && (
+              
+              {/* Red circle indicator at current mouse position */}
+              {currentMousePos && (
                 <circle
-                  key={0}
-                  cx={draggedPoint.x}
-                  cy={draggedPoint.y}
+                  cx={currentMousePos.x}
+                  cy={currentMousePos.y}
                   r={newRadius}
                   fill="transparent"
                   stroke="red"
+                  strokeWidth="1"
                 />
               )}
+              
+              {/* Border */}
               <rect x="0" y="0" width={size.width} height={size.height} fill="transparent" stroke="black" strokeWidth="1" />
             </svg>
           </Box>
@@ -234,13 +221,16 @@ function Bubble({ parameters, setAnswer }) {
           <h3>Y: {Y}</h3>
           <DivergingSlider
             value={corrBefore}
-            setValue={setCorrBefore}
+            setValue={(value) => {
+              setCorrBefore(value);
+              setCorrBeforeInteracted(true);
+            }}
             min={-1}
             max={1}
             step={0.01}
             tickInterval={0.2}
           />
-          <Button float="right" onClick={() => setView("scatter")}>Done</Button>
+          <Button float="right" disabled={!corrBeforeInteracted} onClick={() => setView("scatter")}>Done</Button>
         </div>
       )}
 
@@ -265,7 +255,10 @@ function Bubble({ parameters, setAnswer }) {
           <div style={{ marginBottom: 100 }}>
             <DivergingSlider
               value={belief}
-              setValue={setBelief}
+              onClick={() => setBeliefInteracted(true)}
+              setValue={(value) => {
+                setBelief(value);
+              }}
               leftLabel="Not at all"
               rightLabel="Completely"
               min={1}
@@ -275,7 +268,7 @@ function Bubble({ parameters, setAnswer }) {
               center={4}
             />
           </div>
-          <Button onClick={() => setView("corrbefore")}>Done</Button>
+          <Button disabled={!beliefInteracted} onClick={() => setView("corrbefore")}>Done</Button>
         </div>
       )}
     </div>

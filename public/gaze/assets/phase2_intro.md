@@ -3,7 +3,7 @@
 ## Overview
 
 In this experiment, you will see the scatterplot with two variables. Each scatterplot contains 20 data points.
-There are total **16** tasks to solve.
+There are total **12** tasks to solve.
 
 
 ## How It Works
@@ -14,10 +14,10 @@ There are total **16** tasks to solve.
 ### Step 2: **Predict the Correlation**  
    - Before seeing the scatterplot, estimate the correlation (**-1.0 to +1.0**).  
 
-### Step 3: **Explore the Scatterplot**  
-   - A **blurred scatterplot** appears.  
-   - Click and drag to reveal part of the data.
-   - Try to memorize the correlation.  
+### Step 3: **Explore the Scatterplot with your mouse**  
+   - A **blank** scatterplot appears.  
+   - First click and **move your mouse** to reveal part of the chart for **7** seconds.
+   - Try to estimate the correlation while exploring.  
 
 ### Step 4: **Make a Final Estimate**  
    - Adjust your correlation estimate based on the revealed scatterplot.  

@@ -125,27 +125,27 @@
             "baseComponent": "draw",
             "parameters": {
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/empty_scatter.png",
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA"
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus"
             }
         },
         "phase3_3": {
             "baseComponent": "draw",
             "parameters": {
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/empty_scatter.png",
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus"
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city"
             }
         },
         "phase3_4": {
             "baseComponent": "draw",
             "parameters": {
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/empty_scatter.png",
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city"
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA"
             }
         },
         "phase3_5": {
@@ -173,6 +173,42 @@
                 "label": "As the number of environmental regulations increases, so does the air quality in the city.",
                 "X": "Having more environmental regulations",
                 "Y": "Improving air quality in the city"
+            }
+        },
+        "phase3_8": {
+            "baseComponent": "draw",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/empty_scatter.png",
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park"
+            }
+        },
+        "phase3_9": {
+            "baseComponent": "draw",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/empty_scatter.png",
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency"
+            }
+        },
+        "phase3_10": {
+            "baseComponent": "draw",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/empty_scatter.png",
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors"
+            }
+        },
+        "phase3_11": {
+            "baseComponent": "draw",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/empty_scatter.png",
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales"
             }
         },
         "plain_1_1_pos": {
@@ -607,6 +643,36 @@
                 "seconds": 5
             }
         },
+        "phase2_1_6_pos_0": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "As the usage of internet increases, so does the homicide rate in the city.",
+                "X": "Increasing internet usage",
+                "Y": "Higher homicide rate in the city",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_0": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "As the usage of internet increases, so does the homicide rate in the city.",
+                "X": "Increasing internet usage",
+                "Y": "Higher homicide rate in the city",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
         "phase2_3_6_pos_0": {
             "baseComponent": "bubble",
             "parameters": {
@@ -619,22 +685,7 @@
                 "corr": 3,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_6_neg_0": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_6.png",
-                "example": false,
-                "correlation": -0.3307897893692809,
-                "label": "As the usage of internet increases, so does the homicide rate in the city.",
-                "X": "Increasing internet usage",
-                "Y": "Higher homicide rate in the city",
-                "corr": 3,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_3_7_pos_0": {
@@ -649,22 +700,7 @@
                 "corr": 3,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_7_neg_0": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_7.png",
-                "example": false,
-                "correlation": -0.26346487895573,
-                "label": "As the usage of internet increases, so does the homicide rate in the city.",
-                "X": "Increasing internet usage",
-                "Y": "Higher homicide rate in the city",
-                "corr": 3,
-                "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_6_pos_0": {
@@ -679,22 +715,7 @@
                 "corr": 5,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_5_6_neg_0": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_6.png",
-                "example": false,
-                "correlation": -0.5338577203646716,
-                "label": "As the usage of internet increases, so does the homicide rate in the city.",
-                "X": "Increasing internet usage",
-                "Y": "Higher homicide rate in the city",
-                "corr": 5,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_7_pos_0": {
@@ -709,22 +730,67 @@
                 "corr": 5,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
+                "seconds": 7
             }
         },
-        "phase2_5_7_neg_0": {
+        "phase2_7_6_pos_0": {
             "baseComponent": "bubble",
             "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_7.png",
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
                 "example": false,
-                "correlation": -0.4658083599298405,
+                "correlation": 0.733310211735152,
                 "label": "As the usage of internet increases, so does the homicide rate in the city.",
                 "X": "Increasing internet usage",
                 "Y": "Higher homicide rate in the city",
-                "corr": 5,
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_0": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "As the usage of internet increases, so does the homicide rate in the city.",
+                "X": "Increasing internet usage",
+                "Y": "Higher homicide rate in the city",
+                "corr": 7,
                 "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_1": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "People who eat more cheese, tend to be better at dancing.",
+                "X": "Eating more cheese",
+                "Y": "Better at dancing",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_1": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "People who eat more cheese, tend to be better at dancing.",
+                "X": "Eating more cheese",
+                "Y": "Better at dancing",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
             }
         },
         "phase2_3_6_pos_1": {
@@ -739,22 +805,7 @@
                 "corr": 3,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_6_neg_1": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_6.png",
-                "example": false,
-                "correlation": -0.3307897893692809,
-                "label": "People who eat more cheese, tend to be better at dancing.",
-                "X": "Eating more cheese",
-                "Y": "Better at dancing",
-                "corr": 3,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_3_7_pos_1": {
@@ -769,22 +820,7 @@
                 "corr": 3,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_7_neg_1": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_7.png",
-                "example": false,
-                "correlation": -0.26346487895573,
-                "label": "People who eat more cheese, tend to be better at dancing.",
-                "X": "Eating more cheese",
-                "Y": "Better at dancing",
-                "corr": 3,
-                "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_6_pos_1": {
@@ -799,22 +835,7 @@
                 "corr": 5,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_5_6_neg_1": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_6.png",
-                "example": false,
-                "correlation": -0.5338577203646716,
-                "label": "People who eat more cheese, tend to be better at dancing.",
-                "X": "Eating more cheese",
-                "Y": "Better at dancing",
-                "corr": 5,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_7_pos_1": {
@@ -829,22 +850,67 @@
                 "corr": 5,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
+                "seconds": 7
             }
         },
-        "phase2_5_7_neg_1": {
+        "phase2_7_6_pos_1": {
             "baseComponent": "bubble",
             "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_7.png",
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
                 "example": false,
-                "correlation": -0.4658083599298405,
+                "correlation": 0.733310211735152,
                 "label": "People who eat more cheese, tend to be better at dancing.",
                 "X": "Eating more cheese",
                 "Y": "Better at dancing",
-                "corr": 5,
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_1": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "People who eat more cheese, tend to be better at dancing.",
+                "X": "Eating more cheese",
+                "Y": "Better at dancing",
+                "corr": 7,
                 "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_2": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_2": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
             }
         },
         "phase2_3_6_pos_2": {
@@ -853,28 +919,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_6.png",
                 "example": false,
                 "correlation": 0.3447884494755372,
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA",
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus",
                 "corr": 3,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_6_neg_2": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_6.png",
-                "example": false,
-                "correlation": -0.3307897893692809,
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA",
-                "corr": 3,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_3_7_pos_2": {
@@ -883,28 +934,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_7.png",
                 "example": false,
                 "correlation": 0.3364924891794488,
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA",
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus",
                 "corr": 3,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_7_neg_2": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_7.png",
-                "example": false,
-                "correlation": -0.26346487895573,
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA",
-                "corr": 3,
-                "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_6_pos_2": {
@@ -913,28 +949,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_6.png",
                 "example": false,
                 "correlation": 0.4953732723763143,
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA",
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus",
                 "corr": 5,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_5_6_neg_2": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_6.png",
-                "example": false,
-                "correlation": -0.5338577203646716,
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA",
-                "corr": 5,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_7_pos_2": {
@@ -943,28 +964,73 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_7.png",
                 "example": false,
                 "correlation": 0.5106268293130367,
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA",
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus",
                 "corr": 5,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
+                "seconds": 7
             }
         },
-        "phase2_5_7_neg_2": {
+        "phase2_7_6_pos_2": {
             "baseComponent": "bubble",
             "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_7.png",
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
                 "example": false,
-                "correlation": -0.4658083599298405,
-                "label": "The more often students eat breakfast, the higher their GPAs are.",
-                "X": "Eating breakfast more often",
-                "Y": "Having a higher GPA",
-                "corr": 5,
+                "correlation": 0.733310211735152,
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus",
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_2": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "The more students wear glasses, the later the gym closes on campus.",
+                "X": "More students wearing glasses",
+                "Y": "Gym closing later on campus",
+                "corr": 7,
                 "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_3": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_3": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
             }
         },
         "phase2_3_6_pos_3": {
@@ -973,28 +1039,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_6.png",
                 "example": false,
                 "correlation": 0.3447884494755372,
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus",
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city",
                 "corr": 3,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_6_neg_3": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_6.png",
-                "example": false,
-                "correlation": -0.3307897893692809,
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus",
-                "corr": 3,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_3_7_pos_3": {
@@ -1003,28 +1054,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_7.png",
                 "example": false,
                 "correlation": 0.3364924891794488,
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus",
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city",
                 "corr": 3,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_7_neg_3": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_7.png",
-                "example": false,
-                "correlation": -0.26346487895573,
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus",
-                "corr": 3,
-                "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_6_pos_3": {
@@ -1033,28 +1069,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_6.png",
                 "example": false,
                 "correlation": 0.4953732723763143,
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus",
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city",
                 "corr": 5,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_5_6_neg_3": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_6.png",
-                "example": false,
-                "correlation": -0.5338577203646716,
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus",
-                "corr": 5,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_7_pos_3": {
@@ -1063,28 +1084,73 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_7.png",
                 "example": false,
                 "correlation": 0.5106268293130367,
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus",
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city",
                 "corr": 5,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
+                "seconds": 7
             }
         },
-        "phase2_5_7_neg_3": {
+        "phase2_7_6_pos_3": {
             "baseComponent": "bubble",
             "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_7.png",
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
                 "example": false,
-                "correlation": -0.4658083599298405,
-                "label": "The more students wear glasses, the later the gym closes on campus.",
-                "X": "More students wearing glasses",
-                "Y": "Gym closing later on campus",
-                "corr": 5,
+                "correlation": 0.733310211735152,
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city",
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_3": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "A city with more lawyers, tends to have more trees.",
+                "X": "Having more lawyers in a city",
+                "Y": "Having more trees in the city",
+                "corr": 7,
                 "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_4": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_4": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
             }
         },
         "phase2_3_6_pos_4": {
@@ -1093,28 +1159,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_6.png",
                 "example": false,
                 "correlation": 0.3447884494755372,
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city",
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA",
                 "corr": 3,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_6_neg_4": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_6.png",
-                "example": false,
-                "correlation": -0.3307897893692809,
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city",
-                "corr": 3,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_3_7_pos_4": {
@@ -1123,28 +1174,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_7.png",
                 "example": false,
                 "correlation": 0.3364924891794488,
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city",
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA",
                 "corr": 3,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_7_neg_4": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_7.png",
-                "example": false,
-                "correlation": -0.26346487895573,
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city",
-                "corr": 3,
-                "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_6_pos_4": {
@@ -1153,28 +1189,13 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_6.png",
                 "example": false,
                 "correlation": 0.4953732723763143,
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city",
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA",
                 "corr": 5,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_5_6_neg_4": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_6.png",
-                "example": false,
-                "correlation": -0.5338577203646716,
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city",
-                "corr": 5,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_7_pos_4": {
@@ -1183,28 +1204,73 @@
                 "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_7.png",
                 "example": false,
                 "correlation": 0.5106268293130367,
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city",
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA",
                 "corr": 5,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
+                "seconds": 7
             }
         },
-        "phase2_5_7_neg_4": {
+        "phase2_7_6_pos_4": {
             "baseComponent": "bubble",
             "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_7.png",
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
                 "example": false,
-                "correlation": -0.4658083599298405,
-                "label": "A city with more lawyers, tends to have more trees.",
-                "X": "Having more lawyers in a city",
-                "Y": "Having more trees in the city",
-                "corr": 5,
+                "correlation": 0.733310211735152,
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA",
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_4": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "The more often students eat breakfast, the higher their GPAs are.",
+                "X": "Eating breakfast more often",
+                "Y": "Having a higher GPA",
+                "corr": 7,
                 "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_5": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "A worker with a longer commute, tends to be more stressed.",
+                "X": "Commuting for a longer time",
+                "Y": "Being more stressed",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_5": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "A worker with a longer commute, tends to be more stressed.",
+                "X": "Commuting for a longer time",
+                "Y": "Being more stressed",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
             }
         },
         "phase2_3_6_pos_5": {
@@ -1219,22 +1285,7 @@
                 "corr": 3,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_6_neg_5": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_6.png",
-                "example": false,
-                "correlation": -0.3307897893692809,
-                "label": "A worker with a longer commute, tends to be more stressed.",
-                "X": "Commuting for a longer time",
-                "Y": "Being more stressed",
-                "corr": 3,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_3_7_pos_5": {
@@ -1249,22 +1300,7 @@
                 "corr": 3,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_7_neg_5": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_7.png",
-                "example": false,
-                "correlation": -0.26346487895573,
-                "label": "A worker with a longer commute, tends to be more stressed.",
-                "X": "Commuting for a longer time",
-                "Y": "Being more stressed",
-                "corr": 3,
-                "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_6_pos_5": {
@@ -1279,22 +1315,7 @@
                 "corr": 5,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_5_6_neg_5": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_6.png",
-                "example": false,
-                "correlation": -0.5338577203646716,
-                "label": "A worker with a longer commute, tends to be more stressed.",
-                "X": "Commuting for a longer time",
-                "Y": "Being more stressed",
-                "corr": 5,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_7_pos_5": {
@@ -1309,22 +1330,67 @@
                 "corr": 5,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
+                "seconds": 7
             }
         },
-        "phase2_5_7_neg_5": {
+        "phase2_7_6_pos_5": {
             "baseComponent": "bubble",
             "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_7.png",
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
                 "example": false,
-                "correlation": -0.4658083599298405,
+                "correlation": 0.733310211735152,
                 "label": "A worker with a longer commute, tends to be more stressed.",
                 "X": "Commuting for a longer time",
                 "Y": "Being more stressed",
-                "corr": 5,
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_5": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "A worker with a longer commute, tends to be more stressed.",
+                "X": "Commuting for a longer time",
+                "Y": "Being more stressed",
+                "corr": 7,
                 "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_6": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "People who sleep more, tend to be happier with their lives.",
+                "X": "Sleeping more",
+                "Y": "Being happier with life",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_6": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "People who sleep more, tend to be happier with their lives.",
+                "X": "Sleeping more",
+                "Y": "Being happier with life",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
             }
         },
         "phase2_3_6_pos_6": {
@@ -1339,22 +1405,7 @@
                 "corr": 3,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_6_neg_6": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_6.png",
-                "example": false,
-                "correlation": -0.3307897893692809,
-                "label": "People who sleep more, tend to be happier with their lives.",
-                "X": "Sleeping more",
-                "Y": "Being happier with life",
-                "corr": 3,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_3_7_pos_6": {
@@ -1369,22 +1420,7 @@
                 "corr": 3,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_7_neg_6": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_7.png",
-                "example": false,
-                "correlation": -0.26346487895573,
-                "label": "People who sleep more, tend to be happier with their lives.",
-                "X": "Sleeping more",
-                "Y": "Being happier with life",
-                "corr": 3,
-                "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_6_pos_6": {
@@ -1399,22 +1435,7 @@
                 "corr": 5,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_5_6_neg_6": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_6.png",
-                "example": false,
-                "correlation": -0.5338577203646716,
-                "label": "People who sleep more, tend to be happier with their lives.",
-                "X": "Sleeping more",
-                "Y": "Being happier with life",
-                "corr": 5,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_7_pos_6": {
@@ -1429,22 +1450,67 @@
                 "corr": 5,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
+                "seconds": 7
             }
         },
-        "phase2_5_7_neg_6": {
+        "phase2_7_6_pos_6": {
             "baseComponent": "bubble",
             "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_7.png",
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
                 "example": false,
-                "correlation": -0.4658083599298405,
+                "correlation": 0.733310211735152,
                 "label": "People who sleep more, tend to be happier with their lives.",
                 "X": "Sleeping more",
                 "Y": "Being happier with life",
-                "corr": 5,
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_6": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "People who sleep more, tend to be happier with their lives.",
+                "X": "Sleeping more",
+                "Y": "Being happier with life",
+                "corr": 7,
                 "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_7": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "As the number of environmental regulations increases, so does the air quality in the city.",
+                "X": "Having more environmental regulations",
+                "Y": "Improving air quality in the city",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_7": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "As the number of environmental regulations increases, so does the air quality in the city.",
+                "X": "Having more environmental regulations",
+                "Y": "Improving air quality in the city",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
             }
         },
         "phase2_3_6_pos_7": {
@@ -1459,22 +1525,7 @@
                 "corr": 3,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_6_neg_7": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_6.png",
-                "example": false,
-                "correlation": -0.3307897893692809,
-                "label": "As the number of environmental regulations increases, so does the air quality in the city.",
-                "X": "Having more environmental regulations",
-                "Y": "Improving air quality in the city",
-                "corr": 3,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_3_7_pos_7": {
@@ -1489,22 +1540,7 @@
                 "corr": 3,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_3_7_neg_7": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_3_7.png",
-                "example": false,
-                "correlation": -0.26346487895573,
-                "label": "As the number of environmental regulations increases, so does the air quality in the city.",
-                "X": "Having more environmental regulations",
-                "Y": "Improving air quality in the city",
-                "corr": 3,
-                "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_6_pos_7": {
@@ -1519,22 +1555,7 @@
                 "corr": 5,
                 "exp": 6,
                 "direction": "pos",
-                "seconds": 10
-            }
-        },
-        "phase2_5_6_neg_7": {
-            "baseComponent": "bubble",
-            "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_6.png",
-                "example": false,
-                "correlation": -0.5338577203646716,
-                "label": "As the number of environmental regulations increases, so does the air quality in the city.",
-                "X": "Having more environmental regulations",
-                "Y": "Improving air quality in the city",
-                "corr": 5,
-                "exp": 6,
-                "direction": "neg",
-                "seconds": 10
+                "seconds": 7
             }
         },
         "phase2_5_7_pos_7": {
@@ -1549,22 +1570,517 @@
                 "corr": 5,
                 "exp": 7,
                 "direction": "pos",
-                "seconds": 10
+                "seconds": 7
             }
         },
-        "phase2_5_7_neg_7": {
+        "phase2_7_6_pos_7": {
             "baseComponent": "bubble",
             "parameters": {
-                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/neg_scatter_5_7.png",
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
                 "example": false,
-                "correlation": -0.4658083599298405,
+                "correlation": 0.733310211735152,
                 "label": "As the number of environmental regulations increases, so does the air quality in the city.",
                 "X": "Having more environmental regulations",
                 "Y": "Improving air quality in the city",
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_7": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "As the number of environmental regulations increases, so does the air quality in the city.",
+                "X": "Having more environmental regulations",
+                "Y": "Improving air quality in the city",
+                "corr": 7,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_8": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_8": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_3_6_pos_8": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_6.png",
+                "example": false,
+                "correlation": 0.3447884494755372,
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park",
+                "corr": 3,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_3_7_pos_8": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_7.png",
+                "example": false,
+                "correlation": 0.3364924891794488,
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park",
+                "corr": 3,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_5_6_pos_8": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_6.png",
+                "example": false,
+                "correlation": 0.4953732723763143,
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park",
+                "corr": 5,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_5_7_pos_8": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_7.png",
+                "example": false,
+                "correlation": 0.5106268293130367,
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park",
                 "corr": 5,
                 "exp": 7,
-                "direction": "neg",
-                "seconds": 10
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_6_pos_8": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
+                "example": false,
+                "correlation": 0.733310211735152,
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park",
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_8": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "The more people buy socks, the more pigeons appear in the park.",
+                "X": "Buying more socks",
+                "Y": "Seeing more pigeons in the park",
+                "corr": 7,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_9": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_9": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_3_6_pos_9": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_6.png",
+                "example": false,
+                "correlation": 0.3447884494755372,
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency",
+                "corr": 3,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_3_7_pos_9": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_7.png",
+                "example": false,
+                "correlation": 0.3364924891794488,
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency",
+                "corr": 3,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_5_6_pos_9": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_6.png",
+                "example": false,
+                "correlation": 0.4953732723763143,
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency",
+                "corr": 5,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_5_7_pos_9": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_7.png",
+                "example": false,
+                "correlation": 0.5106268293130367,
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency",
+                "corr": 5,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_6_pos_9": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
+                "example": false,
+                "correlation": 0.733310211735152,
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency",
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_9": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "As the number of cats in the city increases, the library's carpet gets replaced more often.",
+                "X": "Number of cats in city",
+                "Y": "Library carpet replacement frequency",
+                "corr": 7,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_10": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_10": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_3_6_pos_10": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_6.png",
+                "example": false,
+                "correlation": 0.3447884494755372,
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors",
+                "corr": 3,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_3_7_pos_10": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_7.png",
+                "example": false,
+                "correlation": 0.3364924891794488,
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors",
+                "corr": 3,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_5_6_pos_10": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_6.png",
+                "example": false,
+                "correlation": 0.4953732723763143,
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors",
+                "corr": 5,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_5_7_pos_10": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_7.png",
+                "example": false,
+                "correlation": 0.5106268293130367,
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors",
+                "corr": 5,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_6_pos_10": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
+                "example": false,
+                "correlation": 0.733310211735152,
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors",
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_10": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "The more drivers wear seatbelts, the more survivors there are in accidents.",
+                "X": "Percentage of drivers wearing seatbelts",
+                "Y": "More accident survivors",
+                "corr": 7,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_6_pos_11": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_6.png",
+                "example": false,
+                "correlation": 0.1063043080224522,
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales",
+                "corr": 1,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_1_7_pos_11": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_1_7.png",
+                "example": false,
+                "correlation": 0.055423496824814,
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales",
+                "corr": 1,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_3_6_pos_11": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_6.png",
+                "example": false,
+                "correlation": 0.3447884494755372,
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales",
+                "corr": 3,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_3_7_pos_11": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_3_7.png",
+                "example": false,
+                "correlation": 0.3364924891794488,
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales",
+                "corr": 3,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_5_6_pos_11": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_6.png",
+                "example": false,
+                "correlation": 0.4953732723763143,
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales",
+                "corr": 5,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_5_7_pos_11": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_5_7.png",
+                "example": false,
+                "correlation": 0.5106268293130367,
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales",
+                "corr": 5,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_6_pos_11": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_6.png",
+                "example": false,
+                "correlation": 0.733310211735152,
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales",
+                "corr": 7,
+                "exp": 6,
+                "direction": "pos",
+                "seconds": 7
+            }
+        },
+        "phase2_7_7_pos_11": {
+            "baseComponent": "bubble",
+            "parameters": {
+                "image": "https://raw.githubusercontent.com/jangsus1/ChartQA/main/scatter/pos_scatter_7_7.png",
+                "example": false,
+                "correlation": 0.6708951582113672,
+                "label": "The more probiotic yogurt people buy, the more toilet paper sales go up.",
+                "X": "Probiotic yogurt sales",
+                "Y": "Toilet paper sales",
+                "corr": 7,
+                "exp": 7,
+                "direction": "pos",
+                "seconds": 7
             }
         }
     },
@@ -1639,14 +2155,14 @@
                         "order": "latinSquare",
                         "numSamples": 1,
                         "components": [
+                            "phase2_1_6_pos_0",
+                            "phase2_1_7_pos_0",
                             "phase2_3_6_pos_0",
-                            "phase2_3_6_neg_0",
                             "phase2_3_7_pos_0",
-                            "phase2_3_7_neg_0",
                             "phase2_5_6_pos_0",
-                            "phase2_5_6_neg_0",
                             "phase2_5_7_pos_0",
-                            "phase2_5_7_neg_0"
+                            "phase2_7_6_pos_0",
+                            "phase2_7_7_pos_0"
                         ]
                     },
                     {
@@ -1654,29 +2170,14 @@
                         "order": "latinSquare",
                         "numSamples": 1,
                         "components": [
+                            "phase2_1_6_pos_1",
+                            "phase2_1_7_pos_1",
                             "phase2_3_6_pos_1",
-                            "phase2_3_6_neg_1",
                             "phase2_3_7_pos_1",
-                            "phase2_3_7_neg_1",
                             "phase2_5_6_pos_1",
-                            "phase2_5_6_neg_1",
                             "phase2_5_7_pos_1",
-                            "phase2_5_7_neg_1"
-                        ]
-                    },
-                    {
-                        "id": "The more often students eat br",
-                        "order": "latinSquare",
-                        "numSamples": 1,
-                        "components": [
-                            "phase2_3_6_pos_2",
-                            "phase2_3_6_neg_2",
-                            "phase2_3_7_pos_2",
-                            "phase2_3_7_neg_2",
-                            "phase2_5_6_pos_2",
-                            "phase2_5_6_neg_2",
-                            "phase2_5_7_pos_2",
-                            "phase2_5_7_neg_2"
+                            "phase2_7_6_pos_1",
+                            "phase2_7_7_pos_1"
                         ]
                     },
                     {
@@ -1684,14 +2185,14 @@
                         "order": "latinSquare",
                         "numSamples": 1,
                         "components": [
-                            "phase2_3_6_pos_3",
-                            "phase2_3_6_neg_3",
-                            "phase2_3_7_pos_3",
-                            "phase2_3_7_neg_3",
-                            "phase2_5_6_pos_3",
-                            "phase2_5_6_neg_3",
-                            "phase2_5_7_pos_3",
-                            "phase2_5_7_neg_3"
+                            "phase2_1_6_pos_2",
+                            "phase2_1_7_pos_2",
+                            "phase2_3_6_pos_2",
+                            "phase2_3_7_pos_2",
+                            "phase2_5_6_pos_2",
+                            "phase2_5_7_pos_2",
+                            "phase2_7_6_pos_2",
+                            "phase2_7_7_pos_2"
                         ]
                     },
                     {
@@ -1699,14 +2200,29 @@
                         "order": "latinSquare",
                         "numSamples": 1,
                         "components": [
+                            "phase2_1_6_pos_3",
+                            "phase2_1_7_pos_3",
+                            "phase2_3_6_pos_3",
+                            "phase2_3_7_pos_3",
+                            "phase2_5_6_pos_3",
+                            "phase2_5_7_pos_3",
+                            "phase2_7_6_pos_3",
+                            "phase2_7_7_pos_3"
+                        ]
+                    },
+                    {
+                        "id": "The more often students eat br",
+                        "order": "latinSquare",
+                        "numSamples": 1,
+                        "components": [
+                            "phase2_1_6_pos_4",
+                            "phase2_1_7_pos_4",
                             "phase2_3_6_pos_4",
-                            "phase2_3_6_neg_4",
                             "phase2_3_7_pos_4",
-                            "phase2_3_7_neg_4",
                             "phase2_5_6_pos_4",
-                            "phase2_5_6_neg_4",
                             "phase2_5_7_pos_4",
-                            "phase2_5_7_neg_4"
+                            "phase2_7_6_pos_4",
+                            "phase2_7_7_pos_4"
                         ]
                     },
                     {
@@ -1714,14 +2230,14 @@
                         "order": "latinSquare",
                         "numSamples": 1,
                         "components": [
+                            "phase2_1_6_pos_5",
+                            "phase2_1_7_pos_5",
                             "phase2_3_6_pos_5",
-                            "phase2_3_6_neg_5",
                             "phase2_3_7_pos_5",
-                            "phase2_3_7_neg_5",
                             "phase2_5_6_pos_5",
-                            "phase2_5_6_neg_5",
                             "phase2_5_7_pos_5",
-                            "phase2_5_7_neg_5"
+                            "phase2_7_6_pos_5",
+                            "phase2_7_7_pos_5"
                         ]
                     },
                     {
@@ -1729,14 +2245,14 @@
                         "order": "latinSquare",
                         "numSamples": 1,
                         "components": [
+                            "phase2_1_6_pos_6",
+                            "phase2_1_7_pos_6",
                             "phase2_3_6_pos_6",
-                            "phase2_3_6_neg_6",
                             "phase2_3_7_pos_6",
-                            "phase2_3_7_neg_6",
                             "phase2_5_6_pos_6",
-                            "phase2_5_6_neg_6",
                             "phase2_5_7_pos_6",
-                            "phase2_5_7_neg_6"
+                            "phase2_7_6_pos_6",
+                            "phase2_7_7_pos_6"
                         ]
                     },
                     {
@@ -1744,14 +2260,74 @@
                         "order": "latinSquare",
                         "numSamples": 1,
                         "components": [
+                            "phase2_1_6_pos_7",
+                            "phase2_1_7_pos_7",
                             "phase2_3_6_pos_7",
-                            "phase2_3_6_neg_7",
                             "phase2_3_7_pos_7",
-                            "phase2_3_7_neg_7",
                             "phase2_5_6_pos_7",
-                            "phase2_5_6_neg_7",
                             "phase2_5_7_pos_7",
-                            "phase2_5_7_neg_7"
+                            "phase2_7_6_pos_7",
+                            "phase2_7_7_pos_7"
+                        ]
+                    },
+                    {
+                        "id": "The more people buy socks, the",
+                        "order": "latinSquare",
+                        "numSamples": 1,
+                        "components": [
+                            "phase2_1_6_pos_8",
+                            "phase2_1_7_pos_8",
+                            "phase2_3_6_pos_8",
+                            "phase2_3_7_pos_8",
+                            "phase2_5_6_pos_8",
+                            "phase2_5_7_pos_8",
+                            "phase2_7_6_pos_8",
+                            "phase2_7_7_pos_8"
+                        ]
+                    },
+                    {
+                        "id": "As the number of cats in the c",
+                        "order": "latinSquare",
+                        "numSamples": 1,
+                        "components": [
+                            "phase2_1_6_pos_9",
+                            "phase2_1_7_pos_9",
+                            "phase2_3_6_pos_9",
+                            "phase2_3_7_pos_9",
+                            "phase2_5_6_pos_9",
+                            "phase2_5_7_pos_9",
+                            "phase2_7_6_pos_9",
+                            "phase2_7_7_pos_9"
+                        ]
+                    },
+                    {
+                        "id": "The more drivers wear seatbelt",
+                        "order": "latinSquare",
+                        "numSamples": 1,
+                        "components": [
+                            "phase2_1_6_pos_10",
+                            "phase2_1_7_pos_10",
+                            "phase2_3_6_pos_10",
+                            "phase2_3_7_pos_10",
+                            "phase2_5_6_pos_10",
+                            "phase2_5_7_pos_10",
+                            "phase2_7_6_pos_10",
+                            "phase2_7_7_pos_10"
+                        ]
+                    },
+                    {
+                        "id": "The more probiotic yogurt peop",
+                        "order": "latinSquare",
+                        "numSamples": 1,
+                        "components": [
+                            "phase2_1_6_pos_11",
+                            "phase2_1_7_pos_11",
+                            "phase2_3_6_pos_11",
+                            "phase2_3_7_pos_11",
+                            "phase2_5_6_pos_11",
+                            "phase2_5_7_pos_11",
+                            "phase2_7_6_pos_11",
+                            "phase2_7_7_pos_11"
                         ]
                     }
                 ]
@@ -1768,7 +2344,11 @@
                     "phase3_4",
                     "phase3_5",
                     "phase3_6",
-                    "phase3_7"
+                    "phase3_7",
+                    "phase3_8",
+                    "phase3_9",
+                    "phase3_10",
+                    "phase3_11"
                 ]
             }
         ]
@@ -1787,7 +2367,7 @@
                 }
             ],
             "parameters": {
-                "ratio": 0.05
+                "ratio": 0.08
             },
             "instructionLocation": "belowStimulus",
             "nextButtonLocation": "belowStimulus"

@@ -16,6 +16,7 @@ function Draw({ parameters, setAnswer }) {
   const [corrAfter, setCorrAfter] = useState(0)
   const [remember, setRemember] = useState(4)
   const containerRef = useRef(null);
+  const [rememberInteracted, setRememberInteracted] = useState(false);
 
   // Initialize ttrack with a registry and click action
   const { actions, trrack } = useMemo(() => {
@@ -39,7 +40,7 @@ function Draw({ parameters, setAnswer }) {
         status: true,
         answer: JSON.stringify({
           clicked: clicked,
-          remember: remember,
+          remember: (remember-1)/6,
           corrAfter: corrAfter,
         })
       },
@@ -152,7 +153,7 @@ function Draw({ parameters, setAnswer }) {
 
       {view === "remember" && (
         <div style={{ width: '50%', margin: '50px auto' }}>
-          <h3>How much do you remember about this scatterplot that you've seen?</h3>
+          <h3>How much do you <span style={{ textDecoration: 'underline' }}>remember</span> about this scatterplot that you've seen?</h3>
           <h3>X: {X}</h3>
           <h3>Y: {Y}</h3>
 
@@ -160,7 +161,10 @@ function Draw({ parameters, setAnswer }) {
 
             <DivergingSlider
               value={remember}
-              setValue={setRemember}
+              onClick={() => setRememberInteracted(true)}
+              setValue={(value) => {
+                setRemember(value);
+              }}
               min={1}
               max={7}
               center={4}
@@ -171,7 +175,7 @@ function Draw({ parameters, setAnswer }) {
             />
 
           </div>
-          <Button onClick={() => setView("draw")}>Done</Button>
+          <Button disabled={!rememberInteracted} onClick={() => setView("draw")}>Done</Button>
         </div>
       )}
     </div>

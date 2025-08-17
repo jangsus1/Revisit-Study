@@ -17,6 +17,7 @@ function Plain({ parameters, setAnswer }) {
   const [newRadius, setNewRadius] = useState(radius)
   const containerRef = useRef(null);
   const [slider, setSlider] = useState(0)
+  const [sliderInteracted, setSliderInteracted] = useState(false)
 
 
   // timer for 5 seconds to change view - starts after image is loaded
@@ -103,13 +104,16 @@ function Plain({ parameters, setAnswer }) {
           <h2>Predict the Correlation!</h2>
           <DivergingSlider
             value={slider}
-            setValue={setSlider}
+            setValue={(value) => {
+              setSlider(value);
+              setSliderInteracted(true);
+            }}
             min={-1}
             max={1}
             step={0.01}
             tickInterval={0.2}
           />
-          <Button sx={{ mt: 2 }} onClick={jobDone}>Done</Button>
+          <Button sx={{ mt: 2 }} disabled={!sliderInteracted} onClick={jobDone}>Done</Button>
         </div>
       )}
 

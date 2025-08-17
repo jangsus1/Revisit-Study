@@ -1,4 +1,4 @@
-export default function DivergingSlider({ value, setValue, leftLabel = "", rightLabel = "", min = -1, max = 1, step = 0.01, tickInterval = 0.2, center = 0, }) {
+export default function DivergingSlider({ value, setValue, leftLabel = "", rightLabel = "", min = -1, max = 1, step = 0.01, tickInterval = 0.2, center = 0, onClick = () => {} }) {
   // Normalize value to a percentage [0, 100] within the given min-max range
   const percentage = ((value - min) / (max - min)) * 100;
   const middlePercentage = ((center - min) / (max - min)) * 100; // Normalize center to percentage scale
@@ -29,7 +29,6 @@ export default function DivergingSlider({ value, setValue, leftLabel = "", right
   const tickMarks = [];
   for (let i = center; i <= max; i += tickInterval) tickMarks.push(i);
   for (let i = center - tickInterval; i >= min; i -= tickInterval) tickMarks.push(i);
-  console.log(tickMarks);
   return (
     <div style={{ position: "relative", width: "100%", maxWidth: "600px", margin: "50px auto" }}>
       <input
@@ -38,6 +37,7 @@ export default function DivergingSlider({ value, setValue, leftLabel = "", right
         max={max}
         step={step}
         value={value}
+        onClick={onClick}
         onChange={(e) => setValue(parseFloat(e.target.value))}
         style={{
           width: "100%",
