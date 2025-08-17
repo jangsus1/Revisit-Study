@@ -1275,7 +1275,7 @@
                 }
             ],
             "parameters": {
-                "radius": 200
+                "ratio": 0.05
             },
             "instructionLocation": "belowStimulus",
             "nextButtonLocation": "belowStimulus"
