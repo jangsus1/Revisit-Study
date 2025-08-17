@@ -87,6 +87,15 @@ function Draw({ parameters, setAnswer }) {
     trrack.apply('click', actions.clickAction(clickRecord));
   }, [clicked, size, trrack, actions]);
 
+  // Undo callback to remove the last clicked point
+  const undoCallback = useCallback(() => {
+    if (clicked.length > 0) {
+      const newClicked = clicked.slice(0, -1)
+      setClicked(newClicked)
+      // Note: For full ttrack integration, you might want to add an undo action to the registry
+    }
+  }, [clicked]);
+
   return (
     <div>
       {view === "draw" && (
@@ -115,7 +124,10 @@ function Draw({ parameters, setAnswer }) {
                 />
               ))}
             </svg>
-            <Button disabled={clicked.length < 20} onClick={() => setView("corrafter")}>Done</Button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginLeft: '10px' }}>
+              <Button disabled={clicked.length < 20} onClick={() => setView("corrafter")}>Done</Button>
+              <Button variant="outline" disabled={clicked.length === 0} onClick={undoCallback}>Undo</Button>
+            </div>
           </Box>
           
         </div>

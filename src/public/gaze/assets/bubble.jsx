@@ -2,22 +2,23 @@ import * as d3 from "d3";
 import { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { Box, Button, Slider } from "@mantine/core";
 import React from "react";
-import _, { set } from "lodash";
+import _ from "lodash";
 import DivergingSlider from "./Slider";
 import { Registry, initializeTrrack } from "@trrack/core";
 
 function Bubble({ parameters, setAnswer }) {
   const ref = useRef(null);
-  const { image, radius, example, seconds, correlation, label, X, Y } = parameters;
+  const { image, radius, ratio, example, seconds, correlation, label, X, Y } = parameters;
   const [clicked, setClicked] = useState([]);
   const [size, setSize] = useState({ width: 0, height: 0 });
   const [view, setView] = useState("belief"); // belief, corrbefore, scatter, corrafter
-  const [newRadius, setNewRadius] = useState(radius);
+  const [circleRatio, setCircleRatio] = useState(ratio);
+  const [newRadius, setNewRadius] = useState(0);
   const containerRef = useRef(null);
   const [belief, setBelief] = useState(4);
   const [corrBefore, setCorrBefore] = useState(0);
   const [corrAfter, setCorrAfter] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
+  const [isRevealing, setIsRevealing] = useState(false);
   const [draggedPoint, setDraggedPoint] = useState(null);
   const [startedBubble, setStartedBubble] = useState(false);
 
@@ -83,9 +84,23 @@ function Bubble({ parameters, setAnswer }) {
       }
       const multiplier = scaledWidth / img.width;
       setSize({ width: scaledWidth, height: scaledHeight, multiplier });
-      setNewRadius(radius * multiplier);
+
+      // Determine circle ratio: prefer provided ratio; otherwise derive from legacy radius using original image width
+      const derivedRatio = (typeof ratio === "number")
+        ? ratio
+        : (typeof radius === "number" && img.width > 0)
+          ? radius / img.width
+          : 0.1;
+      setCircleRatio(derivedRatio);
+      setNewRadius(derivedRatio * scaledWidth);
     };
-  }, [image, view, radius]);
+  }, [image, view, ratio, radius]);
+
+  // Recompute pixel radius if container resizes or ratio changes (defensive)
+  useEffect(() => {
+    if (!size.width || typeof circleRatio !== "number") return;
+    setNewRadius(circleRatio * size.width);
+  }, [size.width, circleRatio]);
 
   // Function to record a point: update state and log via ttrack
   const recordPoint = useCallback((x, y) => {
@@ -113,7 +128,7 @@ function Bubble({ parameters, setAnswer }) {
   const handleMouseDown = useCallback((e) => {
     const svg = d3.select(ref.current);
     const point = d3.pointer(e, svg.node());
-    setIsDragging(true);
+    setIsRevealing(true);
     setStartedBubble(true);
     setDraggedPoint({ x: parseInt(point[0]), y: parseInt(point[1]) });
     debouncedRecordPoint(point[0], point[1]);
@@ -121,19 +136,23 @@ function Bubble({ parameters, setAnswer }) {
 
   // Handle mouse move: if dragging, update circle position and record via the debounced function.
   const handleMouseMove = useCallback((e) => {
-    if (!isDragging) return;
+    if (!isRevealing) return;
     const svg = d3.select(ref.current);
     const point = d3.pointer(e, svg.node());
     setDraggedPoint({ x: parseInt(point[0]), y: parseInt(point[1]) });
     debouncedRecordPoint(point[0], point[1]);
-  }, [isDragging, debouncedRecordPoint]);
+  }, [isRevealing, debouncedRecordPoint]);
 
   // Handle mouse up: stop dragging and flush any pending recording.
-  const handleMouseUp = useCallback((e) => {
-    if (!isDragging) return;
-    setIsDragging(false);
+  const handleMouseUp = useCallback(() => {
+    // Keep revealing mode active after a single click; just flush pending records
     debouncedRecordPoint.flush();
-  }, [isDragging, debouncedRecordPoint]);
+  }, [debouncedRecordPoint]);
+
+  const handleMouseLeave = useCallback(() => {
+    // Hide reveal when leaving the image area
+    setDraggedPoint(null);
+  }, []);
 
   return (
     <div>
@@ -159,16 +178,15 @@ function Bubble({ parameters, setAnswer }) {
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
             >
               <defs>
                 <filter id="imageBlurFilter">
                   <feGaussianBlur in="SourceGraphic" stdDeviation={17} />
                 </filter>
                 <mask id="unblurMask">
+                  {/* Start fully blurred: mask is entirely white until user reveals */}
                   <rect width="100%" height="100%" fill="white" />
-                  <rect x="0" y="0" width="13.1%" height="100%" fill="black" />
-                  <rect x="0" y="89%" width="100%" height="12.8%" fill="black" />
                   {draggedPoint && (
                     <circle
                       key={0}
