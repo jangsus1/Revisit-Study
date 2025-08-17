@@ -3,6 +3,7 @@
 ## Overview
 
 In this experiment, you will assess the relationship between two variables by recalling and recreating a scatterplot from memory.
+There are total **16** tasks to solve.
 
 ## How It Works
 
@@ -10,7 +11,7 @@ In this experiment, you will assess the relationship between two variables by re
    - Use a **slider** to indicate how well you remember the scatterplot.  
 
 ### Step 2: **Recreate the Scatterplot**  
-   - Use your **mouse** to place **20 points** on the scatterplot as you remember them.  
+   - Use your mouse to **click** and place **20 points** on the scatterplot as you remember them.  
 
 ### Step 3: **Report the Correlation**  
    - Estimate the correlation of the scatterplot you recalled (**-1.0 to +1.0**).  

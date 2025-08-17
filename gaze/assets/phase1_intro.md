@@ -2,7 +2,7 @@
 
 ## Overview
 
-You'll estimate the **correlation coefficient (r-value)** of 10 scatterplots by briefly viewing them and making a judgment.
+You'll estimate the **correlation coefficient (r-value)** of **48** scatterplots by briefly viewing them and making a judgment.
 
 ---
 
@@ -26,7 +26,6 @@ You'll estimate the **correlation coefficient (r-value)** of 10 scatterplots by 
 
 ---
 ![example](../gaze/assets/phase1_intro.png)
-
 
 ---
 

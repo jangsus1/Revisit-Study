@@ -2,7 +2,8 @@
 
 ## Overview
 
-In this experiment, you will see the scatterplot with two variable's correlation. Each scatterplot contains 20 data points.
+In this experiment, you will see the scatterplot with two variables. Each scatterplot contains 20 data points.
+There are total **16** tasks to solve.
 
 
 ## How It Works
