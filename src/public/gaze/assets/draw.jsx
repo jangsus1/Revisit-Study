@@ -24,6 +24,7 @@ function Draw({ parameters, setAnswer }) {
         status: true,
         answer: JSON.stringify({
           clicked: clicked,
+          size: size,
           remember: (remember-1)/6,
           corrAfter: corrAfter,
         })
