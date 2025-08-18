@@ -4,33 +4,17 @@ import { Box, Button, Slider } from "@mantine/core"
 import React from "react"
 import _ from "lodash";
 import DivergingSlider from "./Slider"
-// Import ttrack modules
-import { Registry, initializeTrrack } from "@trrack/core";
 
 function Draw({ parameters, setAnswer }) {
   const ref = useRef(null)
   const { image, label, X, Y } = parameters
   const [clicked, setClicked] = useState([])
   const [size, setSize] = useState({ width: 0, height: 0 })
-  const [view, setView] = useState("remember", "draw", "report") // scatter, corrbefore, corrafter, belief
+  const [view, setView] = useState("remember", "draw", "report") // remember, draw, corrafter
   const [corrAfter, setCorrAfter] = useState(0)
   const [remember, setRemember] = useState(4)
   const containerRef = useRef(null);
   const [rememberInteracted, setRememberInteracted] = useState(false);
-
-  // Initialize ttrack with a registry and click action
-  const { actions, trrack } = useMemo(() => {
-    const reg = Registry.create();
-    const clickAction = reg.register('click', (state, clickRecord) => {
-      state.clickRecord = clickRecord;
-      return state;
-    });
-    const trrackInst = initializeTrrack({
-      registry: reg,
-      initialState: { clickRecord: { timestamp: new Date().getTime() } },
-    });
-    return { actions: { clickAction }, trrack: trrackInst };
-  }, []);
 
 
   // Answer callback for the slider in the "corrafter" view
@@ -44,10 +28,9 @@ function Draw({ parameters, setAnswer }) {
           corrAfter: corrAfter,
         })
       },
-      provenanceGraph: trrack.graph.backend,
     })
     setCorrAfter(corrAfter)
-  }, [clicked, trrack, setAnswer])
+  }, [clicked, setAnswer])
 
   // Adjust image size when in scatter view
   useEffect(() => {
@@ -83,17 +66,13 @@ function Draw({ parameters, setAnswer }) {
     }
     const newClicked = [...clicked, clickedCircle]
     setClicked(newClicked)
-    // Create a click record with current radius and image scale multiplier
-    const clickRecord = { x: clickedCircle.x, y: clickedCircle.y, multiplier: size.multiplier }
-    trrack.apply('click', actions.clickAction(clickRecord));
-  }, [clicked, size, trrack, actions]);
+  }, [clicked, size]);
 
   // Undo callback to remove the last clicked point
   const undoCallback = useCallback(() => {
     if (clicked.length > 0) {
       const newClicked = clicked.slice(0, -1)
       setClicked(newClicked)
-      // Note: For full ttrack integration, you might want to add an undo action to the registry
     }
   }, [clicked]);
 

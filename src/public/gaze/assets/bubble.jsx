@@ -39,6 +39,8 @@ function Bubble({ parameters, setAnswer }) {
         status: true,
         answer: JSON.stringify({
           clicked: clicked,
+          radius: newRadius,
+          size: size,
           corrBefore: corrBefore,
           corrActual: correlation,
           corrAfter: newCorrAfter,
