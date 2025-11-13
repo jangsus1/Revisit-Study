@@ -49,6 +49,7 @@
     "hjson": "^3.2.2",
     "jszip": "^3.10.1",
     "localforage": "^1.10.0",
+    "lodash": "^4.17.21",
     "lodash.debounce": "^4.0.8",
     "lodash.isequal": "^4.5.0",
     "lodash.merge": "^4.6.2",
