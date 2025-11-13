@@ -34,11 +34,6 @@
             "path": "gaze2/assets/phase2_intro.md",
             "response": []
         },
-        "phase3_intro": {
-            "type": "markdown",
-            "path": "gaze2/assets/phase3_intro.md",
-            "response": []
-        },
         "consent": {
             "type": "markdown",
             "path": "shared/consent.md",
