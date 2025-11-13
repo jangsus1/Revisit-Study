@@ -12,7 +12,7 @@ There are total **12** tasks to solve.
    - A **blank** scatterplot appears.  
    - First *click* on the screen and **move your mouse** to reveal part of the chart for **10** seconds.
    - Try to estimate the correlation while exploring.  
-   - The x and y variable that represents the labels will be shown after **5** seconds.
+   - The x and y variable that represents the labels will be shown after **3** seconds.
 
 ### Step 2: **Predict the Correlation**  
    - Estimate the correlation (**-1.0 to +1.0**).  
