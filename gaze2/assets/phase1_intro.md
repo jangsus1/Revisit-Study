@@ -25,8 +25,8 @@ You'll estimate the **correlation coefficient (r-value)** of **24** scatterplots
   - The actual correlation value.
 - **Adjust your perception based on the feedback!**
 
-### Caution: 
-- Try to guess the correlation as precise as you can as it works as an attention check.
+### **Caution:**
+- **Try to guess the correlation as precise as you can as it works as an attention check.**
 
 ---
 
