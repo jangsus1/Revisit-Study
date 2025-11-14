@@ -34,6 +34,11 @@
             "path": "gaze2/assets/phase2_intro.md",
             "response": []
         },
+        "survey_intro": {
+            "type": "markdown",
+            "path": "gaze2/assets/survey_intro.md",
+            "response": []
+        },
         "consent": {
             "type": "markdown",
             "path": "shared/consent.md",
@@ -302,72 +307,6 @@
                 },
                 {
                     "id": "nfc_5",
-                    "prompt": "I try to anticipate and avoid situations where there is likely a chance I will have to think in depth about something.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_6",
-                    "prompt": "I find satisfaction in deliberating hard and for long hours.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_7",
-                    "prompt": "I only think as hard as I have to.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_8",
-                    "prompt": "I prefer to think about small, daily projects to long-term ones.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_9",
-                    "prompt": "I like tasks that require little thought once I've learned them.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_10",
-                    "prompt": "The idea of relying on thought to make my way to the top appeals to me.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_11",
                     "prompt": "I really enjoy a task that involves coming up with new solutions to problems.",
                     "required": true,
                     "location": "aboveStimulus",
@@ -378,74 +317,8 @@
                     "withDivider": true
                 },
                 {
-                    "id": "nfc_12",
-                    "prompt": "Learning new ways to think doesn't excite me very much.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_13",
-                    "prompt": "I prefer my life to be filled with puzzles that I must solve.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_14",
-                    "prompt": "The notion of thinking abstractly is appealing to me.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_15",
+                    "id": "nfc_6",
                     "prompt": "I would prefer a task that is intellectual, difficult, and important to one that is somewhat important but does not require much thought.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_16",
-                    "prompt": "I feel relief rather than satisfaction after completing a task that required a lot of mental effort.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_17",
-                    "prompt": "It's enough for me that something gets the job done; I don't care how or why it works.",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "likert",
-                    "numItems": 5,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
-                    "withDivider": true
-                },
-                {
-                    "id": "nfc_18",
-                    "prompt": "I usually end up deliberating about issues even when they do not affect me personally.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
@@ -455,117 +328,198 @@
                 }
             ]
         },
-        "tipi_scale": {
+        "rei_10_scale": {
             "type": "questionnaire",
             "response": [
                 {
-                    "id": "tipi_1",
-                    "prompt": "I see myself as: Extraverted, enthusiastic.",
+                    "id": "rei_rational_1",
+                    "prompt": "I have a logical mind.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_2",
-                    "prompt": "I see myself as: Critical, quarrelsome.",
+                    "id": "rei_rational_2",
+                    "prompt": "I prefer complex problems to simple problems.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_3",
-                    "prompt": "I see myself as: Dependable, self-disciplined.",
+                    "id": "rei_rational_3",
+                    "prompt": "I am not a very analytical thinker.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_4",
-                    "prompt": "I see myself as: Anxious, easily upset.",
+                    "id": "rei_rational_4",
+                    "prompt": "I don't reason well under pressure.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_5",
-                    "prompt": "I see myself as: Open to new experiences, complex.",
+                    "id": "rei_rational_5",
+                    "prompt": "I have no problem thinking things through carefully.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_6",
-                    "prompt": "I see myself as: Reserved, quiet.",
+                    "id": "rei_experiential_1",
+                    "prompt": "I believe in trusting my hunches.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_7",
-                    "prompt": "I see myself as: Sympathetic, warm.",
+                    "id": "rei_experiential_2",
+                    "prompt": "I trust my initial feelings about people.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_8",
-                    "prompt": "I see myself as: Disorganized, careless.",
+                    "id": "rei_experiential_3",
+                    "prompt": "I like to rely on my intuitive impressions.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_9",
-                    "prompt": "I see myself as: Calm, emotionally stable.",
+                    "id": "rei_experiential_4",
+                    "prompt": "I don't like situations in which I have to rely on intuition.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree",
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True",
                     "withDivider": true
                 },
                 {
-                    "id": "tipi_10",
-                    "prompt": "I see myself as: Conventional, uncreative.",
+                    "id": "rei_experiential_5",
+                    "prompt": "Intuition can be a very useful way to solve problems.",
                     "required": true,
                     "location": "aboveStimulus",
                     "type": "likert",
-                    "numItems": 7,
-                    "leftLabel": "Strongly Disagree",
-                    "rightLabel": "Strongly Agree"
+                    "numItems": 5,
+                    "leftLabel": "Completely False",
+                    "rightLabel": "Completely True"
+                }
+            ]
+        },
+        "sais_7_scale": {
+            "type": "questionnaire",
+            "response": [
+                {
+                    "id": "sais_1",
+                    "prompt": "I feel uncomfortable when I don't know what to expect in a situation.",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "likert",
+                    "numItems": 6,
+                    "leftLabel": "Completely Disagree",
+                    "rightLabel": "Completely Agree",
+                    "withDivider": true
+                },
+                {
+                    "id": "sais_2",
+                    "prompt": "I find it difficult to make decisions when information is unclear or incomplete.",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "likert",
+                    "numItems": 6,
+                    "leftLabel": "Completely Disagree",
+                    "rightLabel": "Completely Agree",
+                    "withDivider": true
+                },
+                {
+                    "id": "sais_3",
+                    "prompt": "I prefer situations where I have all the details clearly laid out.",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "likert",
+                    "numItems": 6,
+                    "leftLabel": "Completely Disagree",
+                    "rightLabel": "Completely Agree",
+                    "withDivider": true
+                },
+                {
+                    "id": "sais_4",
+                    "prompt": "Uncertain social situations make me feel anxious.",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "likert",
+                    "numItems": 6,
+                    "leftLabel": "Completely Disagree",
+                    "rightLabel": "Completely Agree",
+                    "withDivider": true
+                },
+                {
+                    "id": "sais_5",
+                    "prompt": "I get frustrated when things are ambiguous or unclear.",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "likert",
+                    "numItems": 6,
+                    "leftLabel": "Completely Disagree",
+                    "rightLabel": "Completely Agree",
+                    "withDivider": true
+                },
+                {
+                    "id": "sais_6",
+                    "prompt": "I need clear instructions before I feel comfortable starting a task.",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "likert",
+                    "numItems": 6,
+                    "leftLabel": "Completely Disagree",
+                    "rightLabel": "Completely Agree",
+                    "withDivider": true
+                },
+                {
+                    "id": "sais_7",
+                    "prompt": "I find it stressful when I cannot predict the outcome of a situation.",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "likert",
+                    "numItems": 6,
+                    "leftLabel": "Completely Disagree",
+                    "rightLabel": "Completely Agree"
                 }
             ]
         },
@@ -2360,8 +2314,10 @@
                     }
                 ]
             },
+            "survey_intro",
             "nfc_scale",
-            "tipi_scale"
+            "rei_10_scale",
+            "sais_7_scale"
         ]
     },
     "baseComponents": {
