@@ -204,12 +204,13 @@ useEffect(() => {
             )}
           </div>
           {showLabels && (
-            <h3 style={{
+            <h2 style={{
               filter: `blur(${labelBlur}px)`,
-              opacity: 1
+              opacity: 1,
+              color: labelBlur === 0 ? 'red' : undefined
             }}>
-              X: {X} &nbsp;&nbsp; / &nbsp;&nbsp; Y: {Y}
-            </h3>
+              X: {X} <br/> Y: {Y}
+            </h2>
           )}
           
           <Box ref={containerRef} className="ImageWrapper" style={{
@@ -281,9 +282,8 @@ useEffect(() => {
 
       {view === "corrafter" && (
         <div style={{ width: '50%', margin: '50px auto' }}>
-          <h3>Predict the correlation of the two variables below:</h3>
-          <h3>X: {X}</h3>
-          <h3>Y: {Y}</h3>
+          <h3>Estimate the correlation of the scatterplot.</h3>
+
           <DivergingSlider
             value={corrAfter}
             setValue={(value) => {
@@ -301,7 +301,7 @@ useEffect(() => {
 
       {view === "belief" && (
         <div style={{ width: '50%', margin: '50px auto' }}>
-          <h3>Rate your belief about the label below using a Likert scale slider.</h3>
+          <h3>Rate your belief about the statement below using a Likert scale slider.</h3>
           <h4>{label}</h4>
           <div style={{ marginBottom: 100 }}>
             <DivergingSlider
