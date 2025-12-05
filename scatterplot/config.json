@@ -20,7 +20,7 @@
         "autoDownloadStudy": false,
         "withSidebar": false,
         "urlParticipantIdParam": "PROLIFIC_PID",
-        "studyEndMsg": "**Thank you for completing the study. You may click this link and return to Prolific**: [https://app.prolific.com/submissions/complete?cc=C12B2Y1Z](https://app.prolific.com/submissions/complete?cc=C12B2Y1Z)",
+        "studyEndMsg": "**Thank you for completing the study. You may click this link and return to Prolific**: <br/> [https://app.prolific.com/submissions/complete?cc=C17DENOG](https://app.prolific.com/submissions/complete?cc=C17DENOG)",
         "participantNameField": "introduction.prolificId",
         "showTitle": false
     },
@@ -61,9 +61,45 @@
             "path": "scatterplot/assets/phase3_intro.md",
             "response": []
         },
-        "attentionCheck": {
+        "attentionCheckFailed": {
+            "type": "react-component",
+            "path": "scatterplot/assets/attentionCheck.jsx",
+            "parameters": {
+                "link": "https://app.prolific.com/submissions/complete?cc=CASYDYPP"
+            },
+            "response": [
+                {
+                    "id": "attention_check_failed_1",
+                    "prompt": "",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
+        "attentionCheck2": {
             "type": "questionnaire",
-            "instruction": "Please answer the following questions about the introduction you just read. You must correctly answer both questions to continue.",
+            "response": [
+                {
+                    "id": "attention_q2",
+                    "prompt": "What makes a correlation stronger?",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "radio",
+                    "options": [
+                        "The steeper the line",
+                        "The more data points there are",
+                        "The smaller the correlation coefficient is",
+                        "The closer r is to 1"
+                    ],
+                    "withDivider": true
+                }
+            ]
+        },
+        "attentionCheck1": {
+            "type": "questionnaire",
             "response": [
                 {
                     "id": "attention_q1",
@@ -76,20 +112,6 @@
                         "1 to 7",
                         "0 to 1",
                         "0 to 10"
-                    ],
-                    "withDivider": true
-                },
-                {
-                    "id": "attention_q2",
-                    "prompt": "What makes a correlation stronger?",
-                    "required": true,
-                    "location": "aboveStimulus",
-                    "type": "radio",
-                    "options": [
-                        "The steeper the line",
-                        "The more data points there are",
-                        "The smaller the correlation coefficient is",
-                        "The closer r is to 1"
                     ],
                     "withDivider": true
                 }
@@ -65702,27 +65724,38 @@
             "consent",
             "introduction",
             {
-                "id": "attentionCheck",
+                "id": "attentionCheck1",
                 "order": "fixed",
                 "components": [
-                    "attentionCheck"
+                    "attentionCheck1",
+                    "attentionCheckFailed"
                 ],
                 "skip": [
                     {
-                        "name": "attentionCheck",
+                        "name": "attentionCheck1",
                         "check": "response",
-                        "comparison": "notEqual",
+                        "comparison": "equal",
                         "responseId": "attention_q1",
                         "value": "0 to 1",
-                        "to": "end"
-                    },
+                        "to": "attentionCheck2"
+                    }
+                ]
+            },
+            {
+                "id": "attentionCheck2",
+                "order": "fixed",
+                "components": [
+                    "attentionCheck2",
+                    "attentionCheckFailed"
+                ],
+                "skip": [
                     {
-                        "name": "attentionCheck",
+                        "name": "attentionCheck2",
                         "check": "response",
-                        "comparison": "notEqual",
+                        "comparison": "equal",
                         "responseId": "attention_q2",
                         "value": "The closer r is to 1",
-                        "to": "end"
+                        "to": "phase3_intro"
                     }
                 ]
             },
