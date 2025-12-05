@@ -1,0 +1,165 @@
+{
+    "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.0.1/src/parser/StudyConfigSchema.json",
+    "studyMetadata": {
+        "title": "Flowchart Study",
+        "version": "dev",
+        "authors": [
+            "Minsuk Chang"
+        ],
+        "date": "2025-11-28",
+        "description": "Flowchart Study",
+        "organizations": [
+            "Georgia Institute of Technology"
+        ]
+    },
+    "uiConfig": {
+        "contactEmail": "minsuk@gatech.edu",
+        "helpTextPath": "flowchart/assets/help.md",
+        "logoPath": "revisitAssets/revisitLogoSquare.svg",
+        "withProgressBar": true,
+        "autoDownloadStudy": false,
+        "withSidebar": false,
+        "urlParticipantIdParam": "PROLIFIC_PID",
+        "studyEndMsg": "**Thank you for completing the study. You may click this link and return to Prolific**: [https://app.prolific.com/submissions/complete?cc=C12B2Y1Z](https://app.prolific.com/submissions/complete?cc=C12B2Y1Z)",
+        "participantNameField": "introduction.prolificId"
+    },
+    "components": {
+        "consent": {
+            "type": "markdown",
+            "path": "flowchart/consent.md",
+            "nextButtonText": "I agree",
+            "response": []
+        },
+        "survey_intro": {
+            "type": "markdown",
+            "path": "flowchart/assets/survey_intro.md",
+            "response": []
+        },
+        "demographics": {
+            "type": "markdown",
+            "path": "shared/blank.md",
+            "response": [
+                {
+                    "id": "gender",
+                    "prompt": "What is your **gender**?",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "radio",
+                    "withOther": true,
+                    "options": [
+                        "Woman",
+                        "Man",
+                        "Prefer not to say"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "age",
+                    "prompt": "What is your **age**?",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "radio",
+                    "options": [
+                        "Under 18 years",
+                        "18-24 years",
+                        "25-34 years",
+                        "35-44 years",
+                        "45-54 years",
+                        "55-64 years",
+                        "65 years or older",
+                        "Prefer not to say"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "education",
+                    "prompt": "What is the **highest degree or level of education** you have completed?",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "radio",
+                    "withOther": true,
+                    "options": [
+                        "Less than high school",
+                        "High school diploma or equivalent",
+                        "Bachelor's degree or equivalent",
+                        "Master's degree or equivalent",
+                        "Doctoral degree or equivalent"
+                    ],
+                    "withDivider": true
+                }
+            ]
+        },
+        "flowchart": {
+            "type": "react-component",
+            "path": "flowchart/assets/flowchart.tsx",
+            "response": [
+                {
+                    "id": "answer",
+                    "prompt": "",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ]
+        }
+    },
+    "sequence": {
+        "order": "fixed",
+        "components": [
+            "consent",
+            "survey_intro",
+            "demographics",
+            "flowchart"
+        ]
+    },
+    "baseComponents": {
+        "bubble": {
+            "type": "react-component",
+            "path": "gaze/assets/bubbleEarly.jsx",
+            "response": [
+                {
+                    "id": "answer",
+                    "prompt": "",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "parameters": {
+                "ratio": 0.08
+            },
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
+        "plain": {
+            "type": "react-component",
+            "path": "gaze/assets/plain.jsx",
+            "response": [
+                {
+                    "id": "answer",
+                    "prompt": "",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
+        "draw": {
+            "type": "react-component",
+            "path": "gaze/assets/draw.jsx",
+            "response": [
+                {
+                    "id": "answer",
+                    "prompt": "",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        }
+    }
+}

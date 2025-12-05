@@ -1,9 +1,15 @@
 {
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.3.2/src/parser/GlobalConfigSchema.json",
   "configsList": [
-    "gaze2"
+    "scatterplot"
   ],
   "configs": {
+    "scatterplot": {
+      "path": "scatterplot/config.json"
+    },
+    "flowchart": {
+      "path": "flowchart/config.json"
+    },
     "gaze1": {
       "path": "gaze1/config.json"
     },
