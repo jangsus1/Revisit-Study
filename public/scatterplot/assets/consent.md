@@ -27,4 +27,4 @@ By clicking “I agree,” you confirm:
 ✔ You have read and understood this form.  
 ✔ You voluntarily agree to participate.  
 
-**[Download Full Consent Form (PDF)](scatterplot/assets/consent.pdf)**
+**[Download Full Consent Form (PDF)](../scatterplot/assets/consent.pdf)**

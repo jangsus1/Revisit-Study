@@ -1,6 +1,7 @@
 # Task 2 - Instructions
 
-In this experiment, you will see the scatterplot with two variables. The labels will be reveals after a few seconds later.
+In this experiment, you will see the scatterplot with two real-world variables. The labels could be revealed instantly, few seconds later, or never.  
+
 There are total **12** tasks to solve.
 
 ## How It Works
@@ -12,7 +13,7 @@ There are total **12** tasks to solve.
    - **The labels will be randomly shown after a delay.**
 
 ### Step 2: **Predict the Correlation**  
-   - After seeing the scatterplot, estimate the correlation (**0 to 1**).  
+   - After viewing the scatterplot, estimate the correlation (**0 to 1**).  
 
 ---
 
