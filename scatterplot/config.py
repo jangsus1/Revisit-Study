@@ -107,10 +107,10 @@ def create_default_components():
                     "location": "aboveStimulus",
                     "type": "radio",
                     "options": [
+                        "-1 to +1",
                         "1 to 7",
-                        "0 to 10",
                         "0 to 1",
-                        "-1 to +1"
+                        "0 to 10"
                     ],
                     "withDivider": True
                 },
@@ -122,9 +122,9 @@ def create_default_components():
                     "type": "radio",
                     "options": [
                         "The steeper the line",
-                        "The smaller the correlation coefficient is",
-                        "The closer r is to 1",
                         "The more data points there are",
+                        "The smaller the correlation coefficient is",
+                        "The closer r is to 1"
                     ],
                     "withDivider": True
                 }
