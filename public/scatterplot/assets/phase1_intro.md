@@ -1,7 +1,7 @@
-# Task 1 - Instructions
+# Task 2 - Instructions
 
-You'll estimate the **correlation coefficient (r-value)** of **24** scatterplots by briefly viewing them and making a judgment.
-Try to **calibrate** your guesses to be more accurate.
+You'll estimate the **correlation coefficient (r-value)** of **12** scatterplots by briefly viewing them and making a judgment.
+Try to **calibrate** your guesses during trials to be more accurate.
 
 ---
 

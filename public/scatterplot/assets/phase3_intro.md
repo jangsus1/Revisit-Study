@@ -1,8 +1,7 @@
-## Task 3 - Instructions
+## Task 1 - Instructions
 
-In this experiment, you will see a short statement. Your job is to report how strongly you believe on the statement.
+In this first short experiment, you will see a statement. Your job is to report how strongly you believe on the statement.   
 
-There are total **12** tasks to solve.
-
+Try to answer based on your **intuition** while reading the sentence. There are total **12** tasks to solve.
 
 Press **Next** to begin.

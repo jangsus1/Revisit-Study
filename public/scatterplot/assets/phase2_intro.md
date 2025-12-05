@@ -1,8 +1,8 @@
-# Task 2 - Instructions
+# Task 3 - Instructions
 
-In this experiment, you will see the scatterplot with two real-world variables. The labels could be revealed instantly, few seconds later, or never.  
+In this final experiment, you will see the scatterplot with two real-world variables. The labels could be revealed instantly, few seconds later, or never.  
 
-There are total **12** tasks to solve.
+There are total **24** tasks to solve after 2 example tasks.
 
 ## How It Works
 
