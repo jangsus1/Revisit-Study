@@ -187,90 +187,102 @@ def create_default_components():
     }
 
 
-def generate_scatterplot_data(corr, direction, n_points=50, min_distance=0.04, max_attempts=50):
+def generate_scatterplot_data(n_points=50, min_distance=0.04, max_attempts=200, target_correlation=0.1):
     """
-    Generate scatterplot coordinates with target correlation near corr*0.1.
-    The actual correlation will be within ±0.1 of the target correlation.
+    Generate scatterplot coordinates with target correlation as accurately as possible.
+    Uses iterative refinement to achieve the target correlation within ±0.02 tolerance.
 
     Args:
-        corr: Integer correlation level (e.g., 2, 4, 6, 8)
-        direction: "pos" or "neg" for positive/negative correlation
-        exp: Experiment number (for uniqueness)
         n_points: Number of points in scatterplot
         min_distance: Minimum distance between points (to avoid overlap)
         max_attempts: Maximum attempts to achieve target correlation
+        target_correlation: Target correlation value (should be in [-1, 1])
 
     Returns:
         tuple: (coordinates_list, actual_correlation)
         coordinates_list: List of [x, y] pairs, each in [0, 1] range
-        actual_correlation: Will be within [target_corr - 0.1, target_corr + 0.1]
+        actual_correlation: Actual correlation achieved (should be very close to target)
     """
-    base_target_corr = corr * 0.1
-    if direction == "neg":
-        base_target_corr = -base_target_corr
-
-    # Allow variance: target can vary within ±0.1 of base
-    # This creates controlled variance while ensuring we stay within bounds
-    variance_range = 0.1
-    min_target = base_target_corr - variance_range
-    max_target = base_target_corr + variance_range
-
-    # Clamp to valid correlation range [-1, 1]
-    min_target = max(-0.99, min_target)
-    max_target = min(0.99, max_target)
-
-    # Try multiple times to get correlation within acceptable range
+    # Clamp target correlation to valid range
+    target_corr = np.clip(target_correlation, -0.99, 0.99)
+    tolerance = 0.02  # Target accuracy: within ±0.02 of target
+    
+    best_data = None
+    best_corr = None
+    best_error = float('inf')
+    
+    # Try multiple times to get correlation as close as possible to target
     for attempt in range(max_attempts):
-        # Generate a target correlation within the acceptable range (with some randomness)
-        # This creates variance while ensuring we're within ±0.1 of base
-        if attempt < max_attempts // 2:
-            # First half: try to get close to base target
-            target_corr = base_target_corr + \
-                np.random.uniform(-variance_range * 0.5, variance_range * 0.5)
+        # Use the target correlation directly, with slight variation for diversity
+        # but keep it very close to target for accuracy
+        if attempt < max_attempts // 4:
+            # First quarter: use target exactly
+            current_target = target_corr
+        elif attempt < max_attempts // 2:
+            # Second quarter: very small variation (±0.01)
+            current_target = target_corr + np.random.uniform(-0.01, 0.01)
         else:
-            # Second half: allow more variance within the acceptable range
-            target_corr = np.random.uniform(min_target, max_target)
+            # Remaining attempts: slightly larger variation (±0.02) but still close
+            current_target = target_corr + np.random.uniform(-0.02, 0.02)
+        
+        current_target = np.clip(current_target, -0.99, 0.99)
 
-        # Clamp target correlation
-        target_corr = np.clip(target_corr, -0.99, 0.99)
-
-        # Generate correlated bivariate normal data
-        mean = [0, 0]
-        cov = [[1.0, target_corr], [target_corr, 1.0]]
-
-        # Generate initial data
+        # Generate correlated bivariate normal data using Cholesky decomposition
+        # This is more numerically stable than using covariance matrix directly
         try:
-            data = np.random.multivariate_normal(mean, cov, n_points)
-        except np.linalg.LinAlgError:
-            # If covariance matrix is not positive definite, use identity and add correlation manually
+            # Use Cholesky decomposition for better numerical stability
+            L = np.array([[1.0, 0.0], [current_target, np.sqrt(max(0.01, 1 - current_target**2))]])
+            z = np.random.randn(n_points, 2)
+            data = z @ L.T
+        except (np.linalg.LinAlgError, ValueError):
+            # Fallback: use direct correlation method
             data = np.random.randn(n_points, 2)
-            # Add correlation by mixing the variables
-            data[:, 1] = target_corr * data[:, 0] + \
-                np.sqrt(max(0.01, 1 - target_corr**2)) * data[:, 1]
+            data[:, 1] = current_target * data[:, 0] + \
+                np.sqrt(max(0.01, 1 - current_target**2)) * data[:, 1]
 
-        # Scale to [0, 1] range
-        data_ranges = data.max(axis=0) - data.min(axis=0)
-        # Avoid division by zero
-        data_ranges[data_ranges == 0] = 1.0
-        data = (data - data.min(axis=0)) / data_ranges
+        # Scale to [0, 1] range using z-score normalization then linear scaling
+        # This preserves correlation better than min-max scaling
+        # First standardize
+        data_mean = data.mean(axis=0)
+        data_std = data.std(axis=0)
+        data_std[data_std == 0] = 1.0  # Avoid division by zero
+        data_standardized = (data - data_mean) / data_std
+        
+        # Then scale to [0, 1] range
+        # Use a fixed scale factor to preserve correlation structure
+        scale_factor = 3.0  # Use 3 sigma range to cover most of the distribution
+        data_scaled = (data_standardized / scale_factor) + 0.5
+        data_scaled = np.clip(data_scaled, 0, 1)
+        
+        # Fine-tune to ensure full [0,1] range while preserving correlation
+        data_ranges = data_scaled.max(axis=0) - data_scaled.min(axis=0)
+        if data_ranges[0] < 0.5 or data_ranges[1] < 0.5:
+            # If range is too small, use min-max scaling but preserve correlation
+            data_min = data_scaled.min(axis=0)
+            data_max = data_scaled.max(axis=0)
+            data_ranges = data_max - data_min
+            data_ranges[data_ranges == 0] = 1.0
+            data = (data_scaled - data_min) / data_ranges
+        else:
+            data = data_scaled
 
-        # Check for overlapping points and adjust
+        # Check for overlapping points and adjust (minimal jitter to preserve correlation)
         if len(data) > 1:
-            # Calculate pairwise distances using numpy
             diff = data[:, np.newaxis, :] - data[np.newaxis, :, :]
             distances = np.sqrt(np.sum(diff**2, axis=2))
             np.fill_diagonal(distances, np.inf)
             min_dist = distances.min()
 
-            # If points are too close, jitter them
             if min_dist < min_distance:
-                for _ in range(5):  # Try jittering up to 5 times
+                # Use very small jitter to avoid significantly changing correlation
+                jitter_scale = min_distance * 0.3  # Smaller jitter
+                for jitter_attempt in range(3):  # Fewer jitter attempts
                     too_close = distances < min_distance
                     for i in range(len(data)):
                         close_indices = np.where(too_close[i])[0]
                         if len(close_indices) > 0:
-                            # Add small random jitter
-                            jitter = np.random.normal(0, min_distance * 0.5, 2)
+                            # Add very small random jitter
+                            jitter = np.random.normal(0, jitter_scale, 2)
                             data[i] += jitter
                             data[i] = np.clip(data[i], 0, 1)
 
@@ -282,31 +294,53 @@ def generate_scatterplot_data(corr, direction, n_points=50, min_distance=0.04, m
                     if min_dist >= min_distance:
                         break
 
-        # Calculate actual correlation using numpy
+        # Calculate actual correlation
         corr_matrix = np.corrcoef(data[:, 0], data[:, 1])
         actual_corr = corr_matrix[0, 1]
+        
+        # Check if this is the best match so far
+        error = abs(actual_corr - target_corr)
+        if error < best_error:
+            best_error = error
+            best_data = data.copy()
+            best_corr = actual_corr
+            
+            # If we're within tolerance, return immediately
+            if error <= tolerance:
+                coordinates = [[float(x), float(y)] for x, y in best_data]
+                return coordinates, float(best_corr)
 
-        # Check if correlation is within acceptable range (±0.1 of base target)
-        if min_target <= actual_corr <= max_target:
-            # Found acceptable correlation, use this data
-            coordinates = [[float(x), float(y)] for x, y in data]
-            return coordinates, float(actual_corr)
-
-    # If we couldn't find one within range after max_attempts, use the last one
-    # (This should rarely happen, but provides a fallback)
-    coordinates = [[float(x), float(y)] for x, y in data]
-    return coordinates, float(actual_corr)
+    # Return the best match found
+    if best_data is not None:
+        coordinates = [[float(x), float(y)] for x, y in best_data]
+        return coordinates, float(best_corr)
+    else:
+        # Fallback (should never happen)
+        coordinates = [[float(x), float(y)] for x, y in data]
+        return coordinates, float(actual_corr)
 
 
 def create_phase1_components():
-    """Create phase 1 components: plain scatterplots"""
+    """Create phase 1 components: plain scatterplots with evenly distributed correlations"""
     components = {}
     for corr in [2, 4, 6, 8]:
-        for i in range(6):  # for phase 1
+        base_target = corr * 0.1
+        variance_range = 0.04
+        min_target = base_target - variance_range
+        max_target = base_target + variance_range
+        
+        # Clamp to valid correlation range [-1, 1]
+        min_target = max(0.01, min_target)  # Ensure positive for phase 1
+        max_target = min(0.99, max_target)
+        
+        # Generate evenly distributed target correlations
+        num_scatterplots = 6
+        target_correlations = np.linspace(min_target, max_target, num_scatterplots)
+        
+        for i in range(num_scatterplots):
             for direction in ["pos"]:
-                # Generate scatterplot coordinates with target correlation
-                coordinates, actual_correlation = generate_scatterplot_data(
-                    corr, direction)
+                # Generate scatterplot coordinates with evenly distributed target correlation
+                coordinates, actual_correlation = generate_scatterplot_data(target_correlation=target_correlations[i])
                 components[f"plain_{corr}_{i}_{direction}"] = {
                     "baseComponent": "plain",
                     "parameters": {
@@ -356,16 +390,35 @@ def create_phase2_components():
     ]
 
     components = defaultdict(dict)
-    for corr in [4, 6, 8]:
-        for i in range(2):  # for phase 2
+    for corr in [2, 4, 6, 8]:
+        base_target = corr * 0.1
+        variance_range = 0.04
+        min_target = base_target - variance_range
+        max_target = base_target + variance_range
+        
+        # Clamp to valid correlation range [-1, 1]
+        min_target = max(0.01, min_target)  # Ensure positive for phase 2
+        max_target = min(0.99, max_target)
+        
+        # Calculate total number of scatterplots per correlation level
+        num_experiments = 2
+        num_labels = len(labels)
+        num_label_times = 3
+        total_scatterplots = num_experiments * num_labels * num_label_times
+        
+        # Generate evenly distributed target correlations
+        target_correlations = np.linspace(min_target, max_target, total_scatterplots)
+        target_idx = 0
+        
+        for i in range(num_experiments):  # for phase 2
             for direction in ["pos"]:
                 for label_idx, label in enumerate(labels):
                     label_text, x, y = label
-                    # Generate scatterplot coordinates with target correlation
-                    coordinates, actual_correlation = generate_scatterplot_data(
-                        corr, direction)
-                    for label_time in [0, 2, 5]:
-                        components[label_text][f"phase2_{corr}_{i}_{direction}_{label_idx}_{label_time}"] = {
+                    for label_second in [0, 2.5, 5.0]:
+                        # Generate scatterplot coordinates with evenly distributed target correlation
+                        coordinates, actual_correlation = generate_scatterplot_data(target_correlation=target_correlations[target_idx])
+                        target_idx += 1
+                        components[label_text][f"phase2_{corr}_{i}_{direction}_{label_idx}_{label_second}"] = {
                             "baseComponent": "bubble",
                             "parameters": {
                                 "coordinates": coordinates,
@@ -378,14 +431,14 @@ def create_phase2_components():
                                 "exp": i,
                                 "direction": direction,
                                 "seconds": 5,
-                                "label_seconds": label_time
+                                "label_seconds": label_second
                             }
                         }
     return components
 
 
 def create_phase2_example_components():
-    """Create 2 example tasks for phase 2"""
+    """Create 2 example tasks for phase 2 with evenly distributed correlations"""
     example_labels = [
         ['The more hours people spend exercising, the better their health becomes.',
             'Hours spent exercising', 'Health score'],
@@ -393,13 +446,23 @@ def create_phase2_example_components():
             'Hours studied per week', 'Test scores'],
     ]
 
-    example_seconds = [2, 5]
+    example_seconds = [2.5, 5.0]
+
+    # Use correlation level 5 (0.5) for examples, evenly distribute across [0.4, 0.6]
+    base_target = 5 * 0.1  # 0.5
+    variance_range = 0.04
+    min_target = base_target - variance_range  # 0.4
+    max_target = base_target + variance_range  # 0.6
+    
+    # Generate evenly distributed target correlations
+    num_examples = len(example_labels)
+    target_correlations = np.linspace(min_target, max_target, num_examples)
 
     components = {}
     for idx, label in enumerate(example_labels):
         label_text, x, y = label
-        # Use correlation level 5 (0.5) for examples
-        coordinates, actual_correlation = generate_scatterplot_data(5, "pos")
+        # Generate scatterplot coordinates with evenly distributed target correlation
+        coordinates, actual_correlation = generate_scatterplot_data(target_correlation=target_correlations[idx])
         components[f"phase2_example_{idx + 1}"] = {
             "baseComponent": "bubble",
             "parameters": {
@@ -422,7 +485,7 @@ def create_phase2_example_components():
 def create_phase3_components():
     """Create phase 3 components: text-only belief questions with only X, Y, label"""
     labels = [
-        # Neutral
+        # Spurious
         ['As the usage of internet increases, so does the homicide rate in the city.',
             'Increasing internet usage', 'Higher homicide rate in the city'],
         ['People who eat more cheese, tend to be better at dancing.',
@@ -431,6 +494,12 @@ def create_phase3_components():
             'More students wearing glasses', 'Gym closing later on campus'],
         ['A city with more lawyers, tends to have more trees.',
             'Having more lawyers in a city', 'Having more trees in the city'],
+
+            # New Spurious
+        ['The more people buy socks, the more pigeons appear in the park.',
+            'Buying more socks', 'Seeing more pigeons in the park'],
+        ['As the number of cats in the city increases, the library\'s carpet gets replaced more often.',
+            'Number of cats in city', 'Library carpet replacement frequency'],
 
         # Positive
         ['The more often students eat breakfast, the higher their GPAs are.',
@@ -441,12 +510,6 @@ def create_phase3_components():
             'Sleeping more', 'Being happier with life'],
         ['As the number of environmental regulations increases, so does the air quality in the city.',
             'Having more environmental regulations', 'Improving air quality in the city'],
-
-        # New Neutral
-        ['The more people buy socks, the more pigeons appear in the park.',
-            'Buying more socks', 'Seeing more pigeons in the park'],
-        ['As the number of cats in the city increases, the library\'s carpet gets replaced more often.',
-            'Number of cats in city', 'Library carpet replacement frequency'],
 
         # Semi-positive
         ['The more drivers wear seatbelts, the more survivors there are in accidents.',
@@ -556,6 +619,48 @@ baseComponents = generate_base_components()
 print(f"Total number of components: {len(components)}")
 print(f"Components: {list(components.keys())[:10]}...")  # Print first 10
 print(f"Sequence structure: {len(sequence['components'])} top-level items")
+
+# Collect all correlation values from components
+correlation_values = []
+for comp_name, comp_data in components.items():
+    if isinstance(comp_data, dict) and 'parameters' in comp_data:
+        params = comp_data['parameters']
+        if 'correlation' in params:
+            correlation_values.append(params['correlation'])
+
+# Print histogram of correlation values with fine granularity
+if correlation_values:
+    corr_array = np.array(correlation_values)
+    print(f"\n{'='*60}")
+    print(f"Correlation Values Histogram")
+    print(f"{'='*60}")
+    print(f"Total correlations: {len(correlation_values)}")
+    print(f"Min: {corr_array.min():.4f}, Max: {corr_array.max():.4f}, Mean: {corr_array.mean():.4f}, Std: {corr_array.std():.4f}")
+    
+    # Create histogram with fine granularity (100 bins)
+    bins = 100
+    hist, bin_edges = np.histogram(corr_array, bins=bins, range=(corr_array.min(), corr_array.max()))
+    
+    # Find max count for scaling
+    max_count = hist.max()
+    
+    # Print histogram
+    print(f"\nHistogram (bins: {bins}):")
+    print(f"{'Bin Range':<20} {'Count':<10} {'Bar'}")
+    print("-" * 60)
+    
+    for i in range(len(hist)):
+        bin_start = bin_edges[i]
+        bin_end = bin_edges[i + 1]
+        count = hist[i]
+        # Create bar representation (scaled to 50 chars max)
+        bar_length = int(50 * count / max_count) if max_count > 0 else 0
+        bar = "█" * bar_length
+        print(f"[{bin_start:7.4f}, {bin_end:7.4f})  {count:<10} {bar}")
+    
+    print(f"\n{'='*60}")
+else:
+    print("\nNo correlation values found in components.")
 
 
 # Optional: Set Prolific redirection URL
