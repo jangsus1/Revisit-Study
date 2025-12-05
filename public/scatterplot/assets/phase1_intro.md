@@ -19,12 +19,12 @@ Try to **calibrate** your guesses to be more accurate.
   - **1.0** → Strong Correlation
 
 ### Step 3: **Feedback & Calibration**
-- You'll receive **immediate feedback** showing:
-  - Your response.
-  - The actual correlation value.
+- You'll receive **immediate feedback** showing your response and the actual correlation.
+- **Calbrate** your prediction based on the feedback.
+- You should wait for a few seconds to move on.
 
 ---
-![example](../scatterplot/assets/phase1.png)
+![example](phase1.png)
 
 ---
 

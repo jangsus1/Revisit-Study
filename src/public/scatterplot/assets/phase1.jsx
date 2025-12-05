@@ -25,6 +25,7 @@ function Plain({ parameters, setAnswer }) {
   const [sliderInteracted, setSliderInteracted] = useState(false)
   const [isBlurred, setIsBlurred] = useState(true)
   const [hasClicked, setHasClicked] = useState(false)
+  const [countdown, setCountdown] = useState(2)
   const [xScale, setXScale] = useState(() => {
     const defaultPlotWidth = defaultSize.width - margin.left - margin.right;
     return d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + defaultPlotWidth]);
@@ -217,9 +218,37 @@ function Plain({ parameters, setAnswer }) {
 
 
   const jobDone = () => {
-    answerCallback()
     setView("feedback")
   }
+
+  // Timer to call answerCallback 2 seconds after feedback view is shown
+  useEffect(() => {
+    if (view !== "feedback") return;
+    
+    // Reset countdown when entering feedback view
+    setCountdown(2);
+    
+    // Countdown timer that updates every second
+    const countdownInterval = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearInterval(countdownInterval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    // Call answerCallback after 2 seconds
+    const callbackTimer = setTimeout(() => {
+      answerCallback();
+    }, 2000);
+    
+    return () => {
+      clearInterval(countdownInterval);
+      clearTimeout(callbackTimer);
+    };
+  }, [view, answerCallback]);
 
   const diff = slider - correlation;
 
@@ -307,6 +336,23 @@ function Plain({ parameters, setAnswer }) {
         <div>
           <h2>Actual correlation: {correlation.toFixed(2)}</h2>
           <h2>Your estimation: {slider.toFixed(2)} ({diff>0 ? "+" : ''}{diff.toFixed(2)})</h2>
+          {/* {countdown > 0 && (
+            <Box
+              style={{
+                margin: '30px auto',
+                padding: '20px',
+                border: '2px solid #333',
+                borderRadius: '8px',
+                backgroundColor: '#f5f5f5',
+                textAlign: 'center',
+                maxWidth: '400px'
+              }}
+            >
+              <p style={{ fontSize: '18px', margin: 0 }}>
+               {countdown} second{countdown !== 1 ? 's' : ''} left
+              </p>
+            </Box>
+          )} */}
         </div>
       )}
 
