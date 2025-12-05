@@ -16,7 +16,7 @@ There are total **12** tasks to solve.
 
 ---
 
-![ex](phase2.png)
+![ex](../assets/phase2.png)
 
 ---
 

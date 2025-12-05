@@ -24,7 +24,7 @@ Try to **calibrate** your guesses to be more accurate.
 - You should wait for a few seconds to move on.
 
 ---
-![example](phase1.png)
+![example](../assets/phase1.png)
 
 ---
 
