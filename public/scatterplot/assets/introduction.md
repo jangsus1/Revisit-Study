@@ -1,22 +1,23 @@
 # About Correlation
-- Please read carefully since there will be attention check questions based on this content.
+> **Note:** Please read this page carefully. There will be attention check questions based on this content.
 
-## 1. What Is a correlation?
+## 1. What Is Correlation?
+Correlation measures the relationship between two variables. In this experiment, the **correlation coefficient (r)** will range from **0 to +1**.
 
-Correlation shows how two things (variables) move in relation to each other.  
-The _correlation coefficient_ (\(r\)) in our experiment will run from 0 to +1. 
+* **Positive Correlation:** When one variable increases, the other increases as well.
+* **The Scale:**
+    * r = 1.0: **Perfect relationship** (points form a straight line).
+    * r = 0.0: **No relationship** (points are randomly scattered).
 
-**Correlation is not about steepness, it's about strength of tendency.**
+## 2. Strength vs. Steepness
+**Crucial Distinction:** Correlation measures the **"tightness"** of the data points, not the angle of the line.
 
-**- Positive Correlation**: When one variable goes up, the other goes up too.  
-  _Example 1:_ Height and weight often correlate strongly (r = 0.9).  
-  _Example 2:_ Height and Intelligence have alomost no correlation (r = 0)
+* **It is NOT about Steepness:** A steep line and a flat line can have the exact same correlation.
+* **It IS about Clustering:** The closer the dots cluster together into a straight line, the higher the correlation.
 
-## 2. How Strong Is the Correlation?
-The closer r is to 1, the stronger the relationship.
+## 3. Real-World Examples
+* **Strong Correlation (r is around 0.9):** Height vs. Weight (Taller people tend to be heavier).
+* **No Correlation (r is around 0.0):** Height vs. Intelligence (Height does not predict intelligence).
 
-r = 0.9 (very strong)    vs.    r = 0.1 (very weak)  
-
-## 3. Example plots for each correlation
+## 4. Visual Examples
 ![example1](../gaze1/assets/positive.png)
-
