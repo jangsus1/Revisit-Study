@@ -15,25 +15,21 @@ function Plain({ parameters, setAnswer }) {
   const margin = { top: 40, right: 40, bottom: 60, left: 60 }
   const dotPadding = 10 // Padding around dots
   
-  // Default size fallback
-  const defaultSize = { width: 500, height: 500 }
+  // Fixed size for everything
+  const fixedSize = { width: 600, height: 600 }
   
-  const [size, setSize] = useState(defaultSize)
   const [view, setView] = useState("scatter") // scatter, slider, feedback
-  const containerRef = useRef(null);
   const [slider, setSlider] = useState(0)
   const [sliderInteracted, setSliderInteracted] = useState(false)
   const [isBlurred, setIsBlurred] = useState(true)
   const [hasClicked, setHasClicked] = useState(false)
   const [countdown, setCountdown] = useState(2)
-  const [xScale, setXScale] = useState(() => {
-    const defaultPlotWidth = defaultSize.width - margin.left - margin.right;
-    return d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + defaultPlotWidth]);
-  })
-  const [yScale, setYScale] = useState(() => {
-    const defaultPlotHeight = defaultSize.height - margin.top - margin.bottom;
-    return d3.scaleLinear().domain([0, 1]).range([margin.top + defaultPlotHeight - dotPadding, margin.top]);
-  })
+  
+  // Calculate scales based on fixed size
+  const plotWidth = fixedSize.width - margin.left - margin.right;
+  const plotHeight = fixedSize.height - margin.top - margin.bottom;
+  const xScale = d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + plotWidth]);
+  const yScale = d3.scaleLinear().domain([0, 1]).range([margin.top + plotHeight - dotPadding, margin.top]);
 
   // Reset blur state when entering scatter view
   useEffect(() => {
@@ -43,87 +39,17 @@ function Plain({ parameters, setAnswer }) {
     }
   }, [view]);
 
-  // Calculate size based on container
-  useEffect(() => {
-    if (view !== "scatter") return;
-    
-    const calculateSize = () => {
-      if (!containerRef.current) {
-        // Use default size if container not ready
-        const width = defaultSize.width - margin.left - margin.right;
-        const height = defaultSize.height - margin.top - margin.bottom;
-        setSize(defaultSize);
-        const defaultPlotWidth = defaultSize.width - margin.left - margin.right;
-        const defaultPlotHeight = defaultSize.height - margin.top - margin.bottom;
-        // X: padding from left border, no padding on right
-        setXScale(d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + defaultPlotWidth]));
-        // Y: padding from bottom border, no padding on top
-        setYScale(d3.scaleLinear().domain([0, 1]).range([margin.top + defaultPlotHeight - dotPadding, margin.top]));
-        return;
-      }
-      
-      const parent = containerRef.current;
-      const rect = parent.getBoundingClientRect();
-      const availableHeight = window.innerHeight - rect.top - 200;
-      const availableWidth = window.innerWidth - 120;
-      
-      // Use a reasonable aspect ratio for scatterplot
-      const aspectRatio = 1.0;
-      let width, height;
-      if (availableHeight * aspectRatio <= availableWidth) {
-        height = Math.max(500, availableHeight);
-        width = height * aspectRatio;
-      } else {
-        width = Math.max(500, availableWidth);
-        height = width / aspectRatio;
-      }
-      
-      const newSize = { 
-        width: width + margin.left + margin.right, 
-        height: height + margin.top + margin.bottom 
-      };
-      
-      // Only update if size actually changed to prevent infinite loop
-      if (newSize.width !== size.width || newSize.height !== size.height) {
-        setSize(newSize);
-      }
-      
-      // Set up scales with padding from left and bottom borders
-      // Calculate the actual plot area
-      const plotWidth = width;
-      const plotHeight = height;
-      // X: padding from left border, no padding on right
-      setXScale(d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + plotWidth]));
-      // Y: padding from bottom border, no padding on top
-      setYScale(d3.scaleLinear().domain([0, 1]).range([margin.top + plotHeight - dotPadding, margin.top]));
-    };
-    
-    // Calculate immediately
-    calculateSize();
-    
-    // Also recalculate after a short delay to ensure DOM is ready
-    const timeoutId = setTimeout(calculateSize, 100);
-    
-    // Handle window resize
-    window.addEventListener('resize', calculateSize);
-    
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', calculateSize);
-    };
-  }, [view, dotPadding, margin]);
-
   // Draw scatterplot with D3
   useEffect(() => {
-    if (view !== "scatter") return;
-    if (!ref.current || !xScale || !yScale || !coordinates || coordinates.length === 0) return;
-    if (!size.width || !size.height || size.width === 0 || size.height === 0) return;
+    if (view !== "scatter" && view !== "feedback") return;
+    if (!coordinates || coordinates.length === 0) return;
+    if (!ref.current) return;
     
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    // Ensure SVG has proper dimensions
-    svg.attr('width', size.width).attr('height', size.height);
+    // Use fixed size
+    svg.attr('width', fixedSize.width).attr('height', fixedSize.height);
 
     // Add proper axes with visible lines
     const xAxis = d3.axisBottom(xScale).tickSize(0).tickFormat(() => '');
@@ -131,7 +57,7 @@ function Plain({ parameters, setAnswer }) {
 
     // X-axis
     svg.append('g')
-      .attr('transform', `translate(0, ${size.height - margin.bottom})`)
+      .attr('transform', `translate(0, ${fixedSize.height - margin.bottom})`)
       .call(xAxis)
       .selectAll('path')
       .style('stroke', '#000')
@@ -147,9 +73,9 @@ function Plain({ parameters, setAnswer }) {
 
     // Add only left and bottom borders
     const plotLeft = margin.left;
-    const plotRight = size.width - margin.right;
+    const plotRight = fixedSize.width - margin.right;
     const plotTop = margin.top;
-    const plotBottom = size.height - margin.bottom;
+    const plotBottom = fixedSize.height - margin.bottom;
     
     // Left border
     svg.append('line')
@@ -179,8 +105,7 @@ function Plain({ parameters, setAnswer }) {
       .attr('cy', d => yScale(d[1]))
       .attr('r', 3)
       .attr('fill', 'black');
-
-  }, [view, coordinates, xScale, yScale, size, margin]);
+  }, [view, coordinates, xScale, yScale, fixedSize, margin]);
 
   // Handle click to remove blur
   const handleClick = useCallback(() => {
@@ -193,12 +118,11 @@ function Plain({ parameters, setAnswer }) {
   // timer for 5 seconds to change view - starts after click
   useEffect(() => {
     if (!hasClicked) return;
-    if (!size.width) return;
     const timer = setTimeout(() => {
       setView("slider")
     }, seconds * 1000)
     return () => clearTimeout(timer)
-  }, [hasClicked, size.width, seconds])
+  }, [hasClicked, seconds])
 
 
   const answerCallback = useCallback(() => {
@@ -210,11 +134,11 @@ function Plain({ parameters, setAnswer }) {
           coordinates: coordinates,
           corr_est: slider,
           corr_act: correlation,
-          size: size,
+          size: fixedSize,
         })
       }
     })
-  }, [slider, correlation, setAnswer, coordinates, size])
+  }, [slider, correlation, setAnswer, coordinates, fixedSize])
 
 
   const jobDone = () => {
@@ -225,27 +149,12 @@ function Plain({ parameters, setAnswer }) {
   useEffect(() => {
     if (view !== "feedback") return;
     
-    // Reset countdown when entering feedback view
-    setCountdown(2);
-    
-    // Countdown timer that updates every second
-    const countdownInterval = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownInterval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
     // Call answerCallback after 2 seconds
     const callbackTimer = setTimeout(() => {
       answerCallback();
     }, 2000);
     
     return () => {
-      clearInterval(countdownInterval);
       clearTimeout(callbackTimer);
     };
   }, [view, answerCallback]);
@@ -260,33 +169,29 @@ function Plain({ parameters, setAnswer }) {
         </div>
       )}
       {view === "scatter" && (
-        <Box ref={containerRef} className="ImageWrapper" style={{
+        <div style={{
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
           width: "100%",
-          position: "relative",
-          minHeight: `${defaultSize.height}px`,
           padding: "20px"
         }}>
           <div 
             style={{ 
               display: 'inline-block',
-              position: 'relative',
-              overflow: 'visible'
+              position: 'relative'
             }}
           >
             <svg 
               id="clickAccuracySvg" 
               ref={ref} 
-              width={size.width || defaultSize.width} 
-              height={size.height || defaultSize.height}
+              width={fixedSize.width} 
+              height={fixedSize.height}
               style={{ 
                 display: 'block', 
                 filter: isBlurred ? 'blur(50px)' : 'none',
                 transition: 'filter 0.1s',
-                cursor: isBlurred ? 'pointer' : 'default',
-                overflow: 'visible'
+                cursor: isBlurred ? 'pointer' : 'default'
               }}
               onClick={handleClick}
             />
@@ -309,7 +214,7 @@ function Plain({ parameters, setAnswer }) {
               </div>
             )}
           </div>
-        </Box>
+        </div>
       )}
 
       {view === "slider" && (
@@ -333,9 +238,34 @@ function Plain({ parameters, setAnswer }) {
       )}
 
       {view === "feedback" && (
-        <div>
-          <h2>Actual correlation: {correlation.toFixed(2)}</h2>
-          <h2>Your estimation: {slider.toFixed(2)} ({diff>0 ? "+" : ''}{diff.toFixed(2)})</h2>
+        <div style={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          width: "100%",
+          padding: "20px"
+        }}>
+          <div 
+            style={{ 
+              display: 'inline-block',
+              position: 'relative',
+              marginBottom: '20px'
+            }}
+          >
+            <svg 
+              id="feedbackSvg" 
+              ref={ref} 
+              width={fixedSize.width} 
+              height={fixedSize.height}
+              style={{ 
+                display: 'block'
+              }}
+            />
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <h2>Actual correlation: {correlation.toFixed(2)}</h2>
+            <h2>Your estimation: {slider.toFixed(2)} ({diff>0 ? "+" : ''}{diff.toFixed(2)})</h2>
+          </div>
           {/* {countdown > 0 && (
             <Box
               style={{

@@ -21,33 +21,27 @@ function Bubble({ parameters, setAnswer }) {
   
   const dotPadding = 10; // Padding around dots
   
-  // Default size - adjusted to maintain same plot area as phase1 despite larger margins
-  // Phase1: 500 total, margins 100 (60+40) → plot area 400
-  // Phase2: Need plot area 400, margins 210 (170+40) → total 610
-  const defaultPlotArea = 400; // Same plot area as phase1's default
-  const defaultSize = { 
-    width: defaultPlotArea + 170 + 40,  // 170 left + 40 right = 210
-    height: defaultPlotArea + 40 + 60   // 40 top + 60 bottom = 100
+  // Fixed size - maintain same plot area as phase1 (500x500) with additional label space
+  // Phase1: 600 total with margins → plot area 500
+  // Phase2: Need plot area 500, with extra 110px for left label space
+  const fixedSize = { 
+    width: 600 + 110,  // 710 total (110 extra for left label)
+    height: 600        // Same as phase1
   }
 
   const ref = useRef(null);
   const { coordinates, example, seconds, label_seconds, correlation, label, X, Y } = parameters;
-  const [size, setSize] = useState(defaultSize);
   const [view, setView] = useState("scatter"); // scatter, corrafter, belief
-  const containerRef = useRef(null);
   const [corrAfter, setCorrAfter] = useState(0);
   const [hasClicked, setHasClicked] = useState(false);
   const [isBlurred, setIsBlurred] = useState(true);
   const [labelsVisible, setLabelsVisible] = useState(false);
 
-  const [xScale, setXScale] = useState(() => {
-    const defaultPlotWidth = defaultSize.width - margin.left - margin.right;
-    return d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + defaultPlotWidth]);
-  })
-  const [yScale, setYScale] = useState(() => {
-    const defaultPlotHeight = defaultSize.height - margin.top - margin.bottom;
-    return d3.scaleLinear().domain([0, 1]).range([margin.top + defaultPlotHeight - dotPadding, margin.top]);
-  })
+  // Calculate scales based on fixed size
+  const plotWidth = fixedSize.width - margin.left - margin.right;
+  const plotHeight = fixedSize.height - margin.top - margin.bottom;
+  const xScale = d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + plotWidth]);
+  const yScale = d3.scaleLinear().domain([0, 1]).range([margin.top + plotHeight - dotPadding, margin.top]);
 
   // Reset state when entering scatter view
   useEffect(() => {
@@ -60,35 +54,28 @@ function Bubble({ parameters, setAnswer }) {
 
   // Handle label visibility based on label_seconds
   useEffect(() => {
-    // console.log('Label timer effect:', { view, hasClicked, label_seconds, seconds, labelsVisible });
-    
     if (view !== "scatter") return;
     if (!hasClicked) return;
     if (label_seconds === undefined || label_seconds === null) return;
     
     // Case 1: label_seconds === 0: Show labels immediately
     if (label_seconds === 0) {
-      // console.log('Case 1: Showing labels immediately');
       setLabelsVisible(true);
       return;
     }
     
     // Case 2: label_seconds >= seconds: Never show labels
     if (label_seconds >= seconds) {
-      // console.log('Case 2: Never showing labels');
       setLabelsVisible(false);
       return;
     }
     
     // Case 3: 0 < label_seconds < seconds: Show labels after label_seconds
-    // console.log(`Case 3: Setting timer for ${label_seconds} seconds`);
     const timer = setTimeout(() => {
-      // console.log('Timer fired! Setting labels visible');
       setLabelsVisible(true);
     }, label_seconds * 1000);
     
     return () => {
-      // console.log('Cleaning up timer');
       clearTimeout(timer);
     };
   }, [view, hasClicked, label_seconds, seconds]);
@@ -115,91 +102,23 @@ function Bubble({ parameters, setAnswer }) {
           X: X,
           Y: Y,
           corrAfter: corrAfter,
-          size: size,
+          size: fixedSize,
         })
       }
     });
     setCorrAfter(corrAfter);
-  }, [setAnswer, corrAfter, correlation, coordinates, label, X, Y, size]);
+  }, [setAnswer, corrAfter, correlation, coordinates, label, X, Y, fixedSize]);
 
-  // Calculate size based on container
+  // Draw scatterplot with D3 - only when view changes or coordinates change
   useEffect(() => {
     if (view !== "scatter") return;
-    
-    const calculateSize = () => {
-      if (!containerRef.current) {
-        setSize(defaultSize);
-        const defaultPlotWidth = defaultSize.width - margin.left - margin.right;
-        const defaultPlotHeight = defaultSize.height - margin.top - margin.bottom;
-        // X: padding from left border, no padding on right
-        setXScale(d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + defaultPlotWidth]));
-        // Y: padding from bottom border, no padding on top
-        setYScale(d3.scaleLinear().domain([0, 1]).range([margin.top + defaultPlotHeight - dotPadding, margin.top]));
-        return;
-      }
-      
-      const parent = containerRef.current;
-      const rect = parent.getBoundingClientRect();
-      const availableHeight = window.innerHeight - rect.top - 200;
-      const availableWidth = window.innerWidth - 120;
-      
-      // Use a reasonable aspect ratio for scatterplot
-      const aspectRatio = 1.0;
-      let width, height;
-      if (availableHeight * aspectRatio <= availableWidth) {
-        height = Math.max(500, availableHeight);
-        width = height * aspectRatio;
-      } else {
-        width = Math.max(500, availableWidth);
-        height = width / aspectRatio;
-      }
-      
-      const newSize = { 
-        width: width + margin.left + margin.right, 
-        height: height + margin.top + margin.bottom 
-      };
-      
-      // Only update if size actually changed to prevent infinite loop
-      if (newSize.width !== size.width || newSize.height !== size.height) {
-        setSize(newSize);
-      }
-      
-      // Set up scales with padding from left and bottom borders
-      // Calculate the actual plot area
-      const plotWidth = width;
-      const plotHeight = height;
-      // X: padding from left border, no padding on right
-      setXScale(d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + plotWidth]));
-      // Y: padding from bottom border, no padding on top
-      setYScale(d3.scaleLinear().domain([0, 1]).range([margin.top + plotHeight - dotPadding, margin.top]));
-    };
-    
-    // Calculate immediately
-    calculateSize();
-    
-    // Also recalculate after a short delay to ensure DOM is ready
-    const timeoutId = setTimeout(calculateSize, 100);
-    
-    // Handle window resize
-    window.addEventListener('resize', calculateSize);
-    
-    return () => {
-      clearTimeout(timeoutId);
-      window.removeEventListener('resize', calculateSize);
-    };
-  }, [view, dotPadding, margin]);
-
-  // Draw scatterplot with D3 - only when scales/size change, NOT when labelsVisible changes
-  useEffect(() => {
-    if (view !== "scatter") return;
-    if (!ref.current || !xScale || !yScale || !coordinates || coordinates.length === 0) return;
-    if (!size.width || !size.height || size.width === 0 || size.height === 0) return;
+    if (!ref.current || !coordinates || coordinates.length === 0) return;
     
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
 
-    // Ensure SVG has proper dimensions
-    svg.attr('width', size.width).attr('height', size.height);
+    // Use fixed size
+    svg.attr('width', fixedSize.width).attr('height', fixedSize.height);
 
     // Add proper axes with visible lines
     const xAxis = d3.axisBottom(xScale).tickSize(0).tickFormat(() => '');
@@ -207,7 +126,7 @@ function Bubble({ parameters, setAnswer }) {
 
     // X-axis
     svg.append('g')
-      .attr('transform', `translate(0, ${size.height - margin.bottom})`)
+      .attr('transform', `translate(0, ${fixedSize.height - margin.bottom})`)
       .call(xAxis)
       .selectAll('path')
       .style('stroke', '#000')
@@ -224,8 +143,8 @@ function Bubble({ parameters, setAnswer }) {
     // Add X-axis label with class for later selection
     svg.append('text')
       .attr('class', 'x-label')
-      .attr('x', size.width / 2)
-      .attr('y', size.height - 10)
+      .attr('x', fixedSize.width / 2)
+      .attr('y', fixedSize.height - 10)
       .attr('text-anchor', 'middle')
       .attr('font-size', '20px')
       .attr('font-weight', 'bold')
@@ -268,9 +187,9 @@ function Bubble({ parameters, setAnswer }) {
 
     // Add only left and bottom borders
     const plotLeft = margin.left;
-    const plotRight = size.width - margin.right;
+    const plotRight = fixedSize.width - margin.right;
     const plotTop = margin.top;
-    const plotBottom = size.height - margin.bottom;
+    const plotBottom = fixedSize.height - margin.bottom;
     
     // Left border
     svg.append('line')
@@ -301,7 +220,7 @@ function Bubble({ parameters, setAnswer }) {
       .attr('r', 3)
       .attr('fill', 'black');
 
-  }, [view, coordinates, xScale, yScale, size, margin, X, Y]);
+  }, [view, coordinates, xScale, yScale, fixedSize, margin, X, Y]);
 
   // SEPARATE effect to update label blur - this doesn't need scales!
   useEffect(() => {
@@ -339,33 +258,29 @@ function Bubble({ parameters, setAnswer }) {
         <h1 style={{ color: "red" }}>Example Question</h1>
       )}
       {view === "scatter" && (
-        <Box ref={containerRef} className="ImageWrapper" style={{
+        <div style={{
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
           width: "100%",
-          position: "relative",
-          minHeight: `${defaultSize.height}px`,
           padding: "20px"
         }}>
           <div 
             style={{ 
               display: 'inline-block',
-              position: 'relative',
-              overflow: 'visible'
+              position: 'relative'
             }}
           >
             <svg 
               id="clickAccuracySvg" 
               ref={ref} 
-              width={size.width || defaultSize.width} 
-              height={size.height || defaultSize.height}
+              width={fixedSize.width} 
+              height={fixedSize.height}
               style={{ 
                 display: 'block', 
                 filter: isBlurred ? 'blur(50px)' : 'none',
                 transition: 'filter 0.1s',
-                cursor: isBlurred ? 'pointer' : 'default',
-                overflow: 'visible'
+                cursor: isBlurred ? 'pointer' : 'default'
               }}
               onClick={handleClick}
             />
@@ -388,7 +303,7 @@ function Bubble({ parameters, setAnswer }) {
               </div>
             )}
           </div>
-        </Box>
+        </div>
       )}
 
       {view === "corrafter" && (
