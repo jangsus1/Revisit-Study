@@ -15,7 +15,7 @@ function Phase3({ parameters, setAnswer }) {
           label: label,
           X: X,
           Y: Y,
-          belief: (newBelief - 1) / 6,
+          estimatedBelief: newBelief,
         })
       }
     });

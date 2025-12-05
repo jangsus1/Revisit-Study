@@ -132,13 +132,11 @@ function Plain({ parameters, setAnswer }) {
         answer: JSON.stringify({
           actualCorr: correlation,
           coordinates: coordinates,
-          corr_est: slider,
-          corr_act: correlation,
-          size: fixedSize,
+          estimatedCorr: slider,
         })
       }
     })
-  }, [slider, correlation, setAnswer, coordinates, fixedSize])
+  }, [slider, correlation, setAnswer, coordinates])
 
 
   const jobDone = () => {

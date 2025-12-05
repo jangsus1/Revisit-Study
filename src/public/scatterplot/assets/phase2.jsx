@@ -102,12 +102,11 @@ function Bubble({ parameters, setAnswer }) {
           X: X,
           Y: Y,
           corrAfter: corrAfter,
-          size: fixedSize,
         })
       }
     });
     setCorrAfter(corrAfter);
-  }, [setAnswer, corrAfter, correlation, coordinates, label, X, Y, fixedSize]);
+  }, [setAnswer, corrAfter, correlation, coordinates, label, X, Y]);
 
   // Draw scatterplot with D3 - only when view changes or coordinates change
   useEffect(() => {
