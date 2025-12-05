@@ -3,7 +3,8 @@ import { useEffect, useState, useRef, useCallback } from "react";
 import { Box, Button } from "@mantine/core";
 import React from "react";
 import { NormalSlider } from "./Slider";
-function Bubble({ parameters, setAnswer }) {
+
+function Phase2({ parameters, setAnswer }) {
 
   // Plot margins - same as phase1 to ensure identical plot area
   const plotMargin = React.useMemo(() => ({ top: 40, right: 40, bottom: 60, left: 60 }), []);
@@ -325,4 +326,4 @@ function Bubble({ parameters, setAnswer }) {
   );
 }
 
-export default Bubble;
+export default Phase2;

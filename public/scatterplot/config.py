@@ -38,6 +38,7 @@ labels = [
      'Probiotic yogurt sales', 'Toilet paper sales'],
 ]
 
+
 def generate_base_components():
     """Generate base components: phase2, phase1, and phase3"""
     return {
@@ -89,7 +90,7 @@ def generate_base_components():
     }
 
 
-def create_default_components():
+def create_default_components(fail_link):
     """Create default components: consent, introduction, and demographics"""
     return {
         "consent": {
@@ -128,9 +129,45 @@ def create_default_components():
             "path": "scatterplot/assets/phase3_intro.md",
             "response": []
         },
-        "attentionCheck": {
+        "attentionCheckFailed": {
+            "type": "react-component",
+            "path": "scatterplot/assets/attentionCheck.jsx",
+            "parameters": {
+                "link": fail_link
+            },
+            "response": [
+                {
+                    "id": "attention_check_failed_1",
+                    "prompt": "",
+                    "required": True,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus",
+        },
+        "attentionCheck2": {
             "type": "questionnaire",
-            "instruction": "Please answer the following questions about the introduction you just read. You must correctly answer both questions to continue.",
+            "response": [
+                {
+                    "id": "attention_q2",
+                    "prompt": "What makes a correlation stronger?",
+                    "required": True,
+                    "location": "aboveStimulus",
+                    "type": "radio",
+                    "options": [
+                        "The steeper the line",
+                        "The more data points there are",
+                        "The smaller the correlation coefficient is",
+                        "The closer r is to 1"
+                    ],
+                    "withDivider": True
+                }
+            ]
+        },
+        "attentionCheck1": {
+            "type": "questionnaire",
             "response": [
                 {
                     "id": "attention_q1",
@@ -146,20 +183,6 @@ def create_default_components():
                     ],
                     "withDivider": True
                 },
-                {
-                    "id": "attention_q2",
-                    "prompt": "What makes a correlation stronger?",
-                    "required": True,
-                    "location": "aboveStimulus",
-                    "type": "radio",
-                    "options": [
-                        "The steeper the line",
-                        "The more data points there are",
-                        "The smaller the correlation coefficient is",
-                        "The closer r is to 1"
-                    ],
-                    "withDivider": True
-                }
             ]
         },
         "demographics": {
@@ -471,7 +494,7 @@ def create_phase2_example_components():
             target_correlation=target_correlations[idx])
         components[f"phase2_example_{idx + 1}"] = {
             "baseComponent": "phase2",
-            "parameters": { 
+            "parameters": {
                 "coordinates": coordinates,
                 "example": True,
                 "correlation": actual_correlation,
@@ -530,29 +553,35 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
             "consent",
             "introduction",
             {
-                "id": "attentionCheck",
+                "id": "attentionCheck1",
                 "order": "fixed",
-                "components": ["attentionCheck"],
+                "components": ["attentionCheck1", "attentionCheckFailed"],
                 "skip": [
                     {
-                        "name": "attentionCheck",
+                        "name": "attentionCheck1",
                         "check": "response",
-                        "comparison": "notEqual",
+                        "comparison": "equal",
                         "responseId": "attention_q1",
                         "value": "0 to 1",
-                        "to": "end"
-                    },
-                    {
-                        "name": "attentionCheck",
-                        "check": "response",
-                        "comparison": "notEqual",
-                        "responseId": "attention_q2",
-                        "value": "The closer r is to 1",
-                        "to": "end"
+                        "to": "attentionCheck2"
                     }
                 ]
             },
-            
+            {
+                "id": "attentionCheck2",
+                "order": "fixed",
+                "components": ["attentionCheck2", "attentionCheckFailed"],
+                "skip": [
+                    {
+                        "name": "attentionCheck2",
+                        "check": "response",
+                        "comparison": "equal",
+                        "responseId": "attention_q2",
+                        "value": "The closer r is to 1",
+                        "to": "phase3_intro"
+                    }
+                ]
+            },
             "phase3_intro",
             {
                 "id": "phase3",
@@ -570,22 +599,27 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
             "phase2_intro",
             "phase2_examples",
             *example_component_names,  # Add the 2 example tasks
-            
+
             "phase2_main",
             {
                 "id": "phase2",
                 "order": "random",
                 "components": unrevealed_groups + revealed_groups
             },
-            
+
             "demographics"
         ],
     }
     return sequence
 
 
+# Optional: Set Prolific redirection URL
+prolificRedirection = "https://app.prolific.com/submissions/complete?cc=C17DENOG"
+prolificRedirectionFailedAttentionCheck = "https://app.prolific.com/submissions/complete?cc=CASYDYPP"
+
+
 # Generate components
-default_components = create_default_components()
+default_components = create_default_components(prolificRedirectionFailedAttentionCheck)
 phase1_components = create_phase1_components()
 phase2_components = create_phase2_components()
 phase2_example_components = create_phase2_example_components()
@@ -652,8 +686,7 @@ else:
     print("\nNo correlation values found in components.")
 
 
-# Optional: Set Prolific redirection URL
-prolificRedirection = "https://app.prolific.com/submissions/complete?cc=C12B2Y1Z"
+
 
 
 # Write the config.json file
