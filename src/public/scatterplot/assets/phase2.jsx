@@ -140,10 +140,11 @@ function Bubble({ parameters, setAnswer }) {
       .style('stroke', '#000')
       .style('stroke-width', 2);
 
-    // Add X-axis label with class for later selection
+    // Add X-axis label with class for later selection - centered on x-axis
+    const xAxisCenter = margin.left + plotWidth / 2;
     svg.append('text')
       .attr('class', 'x-label')
-      .attr('x', fixedSize.width / 2)
+      .attr('x', xAxisCenter)
       .attr('y', fixedSize.height - 10)
       .attr('text-anchor', 'middle')
       .attr('font-size', '20px')
@@ -160,10 +161,11 @@ function Bubble({ parameters, setAnswer }) {
     const yLabelGroup = svg.append('g')
       .attr('class', 'y-label-group');
     
-    // Create foreignObject with div for text wrapping - positioned to the left of y-axis
+    // Create foreignObject with div for text wrapping - positioned to the left of y-axis and centered vertically
+    const yAxisCenter = margin.top + plotHeight / 2;
     const foreignObject = yLabelGroup.append('foreignObject')
       .attr('x', margin.left - yLabelWidth - yLabelPadding)
-      .attr('y', margin.top)
+      .attr('y', yAxisCenter - yLabelHeight / 2)
       .attr('width', yLabelWidth)
       .attr('height', yLabelHeight);
     
