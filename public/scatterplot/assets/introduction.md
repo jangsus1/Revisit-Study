@@ -20,4 +20,4 @@ Correlation measures the relationship between two variables. In this experiment,
 * **No Correlation (r is around 0.0):** Height vs. Intelligence (Height does not predict intelligence).
 
 ## 4. Visual Examples
-![example1](../assets/positive.png)
+![example1](scatterplot/assets/positive.png)

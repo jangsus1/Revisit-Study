@@ -16,7 +16,7 @@ There are total **12** tasks to solve.
 
 ---
 
-![ex](../assets/phase2.png)
+![ex](scatterplot/assets/phase2.png)
 
 ---
 
