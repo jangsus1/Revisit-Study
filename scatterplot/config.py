@@ -5,6 +5,35 @@ import numpy as np
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
+labels = [
+    # Neutral / Spurious
+    ['As the usage of internet increases, so does the homicide rate in the city.',
+     'Internet usage', 'Homicide rate in the city'],
+    ['People who eat more cheese, tend to be better at dancing.',
+     'Cheese consumption', 'Dancing ability'],
+    ['The more students wear glasses, the later the gym closes on campus.',
+     'Number of students wearing glasses', 'Gym closing time'],
+    ['A city with more lawyers, tends to have more trees.',
+     'Number of lawyers in a city', 'Number of trees in the city'],
+    ['The more people buy socks, the more pigeons appear in the park.',
+     'Number of socks sold', 'Number of pigeons in the park'],
+    ['As the number of cats in the city increases, the library\'s carpet gets replaced more often.',
+     'Number of cats in city', 'Library carpet replacement frequency'],
+
+    # Positive
+    ['The more often students eat breakfast, the higher their GPAs are.',
+     'Breakfast frequency', 'GPA'],
+    ['A worker with a longer commute, tends to be more stressed.',
+     'Commuting time', 'Stress level'],
+    ['People who sleep more, tend to be happier with their lives.',
+     'Sleeping time', 'Happiness level'],
+    ['As the number of environmental regulations increases, so does the air quality in the city.',
+     'Number of environmental regulations', 'Air quality in the city'],
+    ['The more drivers wear seatbelts, the more survivors there are in accidents.',
+     'Seatbelt usage rate', 'Number of survivors in car accidents'],
+    ['The more probiotic yogurt people buy, the more toilet paper sales go up.',
+     'Probiotic yogurt sales', 'Toilet paper sales'],
+]
 
 def generate_base_components():
     """Generate base components: bubble, plain, and phase3"""
@@ -206,11 +235,11 @@ def generate_scatterplot_data(n_points=50, min_distance=0.04, max_attempts=200, 
     # Clamp target correlation to valid range
     target_corr = np.clip(target_correlation, -0.99, 0.99)
     tolerance = 0.02  # Target accuracy: within ±0.02 of target
-    
+
     best_data = None
     best_corr = None
     best_error = float('inf')
-    
+
     # Try multiple times to get correlation as close as possible to target
     for attempt in range(max_attempts):
         # Use the target correlation directly, with slight variation for diversity
@@ -224,14 +253,15 @@ def generate_scatterplot_data(n_points=50, min_distance=0.04, max_attempts=200, 
         else:
             # Remaining attempts: slightly larger variation (±0.02) but still close
             current_target = target_corr + np.random.uniform(-0.02, 0.02)
-        
+
         current_target = np.clip(current_target, -0.99, 0.99)
 
         # Generate correlated bivariate normal data using Cholesky decomposition
         # This is more numerically stable than using covariance matrix directly
         try:
             # Use Cholesky decomposition for better numerical stability
-            L = np.array([[1.0, 0.0], [current_target, np.sqrt(max(0.01, 1 - current_target**2))]])
+            L = np.array(
+                [[1.0, 0.0], [current_target, np.sqrt(max(0.01, 1 - current_target**2))]])
             z = np.random.randn(n_points, 2)
             data = z @ L.T
         except (np.linalg.LinAlgError, ValueError):
@@ -247,13 +277,13 @@ def generate_scatterplot_data(n_points=50, min_distance=0.04, max_attempts=200, 
         data_std = data.std(axis=0)
         data_std[data_std == 0] = 1.0  # Avoid division by zero
         data_standardized = (data - data_mean) / data_std
-        
+
         # Then scale to [0, 1] range
         # Use a fixed scale factor to preserve correlation structure
         scale_factor = 3.0  # Use 3 sigma range to cover most of the distribution
         data_scaled = (data_standardized / scale_factor) + 0.5
         data_scaled = np.clip(data_scaled, 0, 1)
-        
+
         # Fine-tune to ensure full [0,1] range while preserving correlation
         data_ranges = data_scaled.max(axis=0) - data_scaled.min(axis=0)
         if data_ranges[0] < 0.5 or data_ranges[1] < 0.5:
@@ -297,14 +327,14 @@ def generate_scatterplot_data(n_points=50, min_distance=0.04, max_attempts=200, 
         # Calculate actual correlation
         corr_matrix = np.corrcoef(data[:, 0], data[:, 1])
         actual_corr = corr_matrix[0, 1]
-        
+
         # Check if this is the best match so far
         error = abs(actual_corr - target_corr)
         if error < best_error:
             best_error = error
             best_data = data.copy()
             best_corr = actual_corr
-            
+
             # If we're within tolerance, return immediately
             if error <= tolerance:
                 coordinates = [[float(x), float(y)] for x, y in best_data]
@@ -328,19 +358,21 @@ def create_phase1_components():
         variance_range = 0.04
         min_target = base_target - variance_range
         max_target = base_target + variance_range
-        
+
         # Clamp to valid correlation range [-1, 1]
         min_target = max(0.01, min_target)  # Ensure positive for phase 1
         max_target = min(0.99, max_target)
-        
+
         # Generate evenly distributed target correlations
         num_scatterplots = 6
-        target_correlations = np.linspace(min_target, max_target, num_scatterplots)
-        
+        target_correlations = np.linspace(
+            min_target, max_target, num_scatterplots)
+
         for i in range(num_scatterplots):
             for direction in ["pos"]:
                 # Generate scatterplot coordinates with evenly distributed target correlation
-                coordinates, actual_correlation = generate_scatterplot_data(target_correlation=target_correlations[i])
+                coordinates, actual_correlation = generate_scatterplot_data(
+                    target_correlation=target_correlations[i])
                 components[f"plain_{corr}_{i}_{direction}"] = {
                     "baseComponent": "plain",
                     "parameters": {
@@ -355,39 +387,6 @@ def create_phase1_components():
 
 def create_phase2_components():
     """Create phase 2 components: bubble scatterplots with labels"""
-    labels = [
-        # Neutral
-        ['As the usage of internet increases, so does the homicide rate in the city.',
-            'Increasing internet usage', 'Higher homicide rate in the city'],
-        ['People who eat more cheese, tend to be better at dancing.',
-            'Eating more cheese', 'Better at dancing'],
-        ['The more students wear glasses, the later the gym closes on campus.',
-            'More students wearing glasses', 'Gym closing later on campus'],
-        ['A city with more lawyers, tends to have more trees.',
-            'Having more lawyers in a city', 'Having more trees in the city'],
-
-        # Positive
-        ['The more often students eat breakfast, the higher their GPAs are.',
-            'Eating breakfast more often', 'Having a higher GPA'],
-        ['A worker with a longer commute, tends to be more stressed.',
-            'Commuting for a longer time', 'Being more stressed'],
-        ['People who sleep more, tend to be happier with their lives.',
-            'Sleeping more', 'Being happier with life'],
-        ['As the number of environmental regulations increases, so does the air quality in the city.',
-            'Having more environmental regulations', 'Improving air quality in the city'],
-
-        # New Neutral
-        ['The more people buy socks, the more pigeons appear in the park.',
-            'Buying more socks', 'Seeing more pigeons in the park'],
-        ['As the number of cats in the city increases, the library\'s carpet gets replaced more often.',
-            'Number of cats in city', 'Library carpet replacement frequency'],
-
-        # Semi-positive
-        ['The more drivers wear seatbelts, the more survivors there are in accidents.',
-            'Percentage of drivers wearing seatbelts', 'More accident survivors'],
-        ['The more probiotic yogurt people buy, the more toilet paper sales go up.',
-            'Probiotic yogurt sales', 'Toilet paper sales'],
-    ]
 
     components = defaultdict(dict)
     for corr in [2, 4, 6, 8]:
@@ -395,28 +394,30 @@ def create_phase2_components():
         variance_range = 0.04
         min_target = base_target - variance_range
         max_target = base_target + variance_range
-        
+
         # Clamp to valid correlation range [-1, 1]
         min_target = max(0.01, min_target)  # Ensure positive for phase 2
         max_target = min(0.99, max_target)
-        
+
         # Calculate total number of scatterplots per correlation level
         num_experiments = 2
         num_labels = len(labels)
         num_label_times = 3
         total_scatterplots = num_experiments * num_labels * num_label_times
-        
+
         # Generate evenly distributed target correlations
-        target_correlations = np.linspace(min_target, max_target, total_scatterplots)
+        target_correlations = np.linspace(
+            min_target, max_target, total_scatterplots)
         target_idx = 0
-        
+
         for i in range(num_experiments):  # for phase 2
             for direction in ["pos"]:
                 for label_idx, label in enumerate(labels):
                     label_text, x, y = label
                     for label_second in [0, 2.5, 5.0]:
                         # Generate scatterplot coordinates with evenly distributed target correlation
-                        coordinates, actual_correlation = generate_scatterplot_data(target_correlation=target_correlations[target_idx])
+                        coordinates, actual_correlation = generate_scatterplot_data(
+                            target_correlation=target_correlations[target_idx])
                         target_idx += 1
                         components[label_text][f"phase2_{corr}_{i}_{direction}_{label_idx}_{label_second}"] = {
                             "baseComponent": "bubble",
@@ -453,7 +454,7 @@ def create_phase2_example_components():
     variance_range = 0.04
     min_target = base_target - variance_range  # 0.4
     max_target = base_target + variance_range  # 0.6
-    
+
     # Generate evenly distributed target correlations
     num_examples = len(example_labels)
     target_correlations = np.linspace(min_target, max_target, num_examples)
@@ -462,7 +463,8 @@ def create_phase2_example_components():
     for idx, label in enumerate(example_labels):
         label_text, x, y = label
         # Generate scatterplot coordinates with evenly distributed target correlation
-        coordinates, actual_correlation = generate_scatterplot_data(target_correlation=target_correlations[idx])
+        coordinates, actual_correlation = generate_scatterplot_data(
+            target_correlation=target_correlations[idx])
         components[f"phase2_example_{idx + 1}"] = {
             "baseComponent": "bubble",
             "parameters": {
@@ -484,39 +486,6 @@ def create_phase2_example_components():
 
 def create_phase3_components():
     """Create phase 3 components: text-only belief questions with only X, Y, label"""
-    labels = [
-        # Spurious
-        ['As the usage of internet increases, so does the homicide rate in the city.',
-            'Increasing internet usage', 'Higher homicide rate in the city'],
-        ['People who eat more cheese, tend to be better at dancing.',
-            'Eating more cheese', 'Better at dancing'],
-        ['The more students wear glasses, the later the gym closes on campus.',
-            'More students wearing glasses', 'Gym closing later on campus'],
-        ['A city with more lawyers, tends to have more trees.',
-            'Having more lawyers in a city', 'Having more trees in the city'],
-
-            # New Spurious
-        ['The more people buy socks, the more pigeons appear in the park.',
-            'Buying more socks', 'Seeing more pigeons in the park'],
-        ['As the number of cats in the city increases, the library\'s carpet gets replaced more often.',
-            'Number of cats in city', 'Library carpet replacement frequency'],
-
-        # Positive
-        ['The more often students eat breakfast, the higher their GPAs are.',
-            'Eating breakfast more often', 'Having a higher GPA'],
-        ['A worker with a longer commute, tends to be more stressed.',
-            'Commuting for a longer time', 'Being more stressed'],
-        ['People who sleep more, tend to be happier with their lives.',
-            'Sleeping more', 'Being happier with life'],
-        ['As the number of environmental regulations increases, so does the air quality in the city.',
-            'Having more environmental regulations', 'Improving air quality in the city'],
-
-        # Semi-positive
-        ['The more drivers wear seatbelts, the more survivors there are in accidents.',
-            'Percentage of drivers wearing seatbelts', 'More accident survivors'],
-        ['The more probiotic yogurt people buy, the more toilet paper sales go up.',
-            'Probiotic yogurt sales', 'Toilet paper sales'],
-    ]
 
     components = {}
     for label_idx, label in enumerate(labels):
@@ -636,19 +605,20 @@ if correlation_values:
     print(f"{'='*60}")
     print(f"Total correlations: {len(correlation_values)}")
     print(f"Min: {corr_array.min():.4f}, Max: {corr_array.max():.4f}, Mean: {corr_array.mean():.4f}, Std: {corr_array.std():.4f}")
-    
+
     # Create histogram with fine granularity (100 bins)
     bins = 100
-    hist, bin_edges = np.histogram(corr_array, bins=bins, range=(corr_array.min(), corr_array.max()))
-    
+    hist, bin_edges = np.histogram(
+        corr_array, bins=bins, range=(corr_array.min(), corr_array.max()))
+
     # Find max count for scaling
     max_count = hist.max()
-    
+
     # Print histogram
     print(f"\nHistogram (bins: {bins}):")
     print(f"{'Bin Range':<20} {'Count':<10} {'Bar'}")
     print("-" * 60)
-    
+
     for i in range(len(hist)):
         bin_start = bin_edges[i]
         bin_end = bin_edges[i + 1]
@@ -657,7 +627,7 @@ if correlation_values:
         bar_length = int(50 * count / max_count) if max_count > 0 else 0
         bar = "█" * bar_length
         print(f"[{bin_start:7.4f}, {bin_end:7.4f})  {count:<10} {bar}")
-    
+
     print(f"\n{'='*60}")
 else:
     print("\nNo correlation values found in components.")
