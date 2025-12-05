@@ -3,6 +3,9 @@ import os
 from collections import defaultdict
 import numpy as np
 
+# fix all seeds
+np.random.seed(42)
+
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 labels = [
@@ -36,9 +39,9 @@ labels = [
 ]
 
 def generate_base_components():
-    """Generate base components: bubble, plain, and phase3"""
+    """Generate base components: phase2, phase1, and phase3"""
     return {
-        "bubble": {
+        "phase2": {
             "type": "react-component",
             "path": "scatterplot/assets/phase2.jsx",
             "response": [
@@ -53,7 +56,7 @@ def generate_base_components():
             "instructionLocation": "belowStimulus",
             "nextButtonLocation": "belowStimulus"
         },
-        "plain": {
+        "phase1": {
             "type": "react-component",
             "path": "scatterplot/assets/phase1.jsx",
             "response": [
@@ -364,7 +367,7 @@ def create_phase1_components():
         max_target = min(0.99, max_target)
 
         # Generate evenly distributed target correlations
-        num_scatterplots = 6
+        num_scatterplots = 3
         target_correlations = np.linspace(
             min_target, max_target, num_scatterplots)
 
@@ -374,7 +377,7 @@ def create_phase1_components():
                 coordinates, actual_correlation = generate_scatterplot_data(
                     target_correlation=target_correlations[i])
                 components[f"plain_{corr}_{i}_{direction}"] = {
-                    "baseComponent": "plain",
+                    "baseComponent": "phase1",
                     "parameters": {
                         "coordinates": coordinates,
                         "example": False,
@@ -386,9 +389,9 @@ def create_phase1_components():
 
 
 def create_phase2_components():
-    """Create phase 2 components: bubble scatterplots with labels"""
+    """Create phase 2 components: scatterplots with labels"""
 
-    components = defaultdict(dict)
+    components = defaultdict(lambda: defaultdict(dict))
     for corr in [2, 4, 6, 8]:
         base_target = corr * 0.1
         variance_range = 0.04
@@ -419,8 +422,9 @@ def create_phase2_components():
                         coordinates, actual_correlation = generate_scatterplot_data(
                             target_correlation=target_correlations[target_idx])
                         target_idx += 1
-                        components[label_text][f"phase2_{corr}_{i}_{direction}_{label_idx}_{label_second}"] = {
-                            "baseComponent": "bubble",
+                        is_revealed = label_second < 5.0
+                        components[is_revealed][label_text][f"phase2_{corr}_{i}_{direction}_{label_idx}_{label_second}"] = {
+                            "baseComponent": "phase2",
                             "parameters": {
                                 "coordinates": coordinates,
                                 "example": False,
@@ -466,8 +470,8 @@ def create_phase2_example_components():
         coordinates, actual_correlation = generate_scatterplot_data(
             target_correlation=target_correlations[idx])
         components[f"phase2_example_{idx + 1}"] = {
-            "baseComponent": "bubble",
-            "parameters": {
+            "baseComponent": "phase2",
+            "parameters": { 
                 "coordinates": coordinates,
                 "example": True,
                 "correlation": actual_correlation,
@@ -503,12 +507,19 @@ def create_phase3_components():
 
 def sequence_generator(phase1_components, phase2_components, phase2_example_components, phase3_components):
     """Generate the study sequence"""
-    groups = [{
-        "id": label[:30],
+    revealed_groups = [{
+        "id": f"revealed_{label[0][:30]}",
         "order": "latinSquare",
         "numSamples": 1,
-        "components": list(phase2_components[label].keys())
-    } for label in phase2_components.keys()]
+        "components": list(phase2_components[True][label[0]].keys())
+    } for label in labels]
+
+    unrevealed_groups = [{
+        "id": f"unrevealed_{label[0][:30]}",
+        "order": "latinSquare",
+        "numSamples": 1,
+        "components": list(phase2_components[False][label[0]].keys())
+    } for label in labels]
 
     # Create list of example component names
     example_component_names = list(phase2_example_components.keys())
@@ -541,27 +552,32 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
                     }
                 ]
             },
-            "phase1_intro",
-            {
-                "id": "phase1",
-                "order": "latinSquare",
-                "components": list(phase1_components.keys())
-            },
-            "phase2_intro",
-            "phase2_examples",
-            *example_component_names,  # Add the 2 example tasks
-            "phase2_main",
-            {
-                "id": "phase2",
-                "order": "latinSquare",
-                "components": groups
-            },
+            
             "phase3_intro",
             {
                 "id": "phase3",
-                "order": "latinSquare",
+                "order": "random",
                 "components": list(phase3_components.keys())
             },
+
+            "phase1_intro",
+            {
+                "id": "phase1",
+                "order": "random",
+                "components": list(phase1_components.keys())
+            },
+
+            "phase2_intro",
+            "phase2_examples",
+            *example_component_names,  # Add the 2 example tasks
+            
+            "phase2_main",
+            {
+                "id": "phase2",
+                "order": "random",
+                "components": unrevealed_groups + revealed_groups
+            },
+            
             "demographics"
         ],
     }
@@ -577,7 +593,10 @@ phase3_components = create_phase3_components()
 
 # Combine all components
 components = default_components | phase1_components | phase2_example_components | phase3_components
-for component in phase2_components.values():
+
+for component in phase2_components[True].values():
+    components |= component
+for component in phase2_components[False].values():
     components |= component
 
 # Generate sequence
