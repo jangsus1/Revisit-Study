@@ -207,10 +207,11 @@ function Plain({ parameters, setAnswer }) {
                   fontWeight: 'bold',
                   color: '#666',
                   zIndex: 10,
-                  whiteSpace: 'nowrap'
+                  whiteSpace: 'nowrap',
+                  textAlign: 'center'
                 }}
               >
-                Click to reveal the scatterplot
+                You have 5 seconds to estimate the correlation. <br />  Click to start!
               </div>
             )}
           </div>
