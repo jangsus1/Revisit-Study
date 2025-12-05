@@ -7,12 +7,12 @@ Try to **calibrate** your guesses during trials to be more accurate.
 
 ## How It Works
 
-### Step 1: **View the Scatterplot**
+### Step 1: **Explore the Scatterplot**
 - Click to start
 - A scatterplot will be shown for **5 seconds**.
 - Observe the pattern and relationship between the points.
 
-### Step 2: **Make a Judgment**
+### Step 2: **Estimate the Correlation**
 - After 5 seconds, the scatterplot disappears.
 - Use a **slider (0 to 1)** to estimate the correlation:
   - **0.0** → No Correlation
