@@ -264,14 +264,14 @@ function Phase2({ parameters, setAnswer }) {
 
   // Generate overlay message based on current interval
   const getOverlayMessage = () => {
-    const newMessage = currentIntervalIndex === 0 ? `You'll about to see a NEW scatterplot.` : ``;
+    const newMessage = currentIntervalIndex === 0 ? `You'll about to see a NEW scatterplot.` : `You will continue to see the SAME scatterplot.`;
     if (showLabels) {
       return (
         <>
           {newMessage} <br />
           You have {duration} seconds. <br />
           <br />
-          Variables:<br />
+          Variables will be shown:<br />
           X: {X}<br />
           Y: {Y}<br />
           <br />
@@ -283,6 +283,8 @@ function Phase2({ parameters, setAnswer }) {
         <> 
         {newMessage} <br />
           You have {duration} seconds.<br />
+          <br />
+          Variables will be hidden.
           <br />
           Click to {currentIntervalIndex === 0 ? "start" : "continue"}!
         </>
@@ -359,17 +361,19 @@ function Phase2({ parameters, setAnswer }) {
       {currentPhase === "slider" && (
         <div style={{ width: '50%', margin: '50px auto', textAlign: 'center' }}>
           <h3>{getSliderPrompt()}</h3>
-          <NormalSlider
-            value={currentSliderValue}
-            setValue={(value) => {
-              setCurrentSliderValue(value);
-              setSliderInteracted(true);
-            }}
-            min={0}
-            max={1}
-            step={0.01}
-            tickInterval={0.2}
-          />
+          <div onClick={() => setSliderInteracted(true)}>
+            <NormalSlider
+              value={currentSliderValue}
+              setValue={(value) => {
+                setCurrentSliderValue(value);
+                setSliderInteracted(true);
+              }}
+              min={0}
+              max={1}
+              step={0.01}
+              tickInterval={0.2}
+            />
+          </div>
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '20px' }}>
             <Button 
               disabled={!sliderInteracted} 
