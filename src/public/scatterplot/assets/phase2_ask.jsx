@@ -85,6 +85,7 @@ function Phase2({ parameters, setAnswer }) {
     
     const displayTime = seconds - label_seconds;
     if (displayTime <= 0) {
+      answerCallback(slider1Value);
       setView("slider2");
       return;
     }
@@ -408,7 +409,7 @@ function Phase2({ parameters, setAnswer }) {
                   zIndex: 10,
                 }}
               >
-                {seconds - label_seconds} seconds left to view the scatterplot. <br /><br />
+                You have additional {seconds - label_seconds} seconds to adjust the estimation. <br /><br />
                 Variables: <br />
                 X: {X} <br /> 
                 Y: {Y} <br />
@@ -423,7 +424,7 @@ function Phase2({ parameters, setAnswer }) {
       {/* Slider 2: Update correlation estimate */}
       {view === "slider2" && (
         <div style={{ width: '50%', margin: '50px auto', textAlign: 'center' }}>
-          <h3>You may update your answer for the final prediction</h3>
+          <h3>You may choose to revise your answer for the final prediction.</h3>
           <NormalSlider
             value={corrEstimateAfter}
             setValue={answerCallback}
