@@ -44,7 +44,7 @@ def generate_base_components():
     return {
         "phase2": {
             "type": "react-component",
-            "path": "scatterplot/assets/phase2_ask.jsx",
+            "path": "scatterplot/assets/phase2_post_label.jsx",
             "response": [
                 {
                     "id": "answer",

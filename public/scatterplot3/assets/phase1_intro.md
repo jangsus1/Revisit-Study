@@ -24,7 +24,7 @@ Try to **calibrate** your guesses during trials to be more accurate.
 - You should wait for a few seconds to move on.
 
 ---
-![example](scatterplot2/assets/phase1.png)
+![example](scatterplot3/assets/phase1.png)
 
 ---
 

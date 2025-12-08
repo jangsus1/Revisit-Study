@@ -83,11 +83,6 @@ function Phase2({ parameters, setAnswer }) {
       status: true,
       answers: {
         answer: JSON.stringify({
-          actualCorr: correlation,
-          coordinates: coordinates,
-          label: label,
-          X: X,
-          Y: Y,
           corrEstimateBefore: corrEstimateBefore,
           corrEstimateAfter: corrAfter,
         })
