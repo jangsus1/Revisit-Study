@@ -78,42 +78,6 @@ function Phase2({ parameters, setAnswer }) {
     };
   }, [view, hasClicked, label_seconds]);
 
-  // Timer for scatter2: Show revealed labels for (seconds - label_seconds) after click, then transition to slider2
-  useEffect(() => {
-    if (view !== "scatter2") return;
-    if (!hasClickedScatter2) return; // Only start timer after click
-    
-    const displayTime = seconds - label_seconds;
-    if (displayTime <= 0) {
-      answerCallback(slider1Value);
-      setView("slider2");
-      return;
-    }
-    
-    // Update remaining time every second
-    const interval = setInterval(() => {
-      setRemainingTime((prev) => {
-        const newTime = prev - 1;
-        if (newTime <= 0) {
-          setView("slider2");
-          return 0;
-        }
-        return newTime;
-      });
-    }, 1000);
-    
-    // Also set a timeout as backup to transition
-    const timeout = setTimeout(() => {
-      setView("slider2");
-    }, displayTime * 1000);
-    
-    return () => {
-      clearInterval(interval);
-      clearTimeout(timeout);
-    };
-  }, [view, hasClickedScatter2, seconds, label_seconds]);
-
-  // Answer callback - only called from slider2
   const answerCallback = useCallback((corrAfter) => {
     setAnswer({
       status: true,
@@ -131,6 +95,46 @@ function Phase2({ parameters, setAnswer }) {
     });
     setCorrEstimateAfter(corrAfter);
   }, [setAnswer, corrEstimateBefore, correlation, coordinates, label, X, Y]);
+
+  // Timer for scatter2: Show revealed labels for (seconds - label_seconds) after click, then transition to slider2
+  useEffect(() => {
+    if (view !== "scatter2") return;
+    if (!hasClickedScatter2) return; // Only start timer after click
+    
+    const displayTime = seconds - label_seconds;
+    if (displayTime <= 0) {
+      answerCallback(corrEstimateBefore);
+      setView("slider2");
+      return;
+    }
+    
+    // Update remaining time every second
+    const interval = setInterval(() => {
+      setRemainingTime((prev) => {
+        const newTime = prev - 1;
+        if (newTime <= 0) {
+          answerCallback(corrEstimateBefore);
+          setView("slider2");
+          return 0;
+        }
+        return newTime;
+      });
+    }, 1000);
+    
+    // Also set a timeout as backup to transition
+    const timeout = setTimeout(() => {
+      answerCallback(corrEstimateBefore);
+      setView("slider2");
+    }, displayTime * 1000);
+    
+    return () => {
+      clearInterval(interval);
+      clearTimeout(timeout);
+    };
+  }, [view, hasClickedScatter2, seconds, label_seconds, answerCallback, corrEstimateBefore]);
+
+  // Answer callback - only called from slider2
+  
 
   // Handle Continue button click from slider1
   const handleContinue = useCallback(() => {
