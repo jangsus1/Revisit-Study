@@ -218,7 +218,7 @@ function Plain({ parameters, setAnswer }) {
 
       {view === "slider" && (
         <div style={{ width: '80%', margin: '50px auto', textAlign: 'center' }}>
-          <h2>Predict the Correlation!</h2>
+          <h3>Estimate the correlation of the scatterplot you saw.</h3>
           <NormalSlider
             value={slider}
             setValue={(value) => {

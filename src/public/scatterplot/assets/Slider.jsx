@@ -33,47 +33,46 @@ export function NormalSlider({ value, setValue, leftLabel = "", rightLabel = "",
         width: "100%", 
         maxWidth: "700px", 
         margin: "40px auto",
-        padding: "20px 10px 40px 10px"
+        padding: "40px 10px 40px 10px"
       }}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Value display tooltip */}
-      {(isHovered || isDragging) && (
+      {/* Value display - always visible */}
+      <div
+        style={{
+          position: "absolute",
+          left: `calc(${percentage}% + ${12 - percentage * 0.24}px)`,
+          transform: "translateX(-50%)",
+          top: "-10px",
+          backgroundColor: activeColorDark,
+          color: "white",
+          padding: "6px 12px",
+          borderRadius: "8px",
+          fontSize: "16px",
+          fontWeight: "600",
+          whiteSpace: "nowrap",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          pointerEvents: "none",
+          zIndex: 10,
+          transition: "left 0.1s ease",
+        }}
+      >
+        {value.toFixed(2)}
         <div
           style={{
             position: "absolute",
-            left: `calc(${percentage}% + ${12 - percentage * 0.24}px)`,
+            bottom: "-6px",
+            left: "50%",
             transform: "translateX(-50%)",
-            top: "-45px",
-            backgroundColor: activeColorDark,
-            color: "white",
-            padding: "6px 12px",
-            borderRadius: "8px",
-            fontSize: "16px",
-            fontWeight: "600",
-            whiteSpace: "nowrap",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-            pointerEvents: "none",
-            zIndex: 10,
+            width: 0,
+            height: 0,
+            borderLeft: "6px solid transparent",
+            borderRight: "6px solid transparent",
+            borderTop: `6px solid ${activeColorDark}`,
           }}
-        >
-          {value.toFixed(2)}
-          <div
-            style={{
-              position: "absolute",
-              bottom: "-6px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 0,
-              height: 0,
-              borderLeft: "6px solid transparent",
-              borderRight: "6px solid transparent",
-              borderTop: `6px solid ${activeColorDark}`,
-            }}
-          />
-        </div>
-      )}
+        />
+      </div>
 
       {/* Track container */}
       <div style={{ position: "relative", width: "100%", padding: "0", margin: "0", overflow: "visible", height: "12px" }}>
@@ -346,42 +345,41 @@ export default function DivergingSlider({ value, setValue, leftLabel = "", right
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Value display tooltip */}
-      {(isHovered || isDragging) && (
+      {/* Value display - always visible */}
+      <div
+        style={{
+          position: "absolute",
+          left: `${percentage}%`,
+          transform: "translateX(-50%)",
+          top: "-45px",
+          backgroundColor: activeColorDark,
+          color: "white",
+          padding: "6px 12px",
+          borderRadius: "8px",
+          fontSize: "14px",
+          fontWeight: "600",
+          whiteSpace: "nowrap",
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+          pointerEvents: "none",
+          zIndex: 10,
+          transition: "left 0.1s ease, background-color 0.2s ease",
+        }}
+      >
+        {value.toFixed(2)}
         <div
           style={{
             position: "absolute",
-            left: `${percentage}%`,
+            bottom: "-6px",
+            left: "50%",
             transform: "translateX(-50%)",
-            top: "-45px",
-            backgroundColor: activeColorDark,
-            color: "white",
-            padding: "6px 12px",
-            borderRadius: "8px",
-            fontSize: "14px",
-            fontWeight: "600",
-            whiteSpace: "nowrap",
-            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-            pointerEvents: "none",
-            zIndex: 10,
+            width: 0,
+            height: 0,
+            borderLeft: "6px solid transparent",
+            borderRight: "6px solid transparent",
+            borderTop: `6px solid ${activeColorDark}`,
           }}
-        >
-          {value.toFixed(2)}
-          <div
-            style={{
-              position: "absolute",
-              bottom: "-6px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: 0,
-              height: 0,
-              borderLeft: "6px solid transparent",
-              borderRight: "6px solid transparent",
-              borderTop: `6px solid ${activeColorDark}`,
-            }}
-          />
-        </div>
-      )}
+        />
+      </div>
 
       {/* Track container */}
       <div style={{ position: "relative", width: "100%", padding: "12px 0" }}>
