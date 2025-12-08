@@ -264,7 +264,7 @@ function Phase2({ parameters, setAnswer }) {
 
   // Generate overlay message based on current interval
   const getOverlayMessage = () => {
-    const newMessage = currentIntervalIndex === 0 ? `You'll about to see a new scatterplot.` : ``;
+    const newMessage = currentIntervalIndex === 0 ? `You'll about to see a NEW scatterplot.` : ``;
     if (showLabels) {
       return (
         <>
