@@ -44,7 +44,7 @@ def generate_base_components():
     return {
         "phase2": {
             "type": "react-component",
-            "path": "scatterplot/assets/phase2_background.jsx",
+            "path": "scatterplot/assets/phase2_interval.jsx",
             "response": [
                 {
                     "id": "answer",
@@ -429,7 +429,8 @@ def create_phase2_components():
         num_experiments = 2
         num_labels = len(labels)
         total_scatterplots = num_experiments * num_labels
-        label_seconds = 0
+
+        label_interval_options = [[(True, 2.5), (False, 2.5), (False, 2.5)], [(False, 2.5), (True, 2.5), (False, 2.5)]]
 
         # Generate evenly distributed target correlations
         target_correlations = np.linspace(min_target, max_target, total_scatterplots)
@@ -441,23 +442,22 @@ def create_phase2_components():
                     label_text, x, y = label
                     coordinates, actual_correlation = generate_scatterplot_data(target_correlation=target_correlations[target_idx])
                     target_idx += 1
-                    components[label_text][f"phase2_{corr}_{i}_{direction}_{label_idx}_{label_seconds}"] = {
-                        "baseComponent": "phase2",
-                        "parameters": {
-                            "coordinates": coordinates,
-                            "example": False,
-                            "correlation": actual_correlation,
-                            "label": label_text,
-                            "X": x,
-                            "Y": y,
-                            "corr": corr,
-                            "exp": i,
-                            "direction": direction,
-                            "seconds": 5,
-                            "label_seconds": label_seconds,
-                            "type": "continuous" ## continuous or discrete
+                    for label_intervals in label_interval_options:
+                        components[label_text][f"phase2_{corr}_{i}_{direction}_{label_idx}_{label_intervals}"] = {
+                            "baseComponent": "phase2",
+                            "parameters": {
+                                "coordinates": coordinates,
+                                "example": False,
+                                "correlation": actual_correlation,
+                                "label": label_text,
+                                "X": x,
+                                "Y": y,
+                                "corr": corr,
+                                "exp": i,
+                                "direction": direction,
+                                "label_intervals": label_intervals,
+                            }
                         }
-                    }
     return components
 
 
@@ -470,7 +470,7 @@ def create_phase2_example_components():
             'Hours studied per week', 'Test scores'],
     ]
 
-    example_seconds = 2.5
+    label_intervals = [(True, 2.5), (False, 2.5)]
 
     # Use correlation level 5 (0.5) for examples, evenly distribute across [0.4, 0.6]
     base_target = 5 * 0.1  # 0.5
@@ -500,8 +500,7 @@ def create_phase2_example_components():
                 "corr": 5,
                 "exp": 0,
                 "direction": "pos",
-                "seconds": 5,
-                "label_seconds": example_seconds
+                "label_intervals": label_intervals,
             }
         }
     return components

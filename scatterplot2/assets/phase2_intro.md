@@ -26,7 +26,7 @@ There are total **12** tasks to solve after 2 example tasks.
 
 ---
 
-![ex](scatterplot2/assets/phase2_ask.png)
+![ex](scatterplot2/assets/phase2_post_label.png)
 
 ---
 
