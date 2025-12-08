@@ -63,7 +63,7 @@
         },
         "attentionCheckFailed": {
             "type": "react-component",
-            "path": "scatterplot3/assets/attentionCheck.jsx",
+            "path": "scatterplot/assets/attentionCheck.jsx",
             "parameters": {
                 "link": "https://app.prolific.com/submissions/complete?cc=CASYDYPP"
             },
