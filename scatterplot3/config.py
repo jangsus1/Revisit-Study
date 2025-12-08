@@ -131,7 +131,7 @@ def create_default_components(fail_link):
         },
         "attentionCheckFailed": {
             "type": "react-component",
-            "path": "scatterplot3/assets/attentionCheck.jsx",
+            "path": "scatterplot/assets/attentionCheck.jsx",
             "parameters": {
                 "link": fail_link
             },
