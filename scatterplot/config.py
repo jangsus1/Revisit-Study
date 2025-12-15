@@ -377,9 +377,10 @@ def generate_scatterplot_data(n_points=50, min_distance=0.04, max_attempts=200, 
 
 
 def create_phase1_components():
-    """Create phase 1 components: plain scatterplots with evenly distributed correlations"""
+    """Create phase 1 components: phase1 scatterplots with evenly distributed correlations
+    Creates exactly 4*3 = 12 scatterplots (4 correlation levels * 3 scatterplots each)"""
     components = {}
-    for corr in [2, 4, 6, 8]:
+    for corr in [2, 4, 6, 8]:  # 4 correlation levels
         base_target = corr * 0.1
         variance_range = 0.04
         min_target = base_target - variance_range
@@ -390,7 +391,7 @@ def create_phase1_components():
         max_target = min(0.99, max_target)
 
         # Generate evenly distributed target correlations
-        num_scatterplots = 3
+        num_scatterplots = 3  # 3 scatterplots per correlation level
         target_correlations = np.linspace(
             min_target, max_target, num_scatterplots)
 
@@ -399,7 +400,7 @@ def create_phase1_components():
                 # Generate scatterplot coordinates with evenly distributed target correlation
                 coordinates, actual_correlation = generate_scatterplot_data(
                     target_correlation=target_correlations[i])
-                components[f"plain_{corr}_{i}_{direction}"] = {
+                components[f"phase1_{corr}_{i}_{direction}"] = {
                     "baseComponent": "phase1",
                     "parameters": {
                         "coordinates": coordinates,
@@ -412,9 +413,20 @@ def create_phase1_components():
 
 
 def create_phase2_components():
-    """Create phase 2 components: scatterplots with labels"""
+    """Create phase 2 components: scatterplots with labels
+    For each (corr, label, exp) combination, generates ONE scatterplot
+    that is reused for all label_second conditions to control for evaluation.
+    
+    exp=0,1 provides 2 different scatterplot variants per (corr, label) combination
+    to add variability while maintaining determinism via seeded random generation.
+    
+    Component naming: phase2_{label_idx}_{corr}_{exp}_{label_second}
+    Total: 4 corrs × 12 labels × 2 exp × 3 label_seconds = 288 components
+    """
 
-    components = defaultdict(lambda: defaultdict(dict))
+    components = {}
+    num_exp_variants = 2  # Number of scatterplot variants per (corr, label)
+    
     for corr in [2, 4, 6, 8]:
         base_target = corr * 0.1
         variance_range = 0.04
@@ -425,43 +437,51 @@ def create_phase2_components():
         min_target = max(0.01, min_target)  # Ensure positive for phase 2
         max_target = min(0.99, max_target)
 
-        # Calculate total number of scatterplots per correlation level
-        num_experiments = 2
         num_labels = len(labels)
-        num_label_times = 3
-        total_scatterplots = num_experiments * num_labels * num_label_times
+        total_scatterplots = num_labels * num_exp_variants
 
-        # Generate evenly distributed target correlations
+        # Generate evenly distributed target correlations across all (label, exp) combinations
         target_correlations = np.linspace(
             min_target, max_target, total_scatterplots)
         target_idx = 0
 
-        for i in range(num_experiments):  # for phase 2
-            for direction in ["pos"]:
-                for label_idx, label in enumerate(labels):
-                    label_text, x, y = label
-                    for label_second in [0, 2.5, 5.0]:
-                        # Generate scatterplot coordinates with evenly distributed target correlation
-                        coordinates, actual_correlation = generate_scatterplot_data(
-                            target_correlation=target_correlations[target_idx])
-                        target_idx += 1
-                        is_revealed = label_second < 5.0
-                        components[is_revealed][label_text][f"phase2_{corr}_{i}_{direction}_{label_idx}_{label_second}"] = {
-                            "baseComponent": "phase2",
-                            "parameters": {
-                                "coordinates": coordinates,
-                                "example": False,
-                                "correlation": actual_correlation,
-                                "label": label_text,
-                                "X": x,
-                                "Y": y,
-                                "corr": corr,
-                                "exp": i,
-                                "direction": direction,
-                                "seconds": 5,
-                                "label_seconds": label_second
-                            }
+        for label_idx, label in enumerate(labels):
+            label_text, x, y = label
+            
+            for exp in range(num_exp_variants):
+                # Set deterministic seed for each (corr, label_idx, exp) combination
+                # This ensures reproducibility even if generation order changes
+                seed = hash((corr, label_idx, exp)) % (2**32)
+                np.random.seed(seed)
+                
+                # Generate scatterplot ONCE per (corr, label_idx, exp) combination
+                coordinates, actual_correlation = generate_scatterplot_data(
+                    target_correlation=target_correlations[target_idx])
+                target_idx += 1
+                
+                # Reuse the same scatterplot for all label_second conditions
+                for label_second in [0, 2.5, 5.0]:
+                    comp_name = f"phase2_{label_idx}_{corr}_{exp}_{label_second}"
+                    components[comp_name] = {
+                        "baseComponent": "phase2",
+                        "parameters": {
+                            "coordinates": coordinates,  # Same coordinates for all label_second
+                            "example": False,
+                            "correlation": actual_correlation,  # Same correlation for all label_second
+                            "label": label_text,
+                            "X": x,
+                            "Y": y,
+                            "corr": corr,
+                            "exp": exp,
+                            "label_idx": label_idx,
+                            "direction": "pos",
+                            "seconds": 5,
+                            "label_seconds": label_second
                         }
+                    }
+    
+    # Reset seed to global default for subsequent operations
+    np.random.seed(42)
     return components
 
 
@@ -529,21 +549,70 @@ def create_phase3_components():
 
 
 def sequence_generator(phase1_components, phase2_components, phase2_example_components, phase3_components):
-    """Generate the study sequence"""
-    revealed_groups = [{
-        "id": f"revealed_{label[0][:30]}",
-        "order": "latinSquare",
-        "numSamples": 1,
-        "components": list(phase2_components[True][label[0]].keys())
-    } for label in labels]
-
-    unrevealed_groups = [{
-        "id": f"unrevealed_{label[0][:30]}",
-        "order": "latinSquare",
-        "numSamples": 1,
-        "components": list(phase2_components[False][label[0]].keys())
-    } for label in labels]
-
+    """Generate the study sequence with scheme-based latin square for phase 2.
+    
+    Phase 2 structure ensures that for each label, unrevealed and revealed conditions
+    use the SAME correlation level AND exp variant, with ALL 24 trials fully interleaved:
+    
+    - 8 schemes (latin square): 4 corr rotations × 2 exp patterns
+    - Each scheme has predetermined (corr, exp) for each label
+    - All 24 trials (12 unrevealed + 12 revealed) randomized together at scheme level
+    - For revealed: pick label_seconds 0 or 2.5 (random)
+    
+    This ensures unrevealed and revealed are NOT consecutive but still matched.
+    """
+    
+    # Define correlation assignment schemes using latin square rotation
+    corrs = [2, 4, 6, 8]
+    num_labels = len(labels)  # 12 labels
+    labels_per_corr = num_labels // len(corrs)  # 3 labels per corr
+    
+    # Create 8 schemes: 4 corr rotations × 2 exp patterns
+    schemes = []
+    for corr_rotation in range(len(corrs)):
+        # Rotate correlation assignments for this scheme
+        rotated_corrs = corrs[corr_rotation:] + corrs[:corr_rotation]
+        
+        for exp_pattern in range(2):
+            # Build all 24 trials for this scheme (flattened for true interleaving)
+            all_trials = []
+            
+            for label_idx in range(num_labels):
+                # Determine which correlation this label gets
+                corr_group_idx = label_idx // labels_per_corr
+                assigned_corr = rotated_corrs[corr_group_idx]
+                
+                # Determine exp based on pattern (alternating by label index)
+                # Pattern 0: even labels → exp0, odd labels → exp1
+                # Pattern 1: even labels → exp1, odd labels → exp0
+                if exp_pattern == 0:
+                    exp = label_idx % 2
+                else:
+                    exp = 1 - (label_idx % 2)
+                
+                # Add unrevealed trial (direct component reference)
+                unrevealed_comp = f"phase2_{label_idx}_{assigned_corr}_{exp}_5.0"
+                all_trials.append(unrevealed_comp)
+                
+                # Add revealed trial group (random pick between label_seconds 0 or 2.5)
+                revealed_group = {
+                    "id": f"label_{label_idx}",
+                    "order": "random",
+                    "numSamples": 1,
+                    "components": [
+                        f"phase2_{label_idx}_{assigned_corr}_{exp}_0",
+                        f"phase2_{label_idx}_{assigned_corr}_{exp}_2.5"
+                    ]
+                }
+                all_trials.append(revealed_group)
+            
+            # Scheme group: ALL 24 trials in random order (true interleaving!)
+            schemes.append({
+                "id": f"scheme_{corr_rotation}_{exp_pattern}",
+                "order": "random",
+                "components": all_trials
+            })
+    
     # Create list of example component names
     example_component_names = list(phase2_example_components.keys())
 
@@ -603,8 +672,9 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
             "phase2_main",
             {
                 "id": "phase2",
-                "order": "random",
-                "components": unrevealed_groups + revealed_groups
+                "order": "latinSquare",
+                "numSamples": 1,
+                "components": schemes
             },
 
             "demographics"
@@ -621,17 +691,12 @@ prolificRedirectionFailedAttentionCheck = "https://app.prolific.com/submissions/
 # Generate components
 default_components = create_default_components(prolificRedirectionFailedAttentionCheck)
 phase1_components = create_phase1_components()
-phase2_components = create_phase2_components()
+phase2_components = create_phase2_components()  # Now returns flat dict
 phase2_example_components = create_phase2_example_components()
 phase3_components = create_phase3_components()
 
-# Combine all components
-components = default_components | phase1_components | phase2_example_components | phase3_components
-
-for component in phase2_components[True].values():
-    components |= component
-for component in phase2_components[False].values():
-    components |= component
+# Combine all components (phase2_components is now a flat dict)
+components = default_components | phase1_components | phase2_example_components | phase3_components | phase2_components
 
 # Generate sequence
 sequence = sequence_generator(
