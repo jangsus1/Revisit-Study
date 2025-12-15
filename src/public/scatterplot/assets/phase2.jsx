@@ -98,16 +98,12 @@ function Phase2({ parameters, setAnswer }) {
       answers: {
         answer: JSON.stringify({
           actualCorr: correlation,
-          coordinates: coordinates,
-          label: label,
-          X: X,
-          Y: Y,
           corrAfter: corrAfter,
         })
       }
     });
     setCorrAfter(corrAfter);
-  }, [setAnswer, corrAfter, correlation, coordinates, label, X, Y]);
+  }, [setAnswer, correlation, setCorrAfter]);
 
   // Draw scatterplot with D3 - only when view changes or coordinates change
   useEffect(() => {

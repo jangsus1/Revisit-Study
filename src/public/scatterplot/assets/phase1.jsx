@@ -131,7 +131,6 @@ function Plain({ parameters, setAnswer }) {
       answers: {
         answer: JSON.stringify({
           actualCorr: correlation,
-          coordinates: coordinates,
           estimatedCorr: slider,
         })
       }
