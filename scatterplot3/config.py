@@ -430,7 +430,7 @@ def create_phase2_components():
         num_labels = len(labels)
         total_scatterplots = num_experiments * num_labels
 
-        label_interval_options = [[(True, 2.5), (False, 2.5), (False, 2.5)], [(False, 2.5), (True, 2.5), (False, 2.5)]]
+        label_interval_options = [[(True, 2.5), (False, 2.5)], [(False, 2.5), (True, 2.5)]]
 
         # Generate evenly distributed target correlations
         target_correlations = np.linspace(min_target, max_target, total_scatterplots)

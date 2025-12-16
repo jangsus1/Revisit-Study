@@ -2,10 +2,14 @@
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.3.2/src/parser/GlobalConfigSchema.json",
   "configsList": [
     "scatterplot",
+    "scatterplot_extend",
     "scatterplot2",
     "scatterplot3"
   ],
   "configs": {
+    "scatterplot_extend": {
+      "path": "scatterplot_extend/config.json"
+    },
     "scatterplot": {
       "path": "scatterplot/config.json"
     },
