@@ -39,6 +39,68 @@ labels = [
 ]
 
 
+def calculate_tilt_angle(original_corr, desired_corr, k=1.0):
+    """
+    Calculate the tilt angle (angle between X and Y axes) needed to transform
+    a scatterplot from original_corr to desired_corr through shearing.
+    
+    Formula:
+        cot(α) = (1/k) * (ρ_new * sqrt((1 - ρ_old²)/(1 - ρ_new²)) - ρ_old)
+        α = arctan(1/cot(α))
+    
+    Args:
+        original_corr (float): The original correlation (ρ_old), should be in [-1, 1]
+        desired_corr (float): The target correlation (ρ_new), should be in [-1, 1]
+        k (float): Ratio of Y-axis standard deviation to X-axis standard deviation (σ_y/σ_x).
+                   Default is 1.0 (equal standard deviations).
+    
+    Returns:
+        float: The tilt angle α in degrees. This is the angle between the X and Y axes.
+               - If angle < 90°, the Y-axis tilts to the right
+               - If angle = 90°, no tilt (orthogonal axes)
+               - If angle > 90°, the Y-axis tilts to the left
+    
+    Note:
+        The function handles quadrant correction. If cot(α) is negative, the angle
+        will be obtuse (>90°). The result is normalized to be in [0, 180] degrees.
+    """
+    # Clamp correlations to valid range
+    rho_old = np.clip(original_corr, -0.99, 0.99)
+    rho_new = np.clip(desired_corr, -0.99, 0.99)
+    
+    # Avoid division by zero or invalid square roots
+    if abs(rho_old) >= 1.0 or abs(rho_new) >= 1.0:
+        raise ValueError("Correlations must be in the range (-1, 1)")
+    
+    # Calculate the term inside the square root
+    sqrt_term = (1 - rho_old**2) / (1 - rho_new**2)
+    
+    # Check for negative values (shouldn't happen with valid correlations, but safety check)
+    if sqrt_term < 0:
+        raise ValueError("Invalid correlation combination: square root term is negative")
+    
+    # Calculate cot(α)
+    cot_alpha = (1.0 / k) * (rho_new * np.sqrt(sqrt_term) - rho_old)
+    
+    # Handle edge cases
+    if abs(cot_alpha) < 1e-10:  # cot(α) ≈ 0 means α ≈ 90°
+        return 90.0
+    
+    # Calculate α = arctan(1/cot(α))
+    # Use arctan2 for better quadrant handling
+    alpha_rad = np.arctan2(1.0, cot_alpha)
+    
+    # Convert to degrees
+    alpha_deg = np.degrees(alpha_rad)
+    
+    # Normalize to [0, 180] degrees range
+    # If negative, add 180° to get the obtuse angle
+    if alpha_deg < 0:
+        alpha_deg += 180.0
+    
+    return alpha_deg
+
+
 def generate_base_components():
     """Generate base components: phase2, phase1, and phase3"""
     return {
@@ -430,7 +492,7 @@ def create_phase2_components():
         num_labels = len(labels)
         total_scatterplots = num_experiments * num_labels
 
-        label_interval_options = [[(True, 2.5), (False, 2.5)], [(False, 2.5), (True, 2.5)]]
+        label_interval_options = [[(True, 2.5), (False, 2.5), (False, 2.5)], [(False, 2.5), (True, 2.5), (False, 2.5)]]
 
         # Generate evenly distributed target correlations
         target_correlations = np.linspace(min_target, max_target, total_scatterplots)
