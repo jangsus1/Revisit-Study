@@ -433,7 +433,7 @@ def create_phase2_components():
     to add variability while maintaining determinism via seeded random generation.
 
     Component naming: phase2_{label_idx}_{corr}_{exp}_{label_second}
-    Total: 4 corrs × 12 labels × 2 exp × 7 label_seconds = 672 components
+    Total: 4 corrs × 12 labels × 2 exp × 8 label_seconds = 768 components
     """
 
     components = {}
@@ -472,7 +472,7 @@ def create_phase2_components():
                 target_idx += 1
 
                 # Reuse the same scatterplot for all label_second conditions
-                for label_second in [1, 1.5, 2, 3, 3.5, 4, 5.0]:
+                for label_second in [1, 1.5, 2, 2.5, 3, 3.5, 4, 5.0]:
                     comp_name = f"phase2_{label_idx}_{corr}_{exp}_{label_second}"
                     components[comp_name] = {
                         "baseComponent": "phase2",
@@ -569,7 +569,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
     - 8 schemes (latin square): 4 corr rotations × 2 exp patterns
     - Each scheme has predetermined (corr, exp) for each label
     - All 24 trials (12 unrevealed + 12 revealed) randomized together at scheme level
-    - For revealed: pick label_seconds from [1, 1.5, 2, 3, 3.5, 4] (random)
+    - For revealed: pick label_seconds from [1, 1.5, 2, 2.5, 3, 3.5, 4] (random)
 
     This ensures unrevealed and revealed are NOT consecutive but still matched.
     """
@@ -606,7 +606,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
                 unrevealed_comp = f"phase2_{label_idx}_{assigned_corr}_{exp}_5.0"
                 all_trials.append(unrevealed_comp)
 
-                # Add revealed trial group (random pick from label_seconds [1, 1.5, 2, 3, 3.5, 4])
+                # Add revealed trial group (random pick from label_seconds [1, 1.5, 2, 2.5, 3, 3.5, 4])
                 revealed_group = {
                     "id": f"label_{label_idx}",
                     "order": "random",
@@ -615,6 +615,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
                         f"phase2_{label_idx}_{assigned_corr}_{exp}_1",
                         f"phase2_{label_idx}_{assigned_corr}_{exp}_1.5",
                         f"phase2_{label_idx}_{assigned_corr}_{exp}_2",
+                        f"phase2_{label_idx}_{assigned_corr}_{exp}_2.5",
                         f"phase2_{label_idx}_{assigned_corr}_{exp}_3",
                         f"phase2_{label_idx}_{assigned_corr}_{exp}_3.5",
                         f"phase2_{label_idx}_{assigned_corr}_{exp}_4"
