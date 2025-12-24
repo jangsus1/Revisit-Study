@@ -164,7 +164,13 @@ def create_default_components(fail_link):
                     ],
                     "withDivider": True
                 }
-            ]
+            ],
+            "correctAnswer": [
+                {
+                    "id": "attention_q2",
+                    "answer": "The closer r is to 1"
+                }
+            ],
         },
         "attentionCheck1": {
             "type": "questionnaire",
@@ -183,7 +189,13 @@ def create_default_components(fail_link):
                     ],
                     "withDivider": True
                 },
-            ]
+            ],
+            "correctAnswer": [
+                {
+                    "id": "attention_q1",
+                    "answer": "0 to 1"
+                }
+            ],
         },
         "demographics": {
             "type": "markdown",
@@ -416,17 +428,17 @@ def create_phase2_components():
     """Create phase 2 components: scatterplots with labels
     For each (corr, label, exp) combination, generates ONE scatterplot
     that is reused for all label_second conditions to control for evaluation.
-    
+
     exp=0,1 provides 2 different scatterplot variants per (corr, label) combination
     to add variability while maintaining determinism via seeded random generation.
-    
+
     Component naming: phase2_{label_idx}_{corr}_{exp}_{label_second}
-    Total: 4 corrs × 12 labels × 2 exp × 3 label_seconds = 288 components
+    Total: 4 corrs × 12 labels × 2 exp × 7 label_seconds = 672 components
     """
 
     components = {}
     num_exp_variants = 2  # Number of scatterplot variants per (corr, label)
-    
+
     for corr in [2, 4, 6, 8]:
         base_target = corr * 0.1
         variance_range = 0.04
@@ -447,20 +459,20 @@ def create_phase2_components():
 
         for label_idx, label in enumerate(labels):
             label_text, x, y = label
-            
+
             for exp in range(num_exp_variants):
                 # Set deterministic seed for each (corr, label_idx, exp) combination
                 # This ensures reproducibility even if generation order changes
                 seed = hash((corr, label_idx, exp)) % (2**32)
                 np.random.seed(seed)
-                
+
                 # Generate scatterplot ONCE per (corr, label_idx, exp) combination
                 coordinates, actual_correlation = generate_scatterplot_data(
                     target_correlation=target_correlations[target_idx])
                 target_idx += 1
-                
+
                 # Reuse the same scatterplot for all label_second conditions
-                for label_second in [1.5, 3.5, 5.0]:
+                for label_second in [1, 1.5, 2, 3, 3.5, 4, 5.0]:
                     comp_name = f"phase2_{label_idx}_{corr}_{exp}_{label_second}"
                     components[comp_name] = {
                         "baseComponent": "phase2",
@@ -479,7 +491,7 @@ def create_phase2_components():
                             "label_seconds": label_second
                         }
                     }
-    
+
     # Reset seed to global default for subsequent operations
     np.random.seed(42)
     return components
@@ -550,38 +562,38 @@ def create_phase3_components():
 
 def sequence_generator(phase1_components, phase2_components, phase2_example_components, phase3_components):
     """Generate the study sequence with scheme-based latin square for phase 2.
-    
+
     Phase 2 structure ensures that for each label, unrevealed and revealed conditions
     use the SAME correlation level AND exp variant, with ALL 24 trials fully interleaved:
-    
+
     - 8 schemes (latin square): 4 corr rotations × 2 exp patterns
     - Each scheme has predetermined (corr, exp) for each label
     - All 24 trials (12 unrevealed + 12 revealed) randomized together at scheme level
-    - For revealed: pick label_seconds 1.5 or 3.5 (random)
-    
+    - For revealed: pick label_seconds from [1, 1.5, 2, 3, 3.5, 4] (random)
+
     This ensures unrevealed and revealed are NOT consecutive but still matched.
     """
-    
+
     # Define correlation assignment schemes using latin square rotation
     corrs = [2, 4, 6, 8]
     num_labels = len(labels)  # 12 labels
     labels_per_corr = num_labels // len(corrs)  # 3 labels per corr
-    
+
     # Create 8 schemes: 4 corr rotations × 2 exp patterns
     schemes = []
     for corr_rotation in range(len(corrs)):
         # Rotate correlation assignments for this scheme
         rotated_corrs = corrs[corr_rotation:] + corrs[:corr_rotation]
-        
+
         for exp_pattern in range(2):
             # Build all 24 trials for this scheme (flattened for true interleaving)
             all_trials = []
-            
+
             for label_idx in range(num_labels):
                 # Determine which correlation this label gets
                 corr_group_idx = label_idx // labels_per_corr
                 assigned_corr = rotated_corrs[corr_group_idx]
-                
+
                 # Determine exp based on pattern (alternating by label index)
                 # Pattern 0: even labels → exp0, odd labels → exp1
                 # Pattern 1: even labels → exp1, odd labels → exp0
@@ -589,30 +601,34 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
                     exp = label_idx % 2
                 else:
                     exp = 1 - (label_idx % 2)
-                
+
                 # Add unrevealed trial (direct component reference)
                 unrevealed_comp = f"phase2_{label_idx}_{assigned_corr}_{exp}_5.0"
                 all_trials.append(unrevealed_comp)
-                
-                # Add revealed trial group (random pick between label_seconds 1.5 or 3.5)
+
+                # Add revealed trial group (random pick from label_seconds [1, 1.5, 2, 3, 3.5, 4])
                 revealed_group = {
                     "id": f"label_{label_idx}",
                     "order": "random",
                     "numSamples": 1,
                     "components": [
+                        f"phase2_{label_idx}_{assigned_corr}_{exp}_1",
                         f"phase2_{label_idx}_{assigned_corr}_{exp}_1.5",
-                        f"phase2_{label_idx}_{assigned_corr}_{exp}_3.5"
+                        f"phase2_{label_idx}_{assigned_corr}_{exp}_2",
+                        f"phase2_{label_idx}_{assigned_corr}_{exp}_3",
+                        f"phase2_{label_idx}_{assigned_corr}_{exp}_3.5",
+                        f"phase2_{label_idx}_{assigned_corr}_{exp}_4"
                     ]
                 }
                 all_trials.append(revealed_group)
-            
+
             # Scheme group: ALL 24 trials in random order (true interleaving!)
             schemes.append({
                 "id": f"scheme_{corr_rotation}_{exp_pattern}",
                 "order": "random",
                 "components": all_trials
             })
-    
+
     # Create list of example component names
     example_component_names = list(phase2_example_components.keys())
 
@@ -689,7 +705,8 @@ prolificRedirectionFailedAttentionCheck = "https://app.prolific.com/submissions/
 
 
 # Generate components
-default_components = create_default_components(prolificRedirectionFailedAttentionCheck)
+default_components = create_default_components(
+    prolificRedirectionFailedAttentionCheck)
 phase1_components = create_phase1_components()
 phase2_components = create_phase2_components()  # Now returns flat dict
 phase2_example_components = create_phase2_example_components()
@@ -749,9 +766,6 @@ if correlation_values:
     print(f"\n{'='*60}")
 else:
     print("\nNo correlation values found in components.")
-
-
-
 
 
 # Write the config.json file
