@@ -472,7 +472,7 @@ def create_phase2_components():
                 target_idx += 1
 
                 # Reuse the same scatterplot for all label_second conditions
-                for label_second in [1, 1.5, 2, 2.5, 3, 3.5, 4, 5.0]:
+                for label_second in [0, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5.0]:
                     comp_name = f"phase2_{label_idx}_{corr}_{exp}_{label_second}"
                     components[comp_name] = {
                         "baseComponent": "phase2",
