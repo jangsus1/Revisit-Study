@@ -472,7 +472,7 @@ def create_phase2_components():
                 target_idx += 1
 
                 # Reuse the same scatterplot for all label_second conditions
-                for label_second in [0, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5.0]:
+                for label_second in [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5.0]:
                     comp_name = f"phase2_{label_idx}_{corr}_{exp}_{label_second}"
                     components[comp_name] = {
                         "baseComponent": "phase2",
@@ -611,7 +611,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
                     "id": f"label_{label_idx}",
                     "order": "random",
                     "numSamples": 1,
-                    "components": [f"phase2_{label_idx}_{assigned_corr}_{exp}_{i}" for i in [0, 1, 1.5, 2, 2.5, 3, 3.5, 4]]
+                    "components": [f"phase2_{label_idx}_{assigned_corr}_{exp}_{i}" for i in [0, 0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 5.0]]
                 }
                 all_trials.append(revealed_group)
 
