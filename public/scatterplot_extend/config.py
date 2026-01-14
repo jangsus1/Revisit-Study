@@ -611,15 +611,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
                     "id": f"label_{label_idx}",
                     "order": "random",
                     "numSamples": 1,
-                    "components": [
-                        f"phase2_{label_idx}_{assigned_corr}_{exp}_1",
-                        f"phase2_{label_idx}_{assigned_corr}_{exp}_1.5",
-                        f"phase2_{label_idx}_{assigned_corr}_{exp}_2",
-                        f"phase2_{label_idx}_{assigned_corr}_{exp}_2.5",
-                        f"phase2_{label_idx}_{assigned_corr}_{exp}_3",
-                        f"phase2_{label_idx}_{assigned_corr}_{exp}_3.5",
-                        f"phase2_{label_idx}_{assigned_corr}_{exp}_4"
-                    ]
+                    "components": [f"phase2_{label_idx}_{assigned_corr}_{exp}_{i}" for i in [0, 1, 1.5, 2, 2.5, 3, 3.5, 4]]
                 }
                 all_trials.append(revealed_group)
 
