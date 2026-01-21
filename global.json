@@ -1,10 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.3.2/src/parser/GlobalConfigSchema.json",
   "configsList": [
-    "scatterplot",
     "scatterplot_extend",
-    "scatterplot2",
-    "scatterplot3"
+    "scatterplot_interval"
   ],
   "configs": {
     "scatterplot_extend": {
@@ -12,6 +10,9 @@
     },
     "scatterplot": {
       "path": "scatterplot/config.json"
+    },
+    "scatterplot_interval": {
+      "path": "scatterplot_interval/config.json"
     },
     "scatterplot2": {
       "path": "scatterplot2/config.json"
