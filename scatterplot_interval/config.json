@@ -27,43 +27,43 @@
     "components": {
         "consent": {
             "type": "markdown",
-            "path": "scatterplot/assets/consent.md",
+            "path": "scatterplot_interval/assets/consent.md",
             "nextButtonText": "I agree",
             "response": []
         },
         "introduction": {
             "type": "markdown",
-            "path": "scatterplot/assets/introduction.md",
+            "path": "scatterplot_interval/assets/introduction.md",
             "response": []
         },
         "phase1_intro": {
             "type": "markdown",
-            "path": "scatterplot/assets/phase1_intro.md",
+            "path": "scatterplot_interval/assets/phase1_intro.md",
             "response": []
         },
         "phase2_intro": {
             "type": "markdown",
-            "path": "scatterplot/assets/phase2_intro.md",
+            "path": "scatterplot_interval/assets/phase2_intro.md",
             "response": []
         },
         "phase2_examples": {
             "type": "markdown",
-            "path": "scatterplot/assets/phase2_examples.md",
+            "path": "scatterplot_interval/assets/phase2_examples.md",
             "response": []
         },
         "phase2_main": {
             "type": "markdown",
-            "path": "scatterplot/assets/phase2_main.md",
+            "path": "scatterplot_interval/assets/phase2_main.md",
             "response": []
         },
         "phase3_intro": {
             "type": "markdown",
-            "path": "scatterplot/assets/phase3_intro.md",
+            "path": "scatterplot_interval/assets/phase3_intro.md",
             "response": []
         },
         "attentionCheckFailed": {
             "type": "react-component",
-            "path": "scatterplot/assets/attentionCheck.jsx",
+            "path": "scatterplot_interval/assets/attentionCheck.jsx",
             "parameters": {
                 "link": "https://app.prolific.com/submissions/complete?cc=CASYDYPP"
             },
@@ -109689,7 +109689,7 @@
     "baseComponents": {
         "phase2": {
             "type": "react-component",
-            "path": "scatterplot/assets/phase2_control.jsx",
+            "path": "scatterplot_interval/assets/phase2_control.jsx",
             "response": [
                 {
                     "id": "answer",
@@ -109704,7 +109704,7 @@
         },
         "phase1": {
             "type": "react-component",
-            "path": "scatterplot/assets/phase1.jsx",
+            "path": "scatterplot_interval/assets/phase1.jsx",
             "response": [
                 {
                     "id": "answer",
@@ -109719,7 +109719,7 @@
         },
         "phase3": {
             "type": "react-component",
-            "path": "scatterplot/assets/phase3.jsx",
+            "path": "scatterplot_interval/assets/phase3.jsx",
             "response": [
                 {
                     "id": "answer",
