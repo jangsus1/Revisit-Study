@@ -4,15 +4,6 @@ import { Box, Button } from "@mantine/core";
 import React from "react";
 import { NormalSlider } from "./Slider";
 
-// ============================================================================
-// GLOBAL CONFIGURATION OPTIONS
-// ============================================================================
-// Set to true to always use slope = 1 (45-degree line through data centroid)
-// Set to false to use the actual regression slope calculated from data
-const USE_FIXED_SLOPE = true;
-const FIXED_SLOPE_VALUE = 1;
-// ============================================================================
-
 function Phase2({ parameters, setAnswer }) {
 
   // Plot margins - same as phase1 to ensure identical plot area
@@ -40,51 +31,13 @@ function Phase2({ parameters, setAnswer }) {
   }
 
   const ref = useRef(null);
-  const { coordinates, example, seconds, label_seconds, correlation, label, X, Y, type } = parameters;
+  const { coordinates, example, seconds, label_start, label_end, correlation, label, X, Y } = parameters;
   const [view, setView] = useState("scatter"); // scatter, corrafter, belief
   const [corrAfter, setCorrAfter] = useState(0);
   const [hasClicked, setHasClicked] = useState(false);
   const [isBlurred, setIsBlurred] = useState(true);
   const [labelsVisible, setLabelsVisible] = useState(false);
-
-  // Calculate regression line and statistics
-  const regressionData = React.useMemo(() => {
-    if (!coordinates || coordinates.length === 0) return null;
-    
-    // Calculate means (centroid of data)
-    const xMean = d3.mean(coordinates, d => d[0]);
-    const yMean = d3.mean(coordinates, d => d[1]);
-    
-    let slope, intercept;
-    
-    if (USE_FIXED_SLOPE) {
-      // Use fixed slope (default: 1 for 45-degree line)
-      // Line passes through data centroid: y - yMean = slope * (x - xMean)
-      slope = FIXED_SLOPE_VALUE;
-      intercept = yMean - slope * xMean;
-    } else {
-      // Calculate actual regression slope and intercept from data
-      let numerator = 0;
-      let denominator = 0;
-      for (let i = 0; i < coordinates.length; i++) {
-        const xDiff = coordinates[i][0] - xMean;
-        const yDiff = coordinates[i][1] - yMean;
-        numerator += xDiff * yDiff;
-        denominator += xDiff * xDiff;
-      }
-      slope = numerator / denominator;
-      intercept = yMean - slope * xMean;
-    }
-    
-    // Calculate standard deviation of residuals (for band width)
-    const residuals = coordinates.map(d => {
-      const predicted = slope * d[0] + intercept;
-      return Math.abs(d[1] - predicted);
-    });
-    const stdDev = d3.deviation(residuals);
-    
-    return { xMean, yMean, slope, intercept, stdDev };
-  }, [coordinates]);
+  const clickTimeRef = useRef(null);
 
   // Calculate scales based on fixed size
   const plotWidth = fixedSize.width - margin.left - margin.right;
@@ -98,36 +51,40 @@ function Phase2({ parameters, setAnswer }) {
       setIsBlurred(true);
       setHasClicked(false);
       setLabelsVisible(false);
+      clickTimeRef.current = null;
     }
   }, [view]);
 
-  // Handle label visibility based on label_seconds
+  // Handle label visibility based on label_start and label_end
   useEffect(() => {
     if (view !== "scatter") return;
     if (!hasClicked) return;
-    if (label_seconds === undefined || label_seconds === null) return;
+    if (clickTimeRef.current === null) return;
     
-    // Case 1: label_seconds === 0: Show labels immediately
-    if (label_seconds === 0) {
-      setLabelsVisible(true);
-      return;
-    }
-    
-    // Case 2: label_seconds >= seconds: Never show labels
-    if (label_seconds >= seconds) {
+    // If label_start or label_end are undefined/null, labels never show
+    if (label_start === undefined || label_start === null || 
+        label_end === undefined || label_end === null) {
       setLabelsVisible(false);
       return;
     }
     
-    // Case 3: 0 < label_seconds < seconds: Show labels after label_seconds
-    const timer = setTimeout(() => {
-      setLabelsVisible(true);
-    }, label_seconds * 1000);
+    // Function to check and update label visibility
+    const checkLabelVisibility = () => {
+      const elapsedTime = (Date.now() - clickTimeRef.current) / 1000; // elapsed time in seconds
+      const shouldShow = elapsedTime >= label_start && elapsedTime < label_end;
+      setLabelsVisible(shouldShow);
+    };
+    
+    // Check immediately
+    checkLabelVisibility();
+    
+    // Set up interval to check every 100ms for smooth transitions
+    const interval = setInterval(checkLabelVisibility, 100);
     
     return () => {
-      clearTimeout(timer);
+      clearInterval(interval);
     };
-  }, [view, hasClicked, label_seconds, seconds]);
+  }, [view, hasClicked, label_start, label_end]);
 
   // Timer to change view after seconds when in scatter view
   useEffect(() => {
@@ -146,16 +103,12 @@ function Phase2({ parameters, setAnswer }) {
       answers: {
         answer: JSON.stringify({
           actualCorr: correlation,
-          coordinates: coordinates,
-          label: label,
-          X: X,
-          Y: Y,
           corrAfter: corrAfter,
         })
       }
     });
     setCorrAfter(corrAfter);
-  }, [setAnswer, corrAfter, correlation, coordinates, label, X, Y]);
+  }, [setAnswer, correlation, setCorrAfter]);
 
   // Draw scatterplot with D3 - only when view changes or coordinates change
   useEffect(() => {
@@ -259,176 +212,6 @@ function Phase2({ parameters, setAnswer }) {
       .style('stroke', '#000')
       .style('stroke-width', 2);
 
-    // Add regression band if regression data is available
-    if (regressionData) {
-      const { slope, intercept, stdDev } = regressionData;
-      
-      // Create points for the regression line across the plot
-      const xDomain = xScale.domain();
-      const yDomain = yScale.domain();
-      
-      const bandData = [];
-      const steps = 100;
-      for (let i = 0; i <= steps; i++) {
-        const x = xDomain[0] + (xDomain[1] - xDomain[0]) * (i / steps);
-        const yPred = slope * x + intercept;
-        bandData.push({ x, yPred });
-      }
-      
-      // Create a clip path to constrain all bands to the plot area
-      const defs = svg.append('defs');
-      const clipId = 'plot-area-clip';
-      defs.append('clipPath')
-        .attr('id', clipId)
-        .append('rect')
-        .attr('x', margin.left)
-        .attr('y', margin.top)
-        .attr('width', plotWidth)
-        .attr('height', plotHeight);
-      
-      // Determine if we should use continuous or discrete banding
-      const useContinuous = type === 'continuous';
-      
-      if (useContinuous) {
-        // Continuous colormap-like band centered on the regression line
-        const gradientId = 'band-gradient-continuous';
-
-        // Calculate the regression line direction in PIXEL space
-        // In pixel space, y is inverted, so we need to account for this
-        const x1Data = xDomain[0];
-        const x2Data = xDomain[1];
-        const y1Data = slope * x1Data + intercept;
-        const y2Data = slope * x2Data + intercept;
-        
-        // Convert to pixel coordinates
-        const x1Pixel = xScale(x1Data);
-        const y1Pixel = yScale(y1Data);
-        const x2Pixel = xScale(x2Data);
-        const y2Pixel = yScale(y2Data);
-        
-        // Direction vector of regression line in pixel space
-        const lineDx = x2Pixel - x1Pixel;
-        const lineDy = y2Pixel - y1Pixel;
-        const lineLen = Math.sqrt(lineDx * lineDx + lineDy * lineDy);
-        
-        // Perpendicular direction (rotate 90 degrees)
-        const perpDx = -lineDy / lineLen;
-        const perpDy = lineDx / lineLen;
-        
-        // Anchor point at center of the regression line in pixel space
-        const anchorXPixel = (x1Pixel + x2Pixel) / 2;
-        const anchorYPixel = (y1Pixel + y2Pixel) / 2;
-        
-        // Gradient length should cover the full plot diagonal
-        const plotDiagonal = Math.sqrt(plotWidth * plotWidth + plotHeight * plotHeight);
-        const halfLen = plotDiagonal / 2;
-        
-        // Gradient endpoints perpendicular to the regression line
-        const gradX1 = anchorXPixel + perpDx * halfLen;
-        const gradY1 = anchorYPixel + perpDy * halfLen;
-        const gradX2 = anchorXPixel - perpDx * halfLen;
-        const gradY2 = anchorYPixel - perpDy * halfLen;
-
-        const linearGradient = defs.append('linearGradient')
-          .attr('id', gradientId)
-          .attr('gradientUnits', 'userSpaceOnUse')
-          .attr('x1', gradX1)
-          .attr('y1', gradY1)
-          .attr('x2', gradX2)
-          .attr('y2', gradY2);
-
-        // Symmetric palette: light at edges, darker at center (regression line)
-        // Gradient goes from one side → center → other side
-        const colors = [
-          { offset: '0%', color: '#8fb1e5', opacity: 0 },
-          { offset: '20%', color: '#8fb1e5', opacity: 0.2 },
-          { offset: '30%', color: '#8fb1e5', opacity: 0.4 },
-          { offset: '40%', color: '#8fb1e5', opacity: 0.6 },
-          { offset: '50%', color: '#8fb1e5', opacity: 0.8 },  // Center (regression line)
-          { offset: '60%', color: '#8fb1e5', opacity: 0.6 },
-          { offset: '70%', color: '#8fb1e5', opacity: 0.4 },
-          { offset: '80%', color: '#8fb1e5', opacity: 0.2 },
-          { offset: '100%', color: '#8fb1e5', opacity: 0 }
-        ];
-        
-        colors.forEach(({ offset, color, opacity }) => {
-          linearGradient.append('stop')
-            .attr('offset', offset)
-            .attr('stop-color', color)
-            .attr('stop-opacity', opacity);
-        });
-
-        // Cover entire plot area with clipping
-        svg.append('rect')
-          .attr('class', 'regression-band-background')
-          .attr('x', margin.left)
-          .attr('y', margin.top)
-          .attr('width', plotWidth)
-          .attr('height', plotHeight)
-          .attr('clip-path', `url(#${clipId})`)
-          .attr('fill', `url(#${gradientId})`);
-
-      } else {
-        // Discrete color bands covering entire plot height, centered on regression line
-        // Create a group for all bands with clipping applied
-        const bandGroup = svg.append('g')
-          .attr('clip-path', `url(#${clipId})`);
-        
-        const numBands = 6; // number of steps on each side
-        const totalSpan = yDomain[1] - yDomain[0];
-        const bandStep = totalSpan / numBands; // large enough to reach boundaries
-
-        // Monotonic sequential palette (light blues, darker near center)
-        const palette = ['#f4f8ff', '#e7effb', '#d5e3f7', '#c0d4f2', '#a8c2ec', '#8fb1e5'];
-        const paletteSize = palette.length;
-
-        // From negative to positive bands to ensure full coverage
-        for (let i = -numBands; i < numBands; i++) {
-          const lowerOffset = i * bandStep;
-          const upperOffset = (i + 1) * bandStep;
-
-          // Don't clamp here - let the clip path handle boundaries
-          const bandDataRange = bandData.map(d => ({
-            x: d.x,
-            yLower: d.yPred + lowerOffset,
-            yUpper: d.yPred + upperOffset
-          }));
-
-          // Color index based on distance from regression line (center darker)
-          const dist = Math.abs((i + 0.5) / numBands);
-          const colorIndex = Math.min(Math.round(dist * (paletteSize - 1)), paletteSize - 1);
-          const fillColor = palette[colorIndex];
-
-          const areaBand = d3.area()
-            .x(d => xScale(d.x))
-            .y0(d => yScale(d.yLower))
-            .y1(d => yScale(d.yUpper));
-
-          bandGroup.append('path')
-            .datum(bandDataRange)
-            .attr('class', `regression-band-${i}`)
-            .attr('d', areaBand)
-            .attr('fill', fillColor)
-            .attr('opacity', 0.65);
-
-          // Border for distinction
-          const borderLine = d3.line()
-            .x(d => xScale(d.x))
-            .y(d => yScale(d.yUpper));
-
-          bandGroup.append('path')
-            .datum(bandDataRange)
-            .attr('class', `band-border-${i}`)
-            .attr('d', borderLine)
-            .attr('stroke', '#7f9fcf')
-            .attr('stroke-width', 0.6)
-            .attr('stroke-dasharray', '4,3')
-            .attr('fill', 'none')
-            .attr('opacity', 0.5);
-        }
-      }
-    }
-
     // Add scatter points
     svg.selectAll('.dot')
       .data(coordinates)
@@ -440,7 +223,7 @@ function Phase2({ parameters, setAnswer }) {
       .attr('r', 3)
       .attr('fill', 'black');
 
-  }, [view, coordinates, xScale, yScale, fixedSize, margin, X, Y, regressionData, plotWidth, plotHeight]);
+  }, [view, coordinates, xScale, yScale, fixedSize, margin, X, Y]);
 
   // SEPARATE effect to update label blur - this doesn't need scales!
   useEffect(() => {
@@ -469,6 +252,7 @@ function Phase2({ parameters, setAnswer }) {
     if (!hasClicked) {
       setIsBlurred(false);
       setHasClicked(true);
+      clickTimeRef.current = Date.now(); // Record click time
     }
   }, [hasClicked]);
 
