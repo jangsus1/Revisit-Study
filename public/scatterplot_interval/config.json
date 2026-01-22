@@ -63,7 +63,7 @@
         },
         "attentionCheckFailed": {
             "type": "react-component",
-            "path": "scatterplot_interval/assets/attentionCheck.jsx",
+            "path": "scatterplot/assets/attentionCheck.jsx",
             "parameters": {
                 "link": "https://app.prolific.com/submissions/complete?cc=CASYDYPP"
             },
@@ -109689,7 +109689,7 @@
     "baseComponents": {
         "phase2": {
             "type": "react-component",
-            "path": "scatterplot_interval/assets/phase2_control.jsx",
+            "path": "scatterplot/assets/phase2_control.jsx",
             "response": [
                 {
                     "id": "answer",
@@ -109704,7 +109704,7 @@
         },
         "phase1": {
             "type": "react-component",
-            "path": "scatterplot_interval/assets/phase1.jsx",
+            "path": "scatterplot/assets/phase1.jsx",
             "response": [
                 {
                     "id": "answer",
@@ -109719,7 +109719,7 @@
         },
         "phase3": {
             "type": "react-component",
-            "path": "scatterplot_interval/assets/phase3.jsx",
+            "path": "scatterplot/assets/phase3.jsx",
             "response": [
                 {
                     "id": "answer",

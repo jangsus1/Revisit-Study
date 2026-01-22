@@ -48,7 +48,7 @@ def generate_base_components():
     return {
         "phase2": {
             "type": "react-component",
-            "path": "scatterplot_interval/assets/phase2_control.jsx",
+            "path": "scatterplot/assets/phase2_control.jsx",
             "response": [
                 {
                     "id": "answer",
@@ -63,7 +63,7 @@ def generate_base_components():
         },
         "phase1": {
             "type": "react-component",
-            "path": "scatterplot_interval/assets/phase1.jsx",
+            "path": "scatterplot/assets/phase1.jsx",
             "response": [
                 {
                     "id": "answer",
@@ -78,7 +78,7 @@ def generate_base_components():
         },
         "phase3": {
             "type": "react-component",
-            "path": "scatterplot_interval/assets/phase3.jsx",
+            "path": "scatterplot/assets/phase3.jsx",
             "response": [
                 {
                     "id": "answer",
@@ -135,7 +135,7 @@ def create_default_components(fail_link):
         },
         "attentionCheckFailed": {
             "type": "react-component",
-            "path": "scatterplot_interval/assets/attentionCheck.jsx",
+            "path": "scatterplot/assets/attentionCheck.jsx",
             "parameters": {
                 "link": fail_link
             },

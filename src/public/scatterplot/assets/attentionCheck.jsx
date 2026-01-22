@@ -25,10 +25,10 @@ function AttentionCheck({ parameters, setAnswer }) {
         }}
       >
         <h2 style={{ color: "#e74c3c", marginBottom: "20px" }}>
-          Attention Check Failed
+          Comprehension Check Failed
         </h2>
         <p style={{ fontSize: "18px", marginBottom: "30px", lineHeight: "1.6" }}>
-          Sorry, but you have failed the attention check questions. Please return to your study with this link:
+          Sorry, but you have failed the comprehension check questions and will not be able to continue our study. However, you will still be compensated with a bonus payment for your time. Please return your submission with this link:
         </p>
         {link && (
           <div style={{ marginTop: "30px" }}>
