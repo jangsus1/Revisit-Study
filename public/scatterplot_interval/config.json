@@ -108478,7 +108478,7 @@
             "phase2_main",
             {
                 "id": "phase2",
-                "order": "latinSquare",
+                "order": "random",
                 "numSamples": 1,
                 "components": [
                     {
