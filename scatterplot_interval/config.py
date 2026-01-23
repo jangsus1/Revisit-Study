@@ -594,12 +594,12 @@ def create_phase3_components():
 
 
 def sequence_generator(phase1_components, phase2_components, phase2_example_components, phase3_components):
-    """Generate the study sequence with scheme-based latin square for phase 2.
+    """Generate the study sequence with scheme-based random for phase 2.
 
     Phase 2 structure ensures that for each label, unrevealed and revealed conditions
     use the SAME correlation level AND exp variant, with ALL 24 trials fully interleaved:
 
-    - 8 schemes (latin square): 4 corr rotations × 2 exp patterns
+    - 8 schemes (random): 4 corr rotations × 2 exp patterns
     - Each scheme has predetermined (corr, exp) for each label
     - All 24 trials (12 unrevealed + 12 revealed) randomized together at scheme level
     - For revealed: pick from label intervals [(0, 2), (1, 3), (2, 4), (3, 5)] (random)
@@ -607,7 +607,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
     This ensures unrevealed and revealed are NOT consecutive but still matched.
     """
 
-    # Define correlation assignment schemes using latin square rotation
+    # Define correlation assignment schemes using random rotation
     corrs = [2, 4, 6, 8]
     num_labels = len(labels)  # 12 labels
     labels_per_corr = num_labels // len(corrs)  # 3 labels per corr
@@ -719,7 +719,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
             "phase2_main",
             {
                 "id": "phase2",
-                "order": "latinSquare",
+                "order": "random",
                 "numSamples": 1,
                 "components": schemes
             },
