@@ -1,13 +1,13 @@
 {
-  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.3.2/src/parser/LibraryConfigSchema.json",
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/LibraryConfigSchema.json",
   "description": "The Critical Thinking Assessment for Literacy in Visualizations (CALVI) library is a collection of visualizations and questions designed to assess the ability to interpret data visualizations. The library includes a variety of visualizations, such as line graphs, bar charts, and pie charts, along with corresponding questions that test the user's understanding of the data presented. The questions are designed to be challenging and require critical thinking skills to answer correctly.",
   "doi": "10.1145/3544548.3581406",
-  "reference": "Lily W. Ge, Yuan Cui, and Matthew Kay. 2023. CALVI: Critical Thinking Assessment for Literacy in Visualizations. In Proceedings of the 2023 CHI Conference on Human Factors in Computing Systems (CHI '23). Association for Computing Machinery, New York, NY, USA, Article 815, 1–18.",
+  "reference": "L. W. Ge, Y. Cui, and M. Kay, “CALVI: Critical Thinking Assessment for Literacy in Visualizations,” in Proceedings of the 2023 CHI Conference on Human Factors in Computing Systems (CHI '23), New York, NY, USA: Association for Computing Machinery, 2023, Art. no. 815, pp. 1–18.",
   "components": {
     "N1": {
-      "description": "Audio test",
+      "description": "Visitors at Movie Theaters in 2001",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N1.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N1.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -42,12 +42,13 @@
           "id": "q1",
           "answer": "50"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N2": {
       "description": "Traffic Accidents Trend",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N2.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N2.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -82,12 +83,13 @@
           "id": "q1",
           "answer": "B"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N3": {
       "description": "Customers at Three Bike Shops",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N3.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N3.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -122,13 +124,13 @@
           "id": "q1",
           "answer": "b_more_than_a_c"
         }
-      ]
+      ],
+      "withSidebar": true
     },
-
     "N4": {
       "description": "Advertising Expense Breakdown",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N4.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N4.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -163,12 +165,13 @@
           "id": "q1",
           "answer": "less_direct_mail"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N5": {
       "description": "Perfume Brand Market Share",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N5.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N5.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -203,12 +206,13 @@
           "id": "q1",
           "answer": "b_largest_2013"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N6": {
       "description": "Monthly Number of New Clients",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N6.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N6.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -243,12 +247,13 @@
           "id": "q1",
           "answer": "b_sep_dec_increase"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N7": {
       "description": "Restaurant Openings in 2000",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N7.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N7.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -279,12 +284,13 @@
           "id": "q1",
           "answer": "inc_then_dec"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N8": {
       "description": "Beers Consumed in 2005",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N8.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N8.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -315,12 +321,13 @@
           "id": "q1",
           "answer": "yes"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N9": {
       "description": "Store C\u2019s Sales vs Store B",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N9.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N9.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -355,12 +362,13 @@
           "id": "q1",
           "answer": "100"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N10": {
       "description": "SAT Score vs. Income",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N10.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N10.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -391,12 +399,13 @@
           "id": "q1",
           "answer": "yes"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N11": {
       "description": "Sleep vs. Time Outdoors",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N11.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N11.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -431,12 +440,13 @@
           "id": "q1",
           "answer": "y_positive"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N12": {
       "description": "Grocery Store Market Share",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N12.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N12.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -471,12 +481,13 @@
           "id": "q1",
           "answer": "b_second"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N13": {
       "description": "Education Level of Residents",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N13.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N13.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -511,12 +522,13 @@
           "id": "q1",
           "answer": "more_than_60"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "N14": {
       "description": "Lego ownership by state",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N14.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N14.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -527,9 +539,18 @@
           "location": "sidebar",
           "prompt": "Which of the following states has the highest number of Lego owners?",
           "options": [
-            { "label": "AZ", "value": "AZ" },
-            { "label": "NV", "value": "NV" },
-            { "label": "TN", "value": "TN" },
+            {
+              "label": "AZ",
+              "value": "AZ"
+            },
+            {
+              "label": "NV",
+              "value": "NV"
+            },
+            {
+              "label": "TN",
+              "value": "TN"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "X"
@@ -537,12 +558,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "AZ" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "AZ"
+        }
+      ],
+      "withSidebar": true
     },
     "N15": {
       "description": "Restaurant R popularity worldwide",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/normal/N15.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/normal/N15.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -572,12 +599,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "B" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "B"
+        }
+      ],
+      "withSidebar": true
     },
     "T1": {
       "description": "Sunny Days in Summer vs Winter",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T1.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T1.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -608,12 +641,13 @@
           "id": "q1",
           "answer": "inadequate"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T2": {
       "description": "Windy Days in Summer vs Winter",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T2.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T2.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -644,12 +678,13 @@
           "id": "q1",
           "answer": "inadequate"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T3": {
       "description": "Concert Ticket Sales",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T3.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T3.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -684,12 +719,13 @@
           "id": "q1",
           "answer": "80"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T4": {
       "description": "Water Bottle Price Comparison",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T4.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T4.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -724,12 +760,13 @@
           "id": "q1",
           "answer": "90"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T5": {
       "description": "Visitors at Train Stations",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T5.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T5.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -764,12 +801,13 @@
           "id": "q1",
           "answer": "33"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T6": {
       "description": "Bacteria Trend 1970\u20132020",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T6.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T6.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -804,12 +842,13 @@
           "id": "q1",
           "answer": "inadequate"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T8": {
       "description": "Visitors at Amusement Parks",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T8.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T8.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -844,12 +883,13 @@
           "id": "q1",
           "answer": "33"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T9": {
       "description": "Brand C Sales vs B",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T9.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T9.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -884,12 +924,13 @@
           "id": "q1",
           "answer": "60"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T10": {
       "description": "Species Prevalence by State",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T10.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T10.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -920,12 +961,13 @@
           "id": "q1",
           "answer": "false"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T11": {
       "description": "Risk of Bacteria Z in WY vs ND",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T11.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T11.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -956,12 +998,13 @@
           "id": "q1",
           "answer": "true"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T12": {
       "description": "Tree Planting Trend 1960\u20131980",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T12.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T12.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -992,12 +1035,13 @@
           "id": "q1",
           "answer": "false"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T13": {
       "description": "Bookstore Trend 2000\u20132020",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T13.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T13.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1028,12 +1072,13 @@
           "id": "q1",
           "answer": "increasing"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T14": {
       "description": "Movie Release Trend",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T14.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T14.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1068,12 +1113,13 @@
           "id": "q1",
           "answer": "1992_1994"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T15": {
       "description": "Sales Trend for Item X (Apr to Jul)",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T15.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T15.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1104,12 +1150,13 @@
           "id": "q1",
           "answer": "inc_dec"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T16": {
       "description": "Apple Harvest Trend",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T16.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T16.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1140,12 +1187,13 @@
           "id": "q1",
           "answer": "dec_inc"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T17": {
       "description": "Sunlight vs Growth for Plant P",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T17.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T17.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1180,12 +1228,13 @@
           "id": "q1",
           "answer": "decreases"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T18": {
       "description": "Vacation Days vs Satisfaction",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T18.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T18.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1220,12 +1269,13 @@
           "id": "q1",
           "answer": "vac_D_gt_A"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T19": {
       "description": "Weight vs Survival Rate for Z",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T19.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T19.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1260,12 +1310,13 @@
           "id": "q1",
           "answer": "increases"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T20": {
       "description": "Prevalence of Plant Y Globally",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T20.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T20.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1300,13 +1351,13 @@
           "id": "q1",
           "answer": "C_lt_D"
         }
-      ]
+      ],
+      "withSidebar": true
     },
-
     "T21": {
       "description": "Bar chart of rainfall over 14 days",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T21.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T21.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1341,12 +1392,13 @@
           "id": "q21",
           "answer": "beginning_more"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T22": {
       "description": "Line chart of airport visitors from 2000 to 2005",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T22.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T22.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1377,12 +1429,13 @@
           "id": "q22",
           "answer": "false"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T23": {
       "description": "Area chart of monthly shirt sales in 2021",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T23.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T23.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1413,12 +1466,13 @@
           "id": "q23",
           "answer": "no"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T25": {
       "description": "Market share of shampoo brands",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T25.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T25.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1453,12 +1507,13 @@
           "id": "q1",
           "answer": "higher_2001"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T26": {
       "description": "Votes for candidates",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T26.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T26.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1493,12 +1548,13 @@
           "id": "q1",
           "answer": "80"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T27": {
       "description": "GDP growth trend",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T27.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T27.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1529,12 +1585,13 @@
           "id": "q1",
           "answer": "true"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T28": {
       "description": "Cell phone brand market share",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T28.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T28.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1565,12 +1622,13 @@
           "id": "q1",
           "answer": "cannot"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T29": {
       "description": "Household car ownership",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T29.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T29.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1601,12 +1659,13 @@
           "id": "q1",
           "answer": "cannot"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T30": {
       "description": "Precipitation comparison",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T30.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T30.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1637,12 +1696,13 @@
           "id": "q1",
           "answer": "cannot"
         }
-      ]
+      ],
+      "withSidebar": true
     },
     "T34": {
       "description": "Board game sales trend analysis",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T34.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T34.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1653,7 +1713,10 @@
           "location": "sidebar",
           "prompt": "Company A sells a board game. Assuming today is Jun 01, 2022, which of the following statements is true?",
           "options": [
-            { "label": "2004 has more copies sold than 2003.", "value": "A" },
+            {
+              "label": "2004 has more copies sold than 2003.",
+              "value": "A"
+            },
             {
               "label": "Copies sold per year fell sharply in 2022.",
               "value": "B"
@@ -1662,16 +1725,25 @@
               "label": "Copies sold per year has been strictly increasing since 2003.",
               "value": "C"
             },
-            { "label": "None of the above.", "value": "D" }
+            {
+              "label": "None of the above.",
+              "value": "D"
+            }
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "D" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "D"
+        }
+      ],
+      "withSidebar": true
     },
     "T35": {
       "description": "Vegetable planting trends by three farms",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T35.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T35.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1694,16 +1766,25 @@
               "label": "All three farms planted about the same amount of vegetables in 2022 as they did in the previous years.",
               "value": "C"
             },
-            { "label": "None of the above.", "value": "D" }
+            {
+              "label": "None of the above.",
+              "value": "D"
+            }
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "D" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "D"
+        }
+      ],
+      "withSidebar": true
     },
     "T36": {
       "description": "Car counts in parking lots",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T36.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T36.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1714,8 +1795,14 @@
           "location": "sidebar",
           "prompt": "Assuming today is Apr 10, 2022, did the total number of cars parked in the three parking lots fall sharply in 2022?",
           "options": [
-            { "label": "Yes", "value": "A" },
-            { "label": "No", "value": "B" },
+            {
+              "label": "Yes",
+              "value": "A"
+            },
+            {
+              "label": "No",
+              "value": "B"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "C"
@@ -1723,12 +1810,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "C" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "C"
+        }
+      ],
+      "withSidebar": true
     },
     "T37": {
       "description": "Hiring trend in company Z",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T37.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T37.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1751,16 +1844,25 @@
               "label": "The total number of employees in company Z decreased in 2022.",
               "value": "C"
             },
-            { "label": "None of the above.", "value": "D" }
+            {
+              "label": "None of the above.",
+              "value": "D"
+            }
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "D" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "D"
+        }
+      ],
+      "withSidebar": true
     },
     "T38": {
       "description": "Work hours and happiness correlation",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T38.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T38.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1771,8 +1873,14 @@
           "location": "sidebar",
           "prompt": "True or False: Within each town, is there a negative relationship between average daily working hours and happiness score?",
           "options": [
-            { "label": "True", "value": "A" },
-            { "label": "False", "value": "B" },
+            {
+              "label": "True",
+              "value": "A"
+            },
+            {
+              "label": "False",
+              "value": "B"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "C"
@@ -1780,12 +1888,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "B" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "B"
+        }
+      ],
+      "withSidebar": true
     },
     "T39": {
       "description": "Work hours and salary correlation",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T39.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T39.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1796,8 +1910,14 @@
           "location": "sidebar",
           "prompt": "Within each city, is there a positive relationship between salary and average daily working hours?",
           "options": [
-            { "label": "Yes", "value": "A" },
-            { "label": "No", "value": "B" },
+            {
+              "label": "Yes",
+              "value": "A"
+            },
+            {
+              "label": "No",
+              "value": "B"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "C"
@@ -1805,12 +1925,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "C" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "C"
+        }
+      ],
+      "withSidebar": true
     },
     "T40": {
       "description": "Weight analysis of species C",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T40.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T40.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1821,8 +1947,14 @@
           "location": "sidebar",
           "prompt": "Does any members of species C weigh more than 5 lbs?",
           "options": [
-            { "label": "Yes", "value": "A" },
-            { "label": "No", "value": "B" },
+            {
+              "label": "Yes",
+              "value": "A"
+            },
+            {
+              "label": "No",
+              "value": "B"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "C"
@@ -1830,12 +1962,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "C" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "C"
+        }
+      ],
+      "withSidebar": true
     },
     "T42": {
       "description": "Infection rates per 1,000",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T42.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T42.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1846,9 +1984,18 @@
           "location": "sidebar",
           "prompt": "Which region had the highest number of confirmed cases per 1,000 people?",
           "options": [
-            { "label": "A", "value": "A" },
-            { "label": "B", "value": "B" },
-            { "label": "C", "value": "C" },
+            {
+              "label": "A",
+              "value": "A"
+            },
+            {
+              "label": "B",
+              "value": "B"
+            },
+            {
+              "label": "C",
+              "value": "C"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "D"
@@ -1856,12 +2003,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "D" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "D"
+        }
+      ],
+      "withSidebar": true
     },
     "T43": {
       "description": "Sales trend for gift shop A",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T43.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T43.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1872,9 +2025,18 @@
           "location": "sidebar",
           "prompt": "What is the trend of sales in gift shop A from Jan to Dec?",
           "options": [
-            { "label": "Generally increasing", "value": "A" },
-            { "label": "Generally decreasing", "value": "B" },
-            { "label": "Generally constant", "value": "C" },
+            {
+              "label": "Generally increasing",
+              "value": "A"
+            },
+            {
+              "label": "Generally decreasing",
+              "value": "B"
+            },
+            {
+              "label": "Generally constant",
+              "value": "C"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "D"
@@ -1882,12 +2044,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "D" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "D"
+        }
+      ],
+      "withSidebar": true
     },
     "T44": {
       "description": "Book price trend in City Z",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T44.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T44.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1898,9 +2066,18 @@
           "location": "sidebar",
           "prompt": "What is the trend of the average price of books from 1960 to 2020 in city Z?",
           "options": [
-            { "label": "Generally increasing", "value": "A" },
-            { "label": "Generally decreasing", "value": "B" },
-            { "label": "Generally constant", "value": "C" },
+            {
+              "label": "Generally increasing",
+              "value": "A"
+            },
+            {
+              "label": "Generally decreasing",
+              "value": "B"
+            },
+            {
+              "label": "Generally constant",
+              "value": "C"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "D"
@@ -1908,12 +2085,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "D" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "D"
+        }
+      ],
+      "withSidebar": true
     },
     "T45": {
       "description": "Ice cream brand voting across states",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T45.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T45.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1936,16 +2119,25 @@
               "label": "C will be the most popular brand of ice cream.",
               "value": "C"
             },
-            { "label": "Too early to say.", "value": "D" }
+            {
+              "label": "Too early to say.",
+              "value": "D"
+            }
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "D" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "D"
+        }
+      ],
+      "withSidebar": true
     },
     "T46": {
       "description": "Water sales vs temperature",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T46.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T46.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1954,10 +2146,16 @@
           "type": "radio",
           "required": true,
           "location": "sidebar",
-          "prompt": "True or False: If the temperature gets higher than 100°F, then the bottles of water sold must be greater than 750.",
+          "prompt": "True or False: If the temperature gets higher than 100\u00b0F, then the bottles of water sold must be greater than 750.",
           "options": [
-            { "label": "True", "value": "A" },
-            { "label": "False", "value": "B" },
+            {
+              "label": "True",
+              "value": "A"
+            },
+            {
+              "label": "False",
+              "value": "B"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "C"
@@ -1965,12 +2163,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "B" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "B"
+        }
+      ],
+      "withSidebar": true
     },
     "T47": {
       "description": "Reading preferences by time of day",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T47.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T47.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -1981,8 +2185,14 @@
           "location": "sidebar",
           "prompt": "True or False: More than half of the people in county Z prefer reading at night.",
           "options": [
-            { "label": "True", "value": "A" },
-            { "label": "False", "value": "B" },
+            {
+              "label": "True",
+              "value": "A"
+            },
+            {
+              "label": "False",
+              "value": "B"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "C"
@@ -1990,12 +2200,18 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "B" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "B"
+        }
+      ],
+      "withSidebar": true
     },
     "T48": {
       "description": "Voting on hiking trails",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T48.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T48.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -2018,16 +2234,25 @@
               "label": "Hiking trail C will be voted as the favorite trail.",
               "value": "C"
             },
-            { "label": "Too early to say.", "value": "D" }
+            {
+              "label": "Too early to say.",
+              "value": "D"
+            }
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "D" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "D"
+        }
+      ],
+      "withSidebar": true
     },
     "T49": {
       "description": "Average mall customers in Town X",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T49.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T49.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -2038,19 +2263,37 @@
           "location": "sidebar",
           "prompt": "In town X, what is the approximate average number of customers at mall A from Jan to Mar?",
           "options": [
-            { "label": "200", "value": "A" },
-            { "label": "300", "value": "B" },
-            { "label": "400", "value": "C" },
-            { "label": "500", "value": "D" }
+            {
+              "label": "200",
+              "value": "A"
+            },
+            {
+              "label": "300",
+              "value": "B"
+            },
+            {
+              "label": "400",
+              "value": "C"
+            },
+            {
+              "label": "500",
+              "value": "D"
+            }
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "C" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "C"
+        }
+      ],
+      "withSidebar": true
     },
     "T50": {
       "description": "Average new buildings in City Z",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T50.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T50.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -2061,19 +2304,37 @@
           "location": "sidebar",
           "prompt": "In city Z, what is the approximate average number of new buildings built from 1950 to 1952?",
           "options": [
-            { "label": "20", "value": "A" },
-            { "label": "30", "value": "B" },
-            { "label": "40", "value": "C" },
-            { "label": "50", "value": "D" }
+            {
+              "label": "20",
+              "value": "A"
+            },
+            {
+              "label": "30",
+              "value": "B"
+            },
+            {
+              "label": "40",
+              "value": "C"
+            },
+            {
+              "label": "50",
+              "value": "D"
+            }
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "C" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "C"
+        }
+      ],
+      "withSidebar": true
     },
     "T52": {
       "description": "Monthly sales trend for store B",
       "type": "image",
-      "path": "libraries/calvi/assets/questions/trick/T52.jpg",
+      "path": "https://raw.githubusercontent.com/revisit-studies/library-assets/v1/calvi/questions/trick/T52.jpg",
       "nextButtonLocation": "sidebar",
       "nextButtonText": "Continue",
       "response": [
@@ -2084,8 +2345,14 @@
           "location": "sidebar",
           "prompt": "True or False: Monthly sales for store B is increasing from Jan to Dec.",
           "options": [
-            { "label": "True", "value": "A" },
-            { "label": "False", "value": "B" },
+            {
+              "label": "True",
+              "value": "A"
+            },
+            {
+              "label": "False",
+              "value": "B"
+            },
             {
               "label": "Cannot be inferred / inadequate information",
               "value": "C"
@@ -2093,10 +2360,15 @@
           ]
         }
       ],
-      "correctAnswer": [{ "id": "q1", "answer": "B" }]
+      "correctAnswer": [
+        {
+          "id": "q1",
+          "answer": "B"
+        }
+      ],
+      "withSidebar": true
     }
   },
-
   "sequences": {
     "full": {
       "id": "calviAllQuestions",
