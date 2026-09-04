@@ -19,7 +19,7 @@ function fakeDisplay(seed: number, opts: GenerateOptions): Display {
     n: opts.kind === 'A' ? 24 : opts.nB ?? 0,
     width: 480,
     height: 360,
-    background: '#505050',
+    background: '#FFFFFF',
     nodes: [],
     edges: [],
     clusters: [],

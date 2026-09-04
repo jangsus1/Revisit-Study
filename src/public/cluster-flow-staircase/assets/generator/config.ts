@@ -28,10 +28,17 @@ export const GENERATOR_CONFIG = {
   CANVAS: { width: 480, height: 360 },
   /** Keep-out border in canvas px: no dot edge may come closer than this to the frame. */
   CANVAS_MARGIN: 16,
-  /** Ground colour (MATLAB `Grey`, RGB 80 80 80). */
-  BACKGROUND: '#505050',
-  /** Default dot fill (MATLAB `color_proxi`, RGB 200 200 200). */
-  DOT_FILL: '#C8C8C8',
+  /**
+   * Ground colour. The MATLAB original used RGB 80 80 80 with light dots; the reVISit study uses
+   * the inverse polarity (white ground, dark dots) so the trials run on a light page.
+   */
+  BACKGROUND: '#FFFFFF',
+  /** Default dot fill: mid-dark grey, relative luminance Y = 0.133 on the white ground. */
+  DOT_FILL: '#666666',
+  /** Page colour around the canvas during a trial (surround, fixation and prompt page). */
+  SURROUND: '#E6E6E6',
+  /** Text and fixation-cross colour on the surround. */
+  INK: '#111111',
   /** Link colour. */
   LINK_STROKE: '#111111',
   /** Link width in source px. */
@@ -51,7 +58,7 @@ export const GENERATOR_CONFIG = {
   /** Hull / rect cue padding in canvas px, added on top of RDOT * SCALE. */
   HULL_PADDING: 10,
   /** Hull / rect cue stroke colour. */
-  HULL_STROKE: '#DDDDDD',
+  HULL_STROKE: '#333333',
   /** Hull / rect cue stroke width in canvas px. */
   HULL_STROKE_WIDTH: 1.5,
   /** Dash pattern for the edge cue, in source px. */
@@ -59,11 +66,11 @@ export const GENERATOR_CONFIG = {
   /**
    * Six categorical fills for the colour cue. Each is an Okabe-Ito hue pushed along its own
    * HSL lightness (and, where the hue could not otherwise reach it, desaturated) until its
-   * relative luminance equals that of the default dot grey #C8C8C8 (Y = 0.5776). Equal luminance
+   * relative luminance equals that of the default dot grey #666666 (Y = 0.133). Equal luminance
    * means no colour pops out of the display, so the cue is categorical only. Order follows
    * Okabe-Ito: orange, sky blue, bluish green, yellow, reddish purple, vermillion.
    */
-  COLOR_PALETTE: ['#FFBD29', '#95D0F1', '#00E3A5', '#D9CB11', '#E6BDD3', '#FFB982'],
+  COLOR_PALETTE: ['#895E00', '#146B9D', '#007555', '#6F6809', '#A84079', '#A94A00'],
   /** The three marks of the shape cue; each is used by exactly two clusters. */
   SHAPES: ['circle', 'square', 'diamond'] as const,
   /** How many derived seeds `generateDisplay` may try before giving up on the invariants. */

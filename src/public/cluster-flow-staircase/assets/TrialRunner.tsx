@@ -17,6 +17,7 @@ import type { JsonValue } from '../../../parser/types';
 import type { StimulusParams } from '../../../store/types';
 import type { MeasuredDurations, TrialAnswer, TrialParams } from './generator';
 import { generateDisplay } from './generator';
+import { GENERATOR_CONFIG as C } from './generator/config';
 import { StimulusFrame } from './render/StimulusSVG';
 
 type Phase = 'gate' | 'fixation' | 'a' | 'blank1' | 'b' | 'blank2' | 'prompt' | 'feedback' | 'done';
@@ -42,8 +43,8 @@ const overlayStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
   zIndex: 3000,
-  background: '#202020',
-  color: '#FFFFFF',
+  background: C.SURROUND,
+  color: C.INK,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
@@ -258,8 +259,8 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
         <div style={layer(phase === 'b')}><StimulusFrame display={displayB} /></div>
         <div style={layer(phase === 'fixation')}>
           <svg width={displayA.width} height={displayA.height} aria-hidden>
-            <line x1={displayA.width / 2 - 10} y1={displayA.height / 2} x2={displayA.width / 2 + 10} y2={displayA.height / 2} stroke="#FFFFFF" strokeWidth={2} />
-            <line x1={displayA.width / 2} y1={displayA.height / 2 - 10} x2={displayA.width / 2} y2={displayA.height / 2 + 10} stroke="#FFFFFF" strokeWidth={2} />
+            <line x1={displayA.width / 2 - 10} y1={displayA.height / 2} x2={displayA.width / 2 + 10} y2={displayA.height / 2} stroke={C.INK} strokeWidth={2} />
+            <line x1={displayA.width / 2} y1={displayA.height / 2 - 10} x2={displayA.width / 2} y2={displayA.height / 2 + 10} stroke={C.INK} strokeWidth={2} />
           </svg>
         </div>
       </div>

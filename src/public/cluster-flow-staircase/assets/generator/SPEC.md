@@ -164,3 +164,6 @@ for i = 0 .. 4:
 8. Stimulus B: N_B dots scattered uniformly in the same canvas with the same minimum spacing, one
    random directed spanning tree (plus matched extra arrows when dense), cue features assigned
    without spatial structure.
+9. Colour polarity is inverted: white ground, #666666 dots, #111111 links, #333333 hull strokes,
+   and the colour-cue palette is equalised to the dot's relative luminance (Y = 0.133). The trial
+   page surround is light grey (#E6E6E6) so no bright or dark flash occurs between phases.
