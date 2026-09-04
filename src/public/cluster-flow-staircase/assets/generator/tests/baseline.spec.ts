@@ -79,6 +79,39 @@ describe('buildBaseline', () => {
     });
   });
 
+  test('links connect spatial neighbours, so B is no messier than A', () => {
+    (['sparse', 'dense'] as const).forEach((density) => {
+      [14, 34].forEach((nB) => {
+        const d = buildBaseline(451 + nB, nB, 'none', density) as Display;
+        const byId = new Map(d.nodes.map((n) => [n.id, n]));
+        const lengths = d.edges.map((e) => {
+          const s = byId.get(e.source) as Display['nodes'][number];
+          const t = byId.get(e.target) as Display['nodes'][number];
+          return Math.hypot(s.x - t.x, s.y - t.y);
+        });
+        const mean = lengths.reduce((a, b) => a + b, 0) / lengths.length;
+        expect(mean).toBeLessThan(3 * C.INTER * C.SCALE);
+      });
+    });
+  });
+
+  test('each tree link goes to one of the K nearest earlier dots wherever occlusion allows', () => {
+    const nB = 34;
+    const d = buildBaseline(88, nB, 'none', 'sparse') as Display;
+    const byId = new Map(d.nodes.map((n) => [n.id, n]));
+    const tooFar = d.edges.filter((e) => {
+      const s = byId.get(e.source) as Display['nodes'][number];
+      const t = byId.get(e.target) as Display['nodes'][number];
+      const length = Math.hypot(s.x - t.x, s.y - t.y);
+      const closer = d.nodes.filter((n) => n.id !== s.id && n.id !== t.id
+        && Math.hypot(n.x - s.x, n.y - s.y) < length
+        && Math.hypot(n.x - t.x, n.y - t.y) < length);
+      return closer.length > C.B_NEAREST_K;
+    });
+    // a handful of links may be longer because the nearer options were occluded
+    expect(tooFar.length).toBeLessThan(d.edges.length / 4);
+  });
+
   test('matches the cue features without any spatial structure', () => {
     const color = buildBaseline(5, 30, 'color', 'sparse') as Display;
     expect(color.nodes.every((n) => (C.COLOR_PALETTE as readonly string[]).includes(n.fill))).toBe(true);

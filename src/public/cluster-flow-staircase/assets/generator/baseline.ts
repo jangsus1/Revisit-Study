@@ -66,24 +66,43 @@ export function buildBaseline(seed: number, nB: number, cue: Cue, density: Densi
     return true;
   };
 
-  // The tree only ever proposes links that already clear every other dot; a link that would
-  // pass behind a third dot would make the display unreadable and be rejected by the invariants.
+  // B edges connect spatial neighbours, so their lengths match A's within-cluster links instead
+  // of criss-crossing the canvas, and they only ever run where they clear every other dot (a link
+  // passing behind a third dot would be unreadable and is rejected by the invariants anyway).
   const dots = pts.map((p, id) => ({ id, x: p.x, y: p.y }));
+  const byDistance = (from: number, candidates: number[]) => [...candidates]
+    .sort((a, b) => Math.hypot(dots[a].x - dots[from].x, dots[a].y - dots[from].y)
+      - Math.hypot(dots[b].x - dots[from].x, dots[b].y - dots[from].y));
+
   for (let k = 1; k < nB; k += 1) {
-    const earlier = attach.slice(0, k);
-    const clear = earlier.filter((o) => linkIsClear(dots[attach[k]], dots[o], dots));
-    const pool = clear.length > 0 ? clear : earlier;
-    add(attach[k], pool[Math.floor(rng() * pool.length)], false);
+    const u = attach[k];
+    const ordered = byDistance(u, attach.slice(0, k));
+    const near = ordered.slice(0, C.B_NEAREST_K).filter((o) => linkIsClear(dots[u], dots[o], dots));
+    if (near.length > 0) {
+      add(u, near[Math.floor(rng() * near.length)], false);
+    } else {
+      // nothing among the K nearest is usable: fall back to the nearest candidate that clears,
+      // and failing that to the nearest one at all (the invariants then reject the seed)
+      const fallback = ordered.find((o) => linkIsClear(dots[u], dots[o], dots)) ?? ordered[0];
+      add(u, fallback, false);
+    }
   }
 
   if (density === 'dense') {
+    const allIds = dots.map((d) => d.id);
     const extras = denseExtraCount(nB);
     for (let e = 0; e < extras; e += 1) {
       let added = false;
       for (let draw = 0; draw < C.EXTRA_ARROW_MAX_DRAWS && !added; draw += 1) {
         const u = Math.floor(rng() * nB);
-        const v = Math.floor(rng() * nB);
-        added = u !== v && linkIsClear(dots[u], dots[v], dots) && add(u, v, true);
+        const candidates = byDistance(u, allIds.filter((id) => id !== u))
+          .slice(0, C.B_NEAREST_K)
+          .filter((v) => rank[u] !== rank[v]
+            && !seen.has(rank[u] < rank[v] ? key(u, v) : key(v, u))
+            && linkIsClear(dots[u], dots[v], dots));
+        if (candidates.length > 0) {
+          added = add(u, candidates[Math.floor(rng() * candidates.length)], true);
+        }
       }
     }
   }

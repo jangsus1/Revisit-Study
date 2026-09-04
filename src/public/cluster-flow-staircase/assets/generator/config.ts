@@ -70,6 +70,11 @@ export const GENERATOR_CONFIG = {
   MAX_SEED_ATTEMPTS: 200,
   /** Rejection-sampling budget for placing all stimulus B dots; exceeding it reseeds. */
   B_PLACEMENT_MAX_TRIES: 5000,
+  /**
+   * Stimulus B: how many nearest already-placed dots a new node may attach to. B edges connect
+   * spatial neighbours so link lengths match A's within-cluster links.
+   */
+  B_NEAREST_K: 3,
   /** Dense stimulus B: extra rank-respecting arrows per 24 nodes (matches A's 6 x 2). */
   B_DENSE_EXTRA_PER_24: 12,
   /**
