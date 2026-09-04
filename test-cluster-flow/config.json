@@ -1,0 +1,100 @@
+{
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/StudyConfigSchema.json",
+  "studyMetadata": {
+    "title": "Test: Cluster Flow Staircase",
+    "version": "pilot",
+    "authors": [
+      "The reVISit Team"
+    ],
+    "date": "2026-09-04",
+    "description": "A shortened cluster-flow staircase study used by the Playwright end-to-end test.",
+    "organizations": [
+      "University of Utah",
+      "WPI"
+    ]
+  },
+  "uiConfig": {
+    "contactEmail": "contact@revisit.dev",
+    "logoPath": "revisitAssets/revisitLogoSquare.svg",
+    "withProgressBar": false,
+    "withSidebar": false,
+    "showTitleBar": false,
+    "nextOnEnter": true,
+    "autoDownloadStudy": false,
+    "numSequences": 1
+  },
+  "components": {
+    "introduction": {
+      "type": "markdown",
+      "path": "cluster-flow-staircase/assets/introduction.md",
+      "response": []
+    },
+    "setup": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/SetupCheck.tsx",
+      "nextOnEnter": true,
+      "response": [
+        {
+          "id": "setup",
+          "prompt": "Display check",
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "parameters": {
+        "calibrationIntervals": 4,
+        "refreshSamples": 20
+      }
+    },
+    "trial": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/TrialRunner.tsx",
+      "nextOnEnter": true,
+      "response": [
+        {
+          "id": "trial",
+          "prompt": "Trial",
+          "location": "belowStimulus",
+          "type": "reactive"
+        },
+        {
+          "id": "trialData",
+          "prompt": "Trial data",
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true,
+          "required": false
+        }
+      ]
+    }
+  },
+  "sequence": {
+    "order": "fixed",
+    "components": [
+      "introduction",
+      "setup",
+      {
+        "id": "practice",
+        "order": "dynamic",
+        "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+        "parameters": {
+          "trials": 2
+        }
+      },
+      {
+        "id": "cell-test",
+        "order": "dynamic",
+        "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+        "parameters": {
+          "cellId": "test",
+          "cue": "color",
+          "density": "sparse",
+          "maxReversals": 1,
+          "maxTrials": 3,
+          "catchEvery": 2
+        }
+      }
+    ]
+  }
+}

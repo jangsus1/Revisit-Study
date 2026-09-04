@@ -1,0 +1,339 @@
+{
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/StudyConfigSchema.json",
+  "studyMetadata": {
+    "title": "Cluster Flow: Perceived Number in Grouped Node-Link Diagrams",
+    "version": "pilot",
+    "authors": [
+      "The reVISit Team"
+    ],
+    "date": "2026-09-04",
+    "description": "A staircased two-interval forced-choice study measuring how Gestalt grouping cues in flow diagrams change the perceived number of items.",
+    "organizations": [
+      "University of Utah",
+      "WPI"
+    ]
+  },
+  "uiConfig": {
+    "contactEmail": "contact@revisit.dev",
+    "helpTextPath": "cluster-flow-staircase/assets/help.md",
+    "logoPath": "revisitAssets/revisitLogoSquare.svg",
+    "withProgressBar": false,
+    "withSidebar": false,
+    "showTitleBar": false,
+    "nextOnEnter": true,
+    "autoDownloadStudy": false,
+    "numSequences": 120,
+    "urlParticipantIdParam": "PROLIFIC_PID",
+    "studyEndMsg": "Thank you for completing the study. Your responses have been recorded."
+  },
+  "studyRules": {
+    "display": {
+      "minWidth": 1280,
+      "minHeight": 800,
+      "blockedMessage": "This study needs a window of at least 1280 x 800 pixels. Please maximise your browser window or use a larger screen."
+    },
+    "devices": {
+      "allowed": [
+        "desktop"
+      ],
+      "blockedMessage": "This study can only be taken on a desktop or laptop computer."
+    },
+    "inputs": {
+      "allowed": [
+        "mouse"
+      ],
+      "blockedMessage": "This study requires a keyboard and a mouse or trackpad."
+    }
+  },
+  "importedLibraries": [
+    "demographics"
+  ],
+  "components": {
+    "introduction": {
+      "type": "markdown",
+      "path": "cluster-flow-staircase/assets/introduction.md",
+      "response": []
+    },
+    "consent": {
+      "type": "markdown",
+      "path": "cluster-flow-staircase/assets/consent.md",
+      "response": [
+        {
+          "id": "accept",
+          "prompt": "Do you consent to take part in this study?",
+          "location": "belowStimulus",
+          "type": "radio",
+          "options": [
+            "Decline",
+            "Accept"
+          ],
+          "requiredValue": "Accept"
+        }
+      ],
+      "nextButtonText": "Agree"
+    },
+    "setup": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/SetupCheck.tsx",
+      "nextOnEnter": true,
+      "response": [
+        {
+          "id": "setup",
+          "prompt": "Display check",
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ]
+    },
+    "instructions": {
+      "type": "markdown",
+      "path": "cluster-flow-staircase/assets/instructions.md",
+      "response": []
+    },
+    "practice-intro": {
+      "type": "markdown",
+      "path": "cluster-flow-staircase/assets/practice-intro.md",
+      "response": []
+    },
+    "block-intro": {
+      "type": "markdown",
+      "path": "cluster-flow-staircase/assets/block-intro.md",
+      "response": []
+    },
+    "trial": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/TrialRunner.tsx",
+      "nextOnEnter": true,
+      "response": [
+        {
+          "id": "trial",
+          "prompt": "Trial",
+          "location": "belowStimulus",
+          "type": "reactive"
+        },
+        {
+          "id": "trialData",
+          "prompt": "Trial data",
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true,
+          "required": false
+        }
+      ]
+    }
+  },
+  "sequence": {
+    "order": "fixed",
+    "components": [
+      "introduction",
+      "consent",
+      "setup",
+      "instructions",
+      "practice-intro",
+      {
+        "id": "practice",
+        "order": "dynamic",
+        "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx"
+      },
+      {
+        "order": "latinSquare",
+        "components": [
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-none-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-none-sparse",
+                  "cue": "none",
+                  "density": "sparse"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-none-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-none-dense",
+                  "cue": "none",
+                  "density": "dense"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-hull-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-hull-sparse",
+                  "cue": "hull",
+                  "density": "sparse"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-hull-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-hull-dense",
+                  "cue": "hull",
+                  "density": "dense"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-rect-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-rect-sparse",
+                  "cue": "rect",
+                  "density": "sparse"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-rect-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-rect-dense",
+                  "cue": "rect",
+                  "density": "dense"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-color-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-color-sparse",
+                  "cue": "color",
+                  "density": "sparse"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-color-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-color-dense",
+                  "cue": "color",
+                  "density": "dense"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-edge-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-edge-sparse",
+                  "cue": "edge",
+                  "density": "sparse"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-edge-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-edge-dense",
+                  "cue": "edge",
+                  "density": "dense"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-shape-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-shape-sparse",
+                  "cue": "shape",
+                  "density": "sparse"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "block-intro",
+              {
+                "id": "cell-shape-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-shape-dense",
+                  "cue": "shape",
+                  "density": "dense"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "$demographics.components.demographics"
+    ]
+  }
+}
