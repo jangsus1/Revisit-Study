@@ -1,0 +1,45 @@
+{
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/StudyConfigSchema.json",
+  "studyMetadata": {
+    "title": "Cluster Flow Stimulus Gallery",
+    "version": "pilot",
+    "authors": [
+      "The reVISit Team"
+    ],
+    "date": "2026-09-04",
+    "description": "Reviewer-only gallery of the cluster-flow stimuli: every grouping cue, stimulus A next to its ungrouped baseline B.",
+    "organizations": [
+      "University of Utah",
+      "WPI"
+    ]
+  },
+  "uiConfig": {
+    "contactEmail": "contact@revisit.dev",
+    "helpTextPath": "cluster-flow-gallery/assets/introduction.md",
+    "logoPath": "revisitAssets/revisitLogoSquare.svg",
+    "withProgressBar": false,
+    "autoDownloadStudy": false,
+    "withSidebar": false,
+    "nextOnEnter": true
+  },
+  "components": {
+    "introduction": {
+      "type": "markdown",
+      "path": "cluster-flow-gallery/assets/introduction.md",
+      "response": []
+    },
+    "gallery": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/Gallery.tsx",
+      "response": [],
+      "withSidebar": false
+    }
+  },
+  "sequence": {
+    "order": "fixed",
+    "components": [
+      "introduction",
+      "gallery"
+    ]
+  }
+}
