@@ -56,7 +56,10 @@
     "test-randomization",
     "test-component-timeout",
     "test-skip-logic",
-    "test-step-logic"
+    "test-step-logic",
+    "cluster-flow-staircase",
+    "cluster-flow-gallery",
+    "test-cluster-flow"
   ],
   "configs": {
     "tutorial": {
@@ -255,6 +258,16 @@
     },
     "example-VLAT-adaptive": {
       "path": "example-VLAT-adaptive/config.json",
+      "test": true
+    },
+    "cluster-flow-staircase": {
+      "path": "cluster-flow-staircase/config.json"
+    },
+    "cluster-flow-gallery": {
+      "path": "cluster-flow-gallery/config.json"
+    },
+    "test-cluster-flow": {
+      "path": "test-cluster-flow/config.json",
       "test": true
     }
   }
