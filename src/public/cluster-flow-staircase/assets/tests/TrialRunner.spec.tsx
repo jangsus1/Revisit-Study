@@ -125,7 +125,7 @@ describe('TrialRunner', () => {
     runFrames(200);
     expect(screen.getByTestId('trial-prompt').textContent).toContain('Which one has more items?');
 
-    fireEvent.keyDown(window, { key: 'i' });
+    fireEvent.keyDown(window, { key: 'f' });
 
     expect(setAnswer).toHaveBeenCalledTimes(1);
     const { status, answers } = setAnswer.mock.calls[0][0];
@@ -176,7 +176,7 @@ describe('TrialRunner', () => {
   test('scores the first interval as correct when the baseline is smaller', () => {
     const setAnswer = renderTrial({ nB: 14 });
     runFrames(200);
-    fireEvent.keyDown(window, { key: 'i' });
+    fireEvent.keyDown(window, { key: 'f' });
     expect(setAnswer.mock.calls[0][0].answers.trialData.correct).toBe(true);
   });
 
@@ -203,7 +203,7 @@ describe('TrialRunner', () => {
     fireEvent.keyDown(window, { key: ' ' });
     expect(setAnswer).not.toHaveBeenCalled();
 
-    fireEvent.keyDown(window, { key: 'i' });
+    fireEvent.keyDown(window, { key: 'f' });
     fireEvent.keyDown(window, { key: 'j' });
     expect(setAnswer).toHaveBeenCalledTimes(1);
   });
@@ -211,7 +211,7 @@ describe('TrialRunner', () => {
   test('ignores i and j before the prompt', () => {
     const setAnswer = renderTrial();
     runFrames(10);
-    fireEvent.keyDown(window, { key: 'i' });
+    fireEvent.keyDown(window, { key: 'f' });
     expect(setAnswer).not.toHaveBeenCalled();
   });
 
@@ -225,7 +225,7 @@ describe('TrialRunner', () => {
 
     renderTrial();
     runFrames(200);
-    fireEvent.keyDown(window, { key: 'i' });
+    fireEvent.keyDown(window, { key: 'f' });
     expect(dispatched).toHaveLength(0);
 
     act(() => {
@@ -250,7 +250,7 @@ describe('TrialRunner', () => {
   test('shows Incorrect for a wrong practice answer', () => {
     renderTrial({ feedback: true, nB: 40 });
     runFrames(200);
-    fireEvent.keyDown(window, { key: 'i' });
+    fireEvent.keyDown(window, { key: 'f' });
     expect(screen.getByTestId('trial-feedback').textContent).toBe('Incorrect');
   });
 
@@ -274,7 +274,7 @@ describe('TrialRunner', () => {
 
       runFrames(200);
       expect(screen.getByTestId('trial-prompt')).toBeTruthy();
-      fireEvent.keyDown(window, { key: 'i' });
+      fireEvent.keyDown(window, { key: 'f' });
       expect(setAnswer).toHaveBeenCalledTimes(1);
     } finally {
       Reflect.deleteProperty(document.documentElement, 'requestFullscreen');

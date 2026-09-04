@@ -3,8 +3,9 @@
  *
  * The refresh period is estimated from a burst of animation-frame timestamps and then checked by
  * presenting blank intervals of 200 ms and 400 ms with the same frame-count scheduler the trials
- * use, measuring each one paint-to-paint. Nothing here can block the participant: a refused
- * fullscreen or a noisy measurement is recorded and the study continues.
+ * use, measuring each one paint-to-paint. The whole check takes about a second. The component
+ * reports success to reVISit (which enables the Next button) only while the page is in
+ * fullscreen; leaving fullscreen disables Next again until it is re-entered.
  */
 import {
   Button, Stack, Table, Text, Title,
@@ -17,16 +18,27 @@ import type { StimulusParams } from '../../../store/types';
 import type { SetupAnswer } from './generator';
 
 export interface SetupCheckParameters {
-  /** how many blank intervals to measure; defaults to 40 */
+  /** how many blank intervals to measure; defaults to 2 (one 200 ms, one 400 ms) */
   calibrationIntervals?: number;
-  /** how many animation frames to time when estimating the refresh period; defaults to 120 */
+  /** how many animation frames to time when estimating the refresh period; defaults to 20 */
   refreshSamples?: number;
 }
 
 const DEFAULT_REFRESH_MS = 1000 / 60;
-const DEFAULT_INTERVALS = 40;
-const DEFAULT_REFRESH_SAMPLES = 120;
+const DEFAULT_INTERVALS = 2;
+const DEFAULT_REFRESH_SAMPLES = 20;
 const INTERVAL_TARGETS = [200, 400];
+
+/** True when the page is fullscreen, or when the browser has no Fullscreen API (tests, jsdom). */
+function fullscreenSatisfied(): boolean {
+  if (typeof document === 'undefined') {
+    return true;
+  }
+  if (typeof document.documentElement?.requestFullscreen !== 'function') {
+    return true;
+  }
+  return !!document.fullscreenElement;
+}
 
 function median(values: number[]): number {
   if (values.length === 0) {
@@ -54,6 +66,7 @@ export default function SetupCheck({ parameters, setAnswer }: StimulusParams<Set
 
   const [stage, setStage] = useState<'idle' | 'running' | 'done'>('idle');
   const [result, setResult] = useState<SetupAnswer | null>(null);
+  const [fullscreen, setFullscreen] = useState(fullscreenSatisfied);
   const rafRef = useRef(0);
   const cancelledRef = useRef(false);
 
@@ -85,12 +98,30 @@ export default function SetupCheck({ parameters, setAnswer }: StimulusParams<Set
 
     setResult(answer);
     setStage('done');
-    setAnswer({ status: true, answers: { setup: answer as unknown as JsonValue } });
+    setAnswer({ status: fullscreenSatisfied(), answers: { setup: answer as unknown as JsonValue } });
   }, [setAnswer]);
+
+  // Next is only enabled while fullscreen is active: leaving it invalidates the setup answer.
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+    const onChange = () => {
+      const ok = fullscreenSatisfied();
+      setFullscreen(ok);
+      if (result) {
+        const updated = { ...result, fullscreen: ok };
+        setResult(updated);
+        setAnswer({ status: ok, answers: { setup: updated as unknown as JsonValue } });
+      }
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, [result, setAnswer]);
 
   const start = useCallback(() => {
     if (typeof document !== 'undefined' && typeof document.documentElement?.requestFullscreen === 'function' && !document.fullscreenElement) {
-      // A refused request is fine: it is recorded in the answer and the study continues.
+      // A refused request keeps Next disabled; the summary tells the participant to retry.
       document.documentElement.requestFullscreen().catch(() => undefined);
     }
     setStage('running');
@@ -157,8 +188,8 @@ export default function SetupCheck({ parameters, setAnswer }: StimulusParams<Set
       <Stack align="center" gap="md" mt="xl">
         <Text ta="center" maw={560}>
           The study runs in fullscreen and shows displays for a fifth of a second, so we first
-          measure how quickly your screen refreshes. This takes a few seconds. Please do not switch
-          windows while it runs.
+          measure how quickly your screen refreshes. This takes about a second. Please do not
+          switch windows while it runs.
         </Text>
         <Button onClick={start}>Enter fullscreen and start calibration</Button>
       </Stack>
@@ -198,11 +229,22 @@ export default function SetupCheck({ parameters, setAnswer }: StimulusParams<Set
           </Table.Tr>
           <Table.Tr>
             <Table.Td>Fullscreen</Table.Td>
-            <Table.Td>{result.fullscreen ? 'yes' : 'no'}</Table.Td>
+            <Table.Td>{fullscreen ? 'yes' : 'no'}</Table.Td>
           </Table.Tr>
         </Table.Tbody>
       </Table>
-      <Text fw={700}>Press Enter to continue</Text>
+      {fullscreen ? (
+        <Text fw={700}>Press Enter to continue</Text>
+      ) : (
+        <Stack align="center" gap="xs">
+          <Text c="red" fw={700} data-testid="setup-fullscreen-required">
+            The study can only continue in fullscreen.
+          </Text>
+          <Button onClick={() => document.documentElement.requestFullscreen().catch(() => undefined)}>
+            Return to fullscreen
+          </Button>
+        </Stack>
+      )}
     </Stack>
   );
 }

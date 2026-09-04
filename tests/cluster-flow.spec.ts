@@ -63,7 +63,7 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
     if (await gateButton.isVisible()) {
       await gateButton.click();
     } else if (await prompt.isVisible()) {
-      await page.keyboard.press(trials % 2 === 0 ? 'i' : 'j');
+      await page.keyboard.press(trials % 2 === 0 ? 'f' : 'ArrowRight');
       trials += 1;
       await prompt.waitFor({ state: 'hidden', timeout: 10000 });
     } else {

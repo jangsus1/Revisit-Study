@@ -164,6 +164,6 @@ describe('SetupCheck', () => {
     );
     fireEvent.click(screen.getByRole('button', { name: 'Enter fullscreen and start calibration' }));
     runFrames(3000);
-    expect(setAnswer.mock.calls[0][0].answers.setup.calibration).toHaveLength(40);
+    expect(setAnswer.mock.calls[0][0].answers.setup.calibration).toHaveLength(2);
   });
 });

@@ -36,7 +36,11 @@ const DEFAULT_REFRESH_MS = 1000 / 60;
 /** The synthetic Enter is retried because the Next button only unlocks after the store round-trip. */
 const ADVANCE_RETRY_DELAYS = [60, 160, 300, 500, 800, 1200];
 
-const PROMPT_TEXT = 'Which one has more items?  Press  i  (first)  or  j  (second)';
+const PROMPT_TEXT = 'Which one has more items?  Press  F  or  \u2190  (first)  /  J  or  \u2192  (second)';
+
+/** Keys that answer "first" and "second": f / j on the home row, or the left / right arrows. */
+const FIRST_KEYS = new Set(['f', 'arrowleft']);
+const SECOND_KEYS = new Set(['j', 'arrowright']);
 
 /** The trial owns the whole viewport: a dark ground, the frame centred, and nothing else. */
 const overlayStyle: CSSProperties = {
@@ -165,7 +169,7 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
     };
   }, [running, refreshMs]);
 
-  // Response collection: only `i` and `j` count, and only while the prompt is up.
+  // Response collection: only f / left arrow and j / right arrow count, and only while the prompt is up.
   useEffect(() => {
     if (phase !== 'prompt') {
       return undefined;
@@ -173,12 +177,13 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
 
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (respondedRef.current || (key !== 'i' && key !== 'j')) {
+      if (respondedRef.current || (!FIRST_KEYS.has(key) && !SECOND_KEYS.has(key))) {
         return;
       }
+      event.preventDefault();
       respondedRef.current = true;
 
-      const response: TrialAnswer['response'] = key === 'i' ? 'first' : 'second';
+      const response: TrialAnswer['response'] = FIRST_KEYS.has(key) ? 'first' : 'second';
       const correct = (nB > displayA.n ? 'second' : 'first') === response;
       const trialAnswer: TrialAnswer = {
         response,
