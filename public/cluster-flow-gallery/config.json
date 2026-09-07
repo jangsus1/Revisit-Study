@@ -14,7 +14,7 @@
     ]
   },
   "uiConfig": {
-    "contactEmail": "contact@revisit.dev",
+    "contactEmail": "minsuk@gatech.edu",
     "helpTextPath": "cluster-flow-gallery/assets/introduction.md",
     "logoPath": "revisitAssets/revisitLogoSquare.svg",
     "withProgressBar": false,

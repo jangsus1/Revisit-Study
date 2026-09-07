@@ -22,7 +22,7 @@ other directly identifying information. Data are stored in de-identified form an
 with other researchers and published in aggregate.
 
 **Contact.** If you have questions about this study, contact the research team at
-**contact@revisit.dev**.
+**minsuk@gatech.edu**.
 
 By selecting *Accept* below and clicking *Agree*, you confirm that you are at least 18 years old,
 that you have read and understood this information, and that you agree to take part.
