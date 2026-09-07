@@ -14,7 +14,7 @@
     ]
   },
   "uiConfig": {
-    "contactEmail": "contact@revisit.dev",
+    "contactEmail": "minsuk@gatech.edu",
     "logoPath": "revisitAssets/revisitLogoSquare.svg",
     "withProgressBar": false,
     "withSidebar": false,
