@@ -2,9 +2,13 @@
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.3.2/src/parser/GlobalConfigSchema.json",
   "configsList": [
     "scatterplot_extend",
-    "scatterplot_interval"
+    "scatterplot_interval",
+    "scatterplot_duration"
   ],
   "configs": {
+    "scatterplot_duration": {
+      "path": "scatterplot_duration/config.json"
+    },
     "scatterplot_extend": {
       "path": "scatterplot_extend/config.json"
     },

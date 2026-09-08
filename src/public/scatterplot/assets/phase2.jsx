@@ -298,7 +298,7 @@ function Phase2({ parameters, setAnswer }) {
                   textAlign: 'center'
                 }}
               >
-                You have 5 seconds to estimate the correlation. <br />  Click to start!
+                You have 5~10 seconds to estimate the correlation. <br />  Click to start!
               </div>
             )}
           </div>
