@@ -1,6 +1,9 @@
 {
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/GlobalConfigSchema.json",
   "configsList": [
+    "scatterplot_duration",
+    "scatterplot_extend",
+    "scatterplot_interval",
     "tutorial",
     "tutorial-replication",
     "demo-html",
@@ -62,6 +65,36 @@
     "test-cluster-flow"
   ],
   "configs": {
+    "scatterplot_duration": {
+      "path": "scatterplot_duration/config.json"
+    },
+    "scatterplot_extend": {
+      "path": "scatterplot_extend/config.json"
+    },
+    "scatterplot_interval": {
+      "path": "scatterplot_interval/config.json"
+    },
+    "scatterplot": {
+      "path": "scatterplot/config.json"
+    },
+    "scatterplot2": {
+      "path": "scatterplot2/config.json"
+    },
+    "scatterplot3": {
+      "path": "scatterplot3/config.json"
+    },
+    "scatterplot_tilt": {
+      "path": "scatterplot_tilt/config.json"
+    },
+    "gaze1": {
+      "path": "gaze1/config.json"
+    },
+    "gaze2": {
+      "path": "gaze2/config.json"
+    },
+    "flowchart": {
+      "path": "flowchart/config.json"
+    },
     "tutorial": {
       "path": "tutorial/config.json"
     },

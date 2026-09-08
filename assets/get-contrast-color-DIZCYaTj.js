@@ -1,0 +1,1 @@
+import{h as e,m as t}from"./Box-DZqzFXY2.js";function n({color:e,theme:n,autoContrast:r}){return(typeof r==`boolean`?r:n.autoContrast)&&t({color:e||n.primaryColor,theme:n}).isLight?`var(--mantine-color-black)`:`var(--mantine-color-white)`}function r(t,r){return n({color:t.colors[t.primaryColor][e(t,r)],theme:t,autoContrast:null})}export{r as n,n as t};

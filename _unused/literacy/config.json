@@ -1,0 +1,1348 @@
+{
+    "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.0.1/src/parser/StudyConfigSchema.json",
+    "studyMetadata": {
+        "title": "Literacy",
+        "version": "dev",
+        "authors": [
+            "Minsuk Chang"
+        ],
+        "date": "2025-01-23",
+        "description": "Literacy test",
+        "organizations": [
+            "Georgia Institute of Technology"
+        ]
+    },
+    "importedLibraries": [
+        "mini-vlat",
+        "calvi"
+    ],
+    "uiConfig": {
+        "contactEmail": "minsuk@gatech.edu",
+        "helpTextPath": "literacy/assets/welcome.md",
+        "logoPath": "revisitAssets/revisitLogoSquare.svg",
+        "withProgressBar": true,
+        "autoDownloadStudy": false,
+        "urlParticipantIdParam": "PROLIFIC_PID",
+        "studyEndMsg": "**Thank you for completing the study. You may click this link and return to Prolific**: [https://app.prolific.com/submissions/complete?cc=CC8EMRUG](https://app.prolific.com/submissions/complete?cc=CC8EMRUG)",
+        "sidebar": true
+    },
+    "baseComponents": {
+        "bubble": {
+            "type": "react-component",
+            "path": "literacy/assets/bubble.jsx",
+            "instructionLocation": "sidebar",
+            "nextButtonLocation": "sidebar",
+            "nextButtonDisableTime": 90000,
+            "nextButtonEnableTime": 5000
+        }
+    },
+    "components": {
+        "instructions": {
+            "type": "markdown",
+            "path": "literacy/assets/instructions.md",
+            "response": []
+        },
+        "consent": {
+            "type": "markdown",
+            "path": "shared/consent.md",
+            "nextButtonText": "I agree",
+            "response": []
+        },
+        "demographics": {
+            "type": "markdown",
+            "path": "shared/blank.md",
+            "response": [
+                {
+                    "id": "gender",
+                    "prompt": "What is your **gender**?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "withOther": true,
+                    "options": [
+                        "Woman",
+                        "Man",
+                        "Prefer not to say"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "age",
+                    "prompt": "What is your **age**?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "Under 18 years",
+                        "18-24 years",
+                        "25-34 years",
+                        "35-44 years",
+                        "45-54 years",
+                        "55-64 years",
+                        "65 years or older",
+                        "Prefer not to say"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "education",
+                    "prompt": "What is the **highest degree or level of education** you have completed?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "withOther": true,
+                    "options": [
+                        "Less than high school",
+                        "High school diploma or equivalent",
+                        "Bachelor's degree or equivalent",
+                        "Master's degree or equivalent",
+                        "Doctoral degree or equivalent"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "experience",
+                    "prompt": "Please briefly describe your experience with data visualizations.",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "I create data visualizations frequently, either for work or as a hobby.",
+                        "I create data visualizations sometimes, either for work or as a hobby.",
+                        "I read data visualizations frequently, such as in news articles.",
+                        "I read data visualizations sometimes, such as in news articles.",
+                        "I rarely interact with data visualizations in my life."
+                    ],
+                    "withDivider": true
+                }
+            ]
+        },
+        "self_assessment": {
+            "type": "markdown",
+            "path": "literacy/assets/self_assessment.md",
+            "response": [
+                {
+                    "id": "SGL-item-1",
+                    "prompt": "Q1: How good are you at working with bar charts?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all good)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (extremely good)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-2",
+                    "prompt": "Q2: How good are you at working with line plots?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all good)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (extremely good)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-3",
+                    "prompt": "Q3: How good are you at working with pies?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all good)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (extremely good)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-4",
+                    "prompt": "Q4: How good are you at inferring the size of a bar in a bar chart?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all good)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (extremely good)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-5",
+                    "prompt": "Q5: How good are you at determining the difference between 2 bars in a bar chart?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all good)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (extremely good)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-6",
+                    "prompt": "Q6: How good are you at projecting a future trend from a line chart?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all good)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (extremely good)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-7",
+                    "prompt": "Q7: Are graphs easier to understand than numbers?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (much easier)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-8",
+                    "prompt": "Q8: How often do you find graphical information to be useful?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (never)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (very often)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-9",
+                    "prompt": "Q9: To what extent do you believe in the saying 'a picture is worth one thousand words'?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (extremely)"
+                    ],
+                    "withDivider": true
+                },
+                {
+                    "id": "SGL-item-10",
+                    "prompt": "Q10: When reading books or newspapers, how helpful do you find graphs that are part of a story?",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "1 (not at all)",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6 (extremely)"
+                    ],
+                    "withDivider": true
+                }
+            ]
+        },
+        "treemap-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **eBay is nested in the Software category.**",
+            "parameters": {
+                "image": "../literacy/assets/images/TreeMap.png",
+                "question": "eBay is nested in the Software category.",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "treemap-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "True",
+                        "False",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "treemap-VLAT",
+                    "answer": "False"
+                }
+            ]
+        },
+        "stackedBar100-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **Which country has the lowest proportion of Gold medals?**",
+            "parameters": {
+                "image": "../literacy/assets/images/Stacked100.png",
+                "question": "Which country has the lowest proportion of Gold medals?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "stackedBar100-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "Great Britain",
+                        "USA",
+                        "Japan",
+                        "None of Them",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "stackedBar100-VLAT",
+                    "answer": "Great Britain"
+                }
+            ]
+        },
+        "histogram-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **What distance have customers traveled in the taxi the most?**",
+            "parameters": {
+                "image": "../literacy/assets/images/Histogram.png",
+                "question": "What distance have customers traveled in the taxi the most?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "histogram-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "50-70km",
+                        "30-40km",
+                        "20-30km",
+                        "50-60km",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "histogram-VLAT",
+                    "answer": "30-40km"
+                }
+            ]
+        },
+        "choropleth-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **In 2020, the unemployment rate for Washington (WA) was higher than that of Wisconsin (WI)?**",
+            "parameters": {
+                "image": "../literacy/assets/images/Choropleth.png",
+                "question": "In 2020, the unemployment rate for Washington (WA) was higher than that of Wisconsin (WI)?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "choropleth-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "True",
+                        "False",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "choropleth-VLAT",
+                    "answer": "True"
+                }
+            ]
+        },
+        "piechart-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **What is the approximate global smartphone market share of Samsung?**",
+            "parameters": {
+                "image": "../literacy/assets/images/PieChart.png",
+                "question": "What is the approximate global smartphone market share of Samsung?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "piechart-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "17.6%",
+                        "25.3%",
+                        "10.9%",
+                        "35.2%",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "piechart-VLAT",
+                    "answer": "17.6%"
+                }
+            ]
+        },
+        "bubblechart-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **Which city's metro system has the largest number of stations?**",
+            "parameters": {
+                "image": "../literacy/assets/images/BubbleChart.png",
+                "question": "Which city's metro system has the largest number of stations?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "bubblechart-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "Beijing",
+                        "Shanghai",
+                        "London",
+                        "None of Them",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "bubblechart-VLAT",
+                    "answer": "Shanghai"
+                }
+            ]
+        },
+        "stackedbar-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **What is the cost of peanuts in Seoul?**",
+            "parameters": {
+                "image": "../literacy/assets/images/StackedBar.png",
+                "question": "What is the cost of peanuts in Seoul?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "stackedbar-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "$5.2",
+                        "$6.1",
+                        "$7.5",
+                        "$4.5",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "stackedbar-VLAT",
+                    "answer": "$6.1"
+                }
+            ]
+        },
+        "linechart-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **What was the price of a barrel of oil in February 2020?**",
+            "parameters": {
+                "image": "../literacy/assets/images/LineChart.png",
+                "question": "What was the price of a barrel of oil in February 2020?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "linechart-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "$50.54",
+                        "$47.02",
+                        "$42.34",
+                        "$43.48",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "linechart-VLAT",
+                    "answer": "$50.54"
+                }
+            ]
+        },
+        "barchart-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **What is the average internet speed in Japan?**",
+            "parameters": {
+                "image": "../literacy/assets/images/BarChart.png",
+                "question": "What is the average internet speed in Japan?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "barchart-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "42.30 Mbps",
+                        "40.51 Mbps",
+                        "35.25 Mbps",
+                        "16.16 Mbps",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "barchart-VLAT",
+                    "answer": "40.51 Mbps"
+                }
+            ]
+        },
+        "areachar-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **What was the average price of a pound of coffee in October 2019?**",
+            "parameters": {
+                "image": "../literacy/assets/images/AreaChart.png",
+                "question": "What was the average price of a pound of coffee in October 2019?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "areachar-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "$0.71",
+                        "$0.90",
+                        "$0.80",
+                        "$0.63",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "areachar-VLAT",
+                    "answer": "$0.71"
+                }
+            ]
+        },
+        "stackedarea-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **What was the ratio of girls named \"Isla\" to girls named \"Amelia\" in 2012 in the UK?**",
+            "parameters": {
+                "image": "../literacy/assets/images/StackedArea.png",
+                "question": "What was the ratio of girls named \"Isla\" to girls named \"Amelia\" in 2012 in the UK?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "stackedarea-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "1 to 1",
+                        "1 to 2",
+                        "1 to 3",
+                        "1 to 4",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "stackedarea-VLAT",
+                    "answer": "1 to 2"
+                }
+            ]
+        },
+        "scatterplot-VLAT": {
+            "baseComponent": "bubble",
+            "instruction": " **There is a negative relationship between the height and the weight of the 85 males.**",
+            "parameters": {
+                "image": "../literacy/assets/images/Scatterplot.png",
+                "question": "There is a negative relationship between the height and the weight of the 85 males.",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "scatterplot-VLAT",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "True",
+                        "False",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "scatterplot-VLAT",
+                    "answer": "False"
+                }
+            ]
+        },
+        "calvi1-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **What is the number of concert tickets sold on Aug 10 as a proportion of that on Aug 11?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi1.png",
+                "question": "What is the number of concert tickets sold on Aug 10 as a proportion of that on Aug 11?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi1-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "20%",
+                        "40%",
+                        "60%",
+                        "80%",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi1-CALVI",
+                    "answer": "80%"
+                }
+            ]
+        },
+        "calvi2-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Predatory species Z is more prevalent in NC than in AZ.**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi2.png",
+                "question": "Predatory species Z is more prevalent in NC than in AZ.",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi2-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "True",
+                        "False",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi2-CALVI",
+                    "answer": "False"
+                }
+            ]
+        },
+        "calvi3-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Which of the following is True about the annual number of new moview released in city X?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi3.png",
+                "question": "Which of the following is True about the annual number of new moview released in city X?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi3-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "There were more new movies released in 1992 than in 1994.",
+                        "2000 had the most number of new movies released.",
+                        "There were more new movies released in 1996 than in 1995.",
+                        "None of the above",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi3-CALVI",
+                    "answer": "There were more new movies released in 1992 than in 1994."
+                }
+            ]
+        },
+        "calvi4-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Which of the following is true about the prevalence of the plant species Y?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi4.png",
+                "question": "Which of the following is true about the prevalence of the plant species Y?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi4-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "It is more prevalent in region D than in E.",
+                        "It is less prevalent in region B than in C.",
+                        "It is more prevalent in region C than in A.",
+                        "It is less prevalent in region C than in D.",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi4-CALVI",
+                    "answer": "It is less prevalent in region C than in D."
+                }
+            ]
+        },
+        "calvi5-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Which of the following is true about the three brands of shampoo in city Y from 2001 to 2005?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi5.png",
+                "question": "Which of the following is true about the three brands of shampoo in city Y from 2001 to 2005?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi5-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "The market share of brand C is on an increasing trend from 2001 to 2005.",
+                        "The market share of brand C is higher in 2001 than in 2002.",
+                        "Brand B has the largest market share in 2001 compared to its market share in the other years.",
+                        "None of the above.",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi5-CALVI",
+                    "answer": "The market share of brand C is higher in 2001 than in 2002."
+                }
+            ]
+        },
+        "calvi6-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Approximately, what is the numver of votes for candidate A as a proportion of those for candidate B?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi6.png",
+                "question": "Approximately, what is the numver of votes for candidate A as a proportion of those for candidate B?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi6-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "50%",
+                        "60%",
+                        "70%",
+                        "80%",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi6-CALVI",
+                    "answer": "80%"
+                }
+            ]
+        },
+        "calvi7-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Was the average amount of precipitation over 15 years in region D higher than that in region C?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi7.png",
+                "question": "Was the average amount of precipitation over 15 years in region D higher than that in region C?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi7-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "Yes",
+                        "No",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi7-CALVI",
+                    "answer": "Cannot be inferred / inadequate information"
+                }
+            ]
+        },
+        "calvi8-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Assuming today is Feb 20, 2022, which of the following is true about the vegetables planted by the three farms?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi8.png",
+                "question": "Assuming today is Feb 20, 2022, which of the following is true about the vegetables planted by the three farms?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi8-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "All three farms planted more vegetables in 2022 than they did in the previous years.",
+                        "All three farms planted fewer vegetables in 2022 than they did in the previous years.",
+                        "All three farms planted about the same amount of vegetables in 2022 than they did in the previous years.",
+                        "None of the above.",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi8-CALVI",
+                    "answer": "None of the above."
+                }
+            ]
+        },
+        "calvi9-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Assuming today is May 01, 2022, which of the following statements is true?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi9.png",
+                "question": "Assuming today is May 01, 2022, which of the following statements is true?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi9-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "Company Z had more employees in 2018 than in 2020.",
+                        "The number of new employees per year fell sharply in 2022.",
+                        "The total number of employees in company Z decreased in 2022.",
+                        "None of the above.",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi9-CALVI",
+                    "answer": "None of the above."
+                }
+            ]
+        },
+        "calvi10-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Does any member of species C weigh more than 5 lbs?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi10.png",
+                "question": "Does any member of species C weigh more than 5 lbs?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi10-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "Yes",
+                        "No",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi10-CALVI",
+                    "answer": "Cannot be inferred / inadequate information"
+                }
+            ]
+        },
+        "calvi11-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **Which region had the highest number of confirmed cases per 1,000 people?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi11.png",
+                "question": "Which region had the highest number of confirmed cases per 1,000 people?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi11-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "A",
+                        "B",
+                        "C",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi11-CALVI",
+                    "answer": "Cannot be inferred / inadequate information"
+                }
+            ]
+        },
+        "calvi12-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **what is the trend of sales in gitt shop A from Jan to Dec?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi12.png",
+                "question": "what is the trend of sales in gitt shop A from Jan to Dec?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi12-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "Generally increasing",
+                        "Generally decreasing",
+                        "Generally constant",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi12-CALVI",
+                    "answer": "Cannot be inferred / inadequate information"
+                }
+            ]
+        },
+        "calvi13-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **More than half of the people in country Z prefer reading at night.**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi13.png",
+                "question": "More than half of the people in country Z prefer reading at night.",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi13-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "True",
+                        "False",
+                        "Cannot be inferred / inadequate information",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi13-CALVI",
+                    "answer": "False"
+                }
+            ]
+        },
+        "calvi14-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **the residents of town Y area voting on a favorite hiking trail, and half of the votes have been counted. The poll closes on Sep 01, 2022. Which of the following is true?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi14.png",
+                "question": "the residents of town Y area voting on a favorite hiking trail, and half of the votes have been counted. The poll closes on Sep 01, 2022. Which of the following is true?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi14-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "Hiking trail A will be voted as the favorite trail.",
+                        "Hiking trail B will be voted as the favorite trail.",
+                        "Hiking trail C will be voted as the favorite trail.",
+                        "Too early to say.",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi14-CALVI",
+                    "answer": "Too early to say."
+                }
+            ]
+        },
+        "calvi15-CALVI": {
+            "baseComponent": "bubble",
+            "instruction": " **In town X, what is the approximate average number of customers at mall A from Jan to Mar?**",
+            "parameters": {
+                "image": "../literacy/assets/images/calvi15.png",
+                "question": "In town X, what is the approximate average number of customers at mall A from Jan to Mar?",
+                "radius": 32
+            },
+            "response": [
+                {
+                    "id": "calvi15-CALVI",
+                    "prompt": "Your answer",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "radio",
+                    "options": [
+                        "200",
+                        "300",
+                        "400",
+                        "500",
+                        "Skip"
+                    ]
+                },
+                {
+                    "id": "answer",
+                    "prompt": "Click at least once.",
+                    "required": true,
+                    "location": "sidebar",
+                    "type": "reactive"
+                }
+            ],
+            "correctAnswer": [
+                {
+                    "id": "calvi15-CALVI",
+                    "answer": "400"
+                }
+            ]
+        }
+    },
+    "sequence": {
+        "order": "fixed",
+        "components": [
+            "consent",
+            "self_assessment",
+            "instructions",
+            {
+                "id": "batch",
+                "order": "random",
+                "components": [
+                    "treemap-VLAT",
+                    "stackedBar100-VLAT",
+                    "histogram-VLAT",
+                    "choropleth-VLAT",
+                    "piechart-VLAT",
+                    "bubblechart-VLAT",
+                    "stackedbar-VLAT",
+                    "linechart-VLAT",
+                    "barchart-VLAT",
+                    "areachar-VLAT",
+                    "stackedarea-VLAT",
+                    "scatterplot-VLAT",
+                    "calvi1-CALVI",
+                    "calvi2-CALVI",
+                    "calvi3-CALVI",
+                    "calvi4-CALVI",
+                    "calvi5-CALVI",
+                    "calvi6-CALVI",
+                    "calvi7-CALVI",
+                    "calvi8-CALVI",
+                    "calvi9-CALVI",
+                    "calvi10-CALVI",
+                    "calvi11-CALVI",
+                    "calvi12-CALVI",
+                    "calvi13-CALVI",
+                    "calvi14-CALVI",
+                    "calvi15-CALVI"
+                ]
+            },
+            "demographics"
+        ]
+    }
+}
