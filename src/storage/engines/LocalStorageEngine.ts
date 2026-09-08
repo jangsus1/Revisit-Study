@@ -1,12 +1,15 @@
 import localforage from 'localforage';
 import {
-  REVISIT_MODE, SequenceAssignment, SnapshotDocContent, StorageEngine, StorageObject, StorageObjectType,
+  REVISIT_MODE, SequenceAssignment, SnapshotDocContent, StorageEngine, StorageObject, StorageObjectType, cleanupModes,
 } from './types';
+import { SnapshotParticipantCounts } from './utils/snapshotParticipantCounts';
 
 export class LocalStorageEngine extends StorageEngine {
   private studyDatabase = localforage.createInstance({
     name: 'revisit',
   });
+
+  protected participantStore = this.studyDatabase;
 
   constructor(testing: boolean = false) {
     super('localStorage', testing);
@@ -72,6 +75,39 @@ export class LocalStorageEngine extends StorageEngine {
     await this.studyDatabase.setItem(sequenceAssignmentPath, sequenceAssignments);
   }
 
+  protected async _updateSequenceAssignmentFields(participantId: string, updatedFields: Partial<SequenceAssignment>) {
+    await this.verifyStudyDatabase();
+    if (this.studyId === undefined) {
+      throw new Error('Study ID is not set');
+    }
+    const sequenceAssignmentPath = `${this.collectionPrefix}${this.studyId}/sequenceAssignment`;
+    const sequenceAssignments = await this.studyDatabase.getItem<Record<string, SequenceAssignment>>(sequenceAssignmentPath) || {};
+    const existingAssignment = sequenceAssignments[participantId];
+    if (!existingAssignment) {
+      throw new Error(`Sequence assignment for participant ${participantId} not found`);
+    }
+    const updatedAssignment = {
+      ...existingAssignment,
+      ...updatedFields,
+    };
+    if (Object.hasOwn(updatedFields, 'conditions') && updatedFields.conditions === undefined) {
+      delete updatedAssignment.conditions;
+    }
+    sequenceAssignments[participantId] = updatedAssignment;
+    await this.studyDatabase.setItem(sequenceAssignmentPath, sequenceAssignments);
+  }
+
+  protected async _getSequenceAssignment(participantId: string) {
+    await this.verifyStudyDatabase();
+    if (this.studyId === undefined) {
+      throw new Error('Study ID is not set');
+    }
+
+    const sequenceAssignmentPath = `${this.collectionPrefix}${this.studyId}/sequenceAssignment`;
+    const sequenceAssignments = await this.studyDatabase.getItem<Record<string, SequenceAssignment>>(sequenceAssignmentPath) || {};
+    return sequenceAssignments[participantId] || null;
+  }
+
   protected async _completeCurrentParticipantRealtime() {
     if (!this.currentParticipantId) {
       throw new Error('Participant not initialized');
@@ -102,8 +138,11 @@ export class LocalStorageEngine extends StorageEngine {
     const participantSequenceAssignment = sequenceAssignments[participantId];
 
     // If this was a claimed sequence assignment, we need to mark it as available again
-    // Find the sequence assignment that was claimed
-    const claimedAssignmentData = Object.values(sequenceAssignments).find((assignment) => assignment.claimed && assignment.timestamp === participantSequenceAssignment.timestamp);
+    const claimedAssignmentData = participantSequenceAssignment?.claimedParticipantId
+      ? sequenceAssignments[participantSequenceAssignment.claimedParticipantId]
+      : Object.values(sequenceAssignments).find(
+        (assignment) => assignment.claimed && assignment.timestamp === participantSequenceAssignment.timestamp,
+      );
     if (participantSequenceAssignment && claimedAssignmentData) {
       // Mark the claimed assignment as available again
       claimedAssignmentData.claimed = false;
@@ -136,6 +175,14 @@ export class LocalStorageEngine extends StorageEngine {
     const participantSequenceAssignment = sequenceAssignments[participantId];
     if (participantSequenceAssignment) {
       participantSequenceAssignment.rejected = false;
+      if (participantSequenceAssignment.claimedParticipantId) {
+        const claimedAssignmentData = sequenceAssignments[participantSequenceAssignment.claimedParticipantId];
+        if (claimedAssignmentData) {
+          claimedAssignmentData.claimed = true;
+          claimedAssignmentData.rejected = true;
+          participantSequenceAssignment.timestamp = claimedAssignmentData.timestamp;
+        }
+      }
       await this.studyDatabase.setItem(sequenceAssignmentPath, sequenceAssignments);
     }
   }
@@ -170,16 +217,17 @@ export class LocalStorageEngine extends StorageEngine {
     // Get the modes
     const modes = await this.studyDatabase.getItem(key) as Record<REVISIT_MODE, boolean> | null;
     if (modes) {
-      return modes;
+      const cleanedModes = cleanupModes(modes as Record<string, boolean>);
+      await this.studyDatabase.setItem(key, cleanedModes);
+      return cleanedModes;
     }
 
-    // Else, set and return defaults
     const defaults: Record<REVISIT_MODE, boolean> = {
       dataCollectionEnabled: true,
-      studyNavigatorEnabled: true,
-      analyticsInterfacePubliclyAccessible: true,
+      developmentModeEnabled: true,
+      dataSharingEnabled: true,
     };
-    this.studyDatabase.setItem(key, defaults);
+    await this.studyDatabase.setItem(key, defaults);
     return defaults;
   }
 
@@ -194,7 +242,7 @@ export class LocalStorageEngine extends StorageEngine {
 
     // Set the mode
     modes[mode] = value;
-    this.studyDatabase.setItem(key, modes);
+    await this.studyDatabase.setItem(key, modes);
   }
 
   protected async _setModesDocument(studyId: string, modesDocument: Record<string, unknown>): Promise<void> {
@@ -281,12 +329,18 @@ export class LocalStorageEngine extends StorageEngine {
     await this._deleteDirectory(path);
   }
 
-  protected async _addDirectoryNameToSnapshots(directoryName: string, studyId: string) {
+  protected async _addDirectoryNameToSnapshots(
+    directoryName: string,
+    studyId: string,
+    participantCounts?: SnapshotParticipantCounts,
+  ) {
     await this.verifyStudyDatabase();
     const metadataKey = `${this.collectionPrefix}${studyId}/snapshots`;
     const metadata = await this.studyDatabase.getItem<SnapshotDocContent>(metadataKey) || {};
     if (!metadata[directoryName]) {
-      metadata[directoryName] = { name: directoryName };
+      metadata[directoryName] = participantCounts
+        ? { name: directoryName, participantCounts }
+        : { name: directoryName };
       await this.studyDatabase.setItem(metadataKey, metadata);
     }
   }
@@ -306,10 +360,26 @@ export class LocalStorageEngine extends StorageEngine {
     const snapshotsKey = `${this.collectionPrefix}${studyId}/snapshots`;
     const snapshots = await this.studyDatabase.getItem<SnapshotDocContent>(snapshotsKey) || {};
     if (snapshots[key]) {
-      snapshots[key] = { name: newName };
+      snapshots[key] = { ...snapshots[key], name: newName };
       await this.studyDatabase.setItem(snapshotsKey, snapshots);
     } else {
       throw new Error(`Snapshot with name ${key} does not exist`);
+    }
+  }
+
+  protected async _updateSnapshotParticipantCounts(
+    snapshotName: string,
+    studyId: string,
+    participantCounts: SnapshotParticipantCounts,
+  ) {
+    await this.verifyStudyDatabase();
+    const snapshotsKey = `${this.collectionPrefix}${studyId}/snapshots`;
+    const snapshots = await this.studyDatabase.getItem<SnapshotDocContent>(snapshotsKey) || {};
+    if (snapshots[snapshotName]) {
+      snapshots[snapshotName] = { ...snapshots[snapshotName], participantCounts };
+      await this.studyDatabase.setItem(snapshotsKey, snapshots);
+    } else {
+      throw new Error(`Snapshot with name ${snapshotName} does not exist`);
     }
   }
 }

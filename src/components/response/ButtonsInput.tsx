@@ -1,23 +1,26 @@
 import {
-  Flex, FocusTrap, Radio, Text,
+  Flex, FocusTrap, Radio,
 } from '@mantine/core';
 import { useMemo } from 'react';
-import { ButtonsResponse, StringOption } from '../../parser/types';
-import { generateErrorMessage } from './utils';
+import { ButtonsResponse, ParsedStringOption } from '../../parser/types';
 import classes from './css/ButtonsInput.module.css';
 import { useStoredAnswer } from '../../store/hooks/useStoredAnswer';
 import { InputLabel } from './InputLabel';
+import { OptionLabel } from './OptionLabel';
+import { parseStringOptions } from '../../utils/stringOptions';
 
 export function ButtonsInput({
   response,
   disabled,
   answer,
+  error,
   index,
   enumerateQuestions,
 }: {
   response: ButtonsResponse;
   disabled: boolean;
   answer: { value?: string };
+  error?: string | null;
   index: number;
   enumerateQuestions: boolean;
 }) {
@@ -30,11 +33,12 @@ export function ButtonsInput({
   } = response;
 
   const storedAnswer = useStoredAnswer();
-  const optionOrders: Record<string, StringOption[]> = useMemo(() => (storedAnswer ? storedAnswer.optionOrders : {}), [storedAnswer]);
+  const optionOrders: Record<string, ParsedStringOption[]> = useMemo(() => storedAnswer?.optionOrders ?? {}, [storedAnswer]);
 
-  const orderedOptions = useMemo(() => optionOrders[response.id] || options, [optionOrders, options, response.id]);
-
-  const error = useMemo(() => generateErrorMessage(response, answer, orderedOptions), [response, answer, orderedOptions]);
+  const orderedOptions = useMemo(
+    () => parseStringOptions(optionOrders[response.id] || options),
+    [optionOrders, options, response.id],
+  );
 
   return (
     <FocusTrap>
@@ -45,7 +49,7 @@ export function ButtonsInput({
         key={response.id}
         {...answer}
         error={error}
-        errorProps={{ c: required ? 'red' : 'orange' }}
+        errorProps={{ c: required ? 'red' : 'orange', fz: 'sm', mt: 'xs' }}
         style={{ '--input-description-size': 'calc(var(--mantine-font-size-md) - calc(0.125rem * var(--mantine-scale)))' }}
       >
         <Flex justify="space-between" align="center" gap="xl" mt="xs">
@@ -58,7 +62,7 @@ export function ButtonsInput({
               className={classes.root}
               p="xs"
             >
-              <Text>{radio.label}</Text>
+              <OptionLabel label={radio.label} infoText={radio.infoText} button />
             </Radio.Card>
           ))}
         </Flex>

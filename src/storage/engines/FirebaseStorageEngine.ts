@@ -1,7 +1,9 @@
 import { parse as hjsonParse } from 'hjson';
+import localforage from 'localforage';
 import { initializeApp } from 'firebase/app';
 import {
   deleteObject,
+  getBlob,
   getDownloadURL,
   getStorage,
   ref,
@@ -16,6 +18,7 @@ import {
   Firestore,
   Timestamp,
   collection,
+  deleteField,
   doc,
   enableNetwork,
   getDoc,
@@ -40,8 +43,10 @@ import {
   SequenceAssignment,
   SnapshotDocContent,
   StoredUser,
+  cleanupModes,
 } from './types';
 import { EditedText, TaglessEditedText } from '../../analysis/individualStudy/thinkAloud/types';
+import { SnapshotParticipantCounts } from './utils/snapshotParticipantCounts';
 
 export class FirebaseStorageEngine extends CloudStorageEngine {
   private RECAPTCHAV3TOKEN = import.meta.env.VITE_RECAPTCHAV3TOKEN;
@@ -51,6 +56,10 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
   private studyCollection: CollectionReference<DocumentData, DocumentData>;
 
   private storage: FirebaseStorage;
+
+  protected participantStore = localforage.createInstance({
+    name: 'revisit-firebase',
+  });
 
   constructor(testing: boolean = false) {
     super('firebase', testing);
@@ -87,9 +96,8 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
 
     let storageObj: StorageObject<T> = {} as StorageObject<T>;
     try {
-      const url = await getDownloadURL(storageRef);
-      const response = await fetch(url);
-      const fullProvStr = await response.text();
+      const blob = await getBlob(storageRef);
+      const fullProvStr = await blob.text();
       storageObj = JSON.parse(fullProvStr);
     } catch {
       console.warn(
@@ -232,6 +240,61 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
     await setDoc(participantSequenceAssignmentDoc, { ...toUpload, createdTime: serverTimestamp() });
   }
 
+  protected async _updateSequenceAssignmentFields(participantId: string, updatedFields: Partial<SequenceAssignment>) {
+    if (this.studyId === undefined) {
+      throw new Error('Study ID is not set');
+    }
+
+    const sequenceAssignmentDoc = doc(this.studyCollection, 'sequenceAssignment');
+    const sequenceAssignmentCollection = collection(
+      sequenceAssignmentDoc,
+      'sequenceAssignment',
+    );
+    const participantSequenceAssignmentDoc = doc(
+      sequenceAssignmentCollection,
+      participantId,
+    );
+
+    const firebaseUpdatedFields: Record<string, unknown> = { ...updatedFields };
+    if (Object.hasOwn(updatedFields, 'conditions') && updatedFields.conditions === undefined) {
+      firebaseUpdatedFields.conditions = deleteField();
+    }
+    if (Object.keys(firebaseUpdatedFields).length === 0) {
+      return;
+    }
+
+    await updateDoc(participantSequenceAssignmentDoc, firebaseUpdatedFields);
+  }
+
+  protected async _getSequenceAssignment(participantId: string) {
+    if (this.studyId === undefined) {
+      throw new Error('Study ID is not set');
+    }
+
+    const sequenceAssignmentDoc = doc(this.studyCollection, 'sequenceAssignment');
+    const sequenceAssignmentCollection = collection(
+      sequenceAssignmentDoc,
+      'sequenceAssignment',
+    );
+    const participantSequenceAssignmentDoc = doc(
+      sequenceAssignmentCollection,
+      participantId,
+    );
+
+    const participantSequenceAssignment = await getDoc(participantSequenceAssignmentDoc);
+    if (!participantSequenceAssignment.exists()) {
+      return null;
+    }
+
+    const data = participantSequenceAssignment.data();
+    return {
+      ...data,
+      timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toMillis() : data.timestamp,
+      createdTime: data.createdTime instanceof Timestamp ? data.createdTime.toMillis() : data.createdTime,
+      completed: data.completed instanceof Timestamp ? data.completed.toMillis() : data.completed,
+    } as SequenceAssignment;
+  }
+
   protected async _completeCurrentParticipantRealtime() {
     await this.verifyStudyDatabase();
     if (!this.currentParticipantId) {
@@ -270,18 +333,51 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
       sequenceAssignmentDoc,
       'sequenceAssignment',
     );
+    const sequenceAssignmentSnapshot = await getDocs(sequenceAssignmentCollection);
+    const participantSequenceAssignmentSnapshot = sequenceAssignmentSnapshot.docs.find((docSnapshot) => docSnapshot.id === participantId);
+    if (!participantSequenceAssignmentSnapshot) {
+      throw new Error('Failed to retrieve sequence assignment for current participant');
+    }
+
+    const participantSequenceAssignment = participantSequenceAssignmentSnapshot.data() as SequenceAssignment;
+    const toMillis = (value: unknown) => {
+      if (value instanceof Timestamp) {
+        return value.toMillis();
+      }
+      if (typeof value === 'number') {
+        return value;
+      }
+      return Number(value);
+    };
+    const claimedSequenceAssignmentSnapshot = participantSequenceAssignment.claimedParticipantId
+      ? sequenceAssignmentSnapshot.docs.find(
+        (docSnapshot) => docSnapshot.id === participantSequenceAssignment.claimedParticipantId,
+      )
+      : (() => {
+        const participantTimestamp = toMillis(participantSequenceAssignment.timestamp);
+        return sequenceAssignmentSnapshot.docs.find((docSnapshot) => {
+          const docData = docSnapshot.data() as SequenceAssignment;
+          return docData.claimed && toMillis(docData.timestamp) === participantTimestamp;
+        });
+      })();
+
+    if (claimedSequenceAssignmentSnapshot) {
+      const claimedSequenceAssignmentDoc = doc(sequenceAssignmentCollection, claimedSequenceAssignmentSnapshot.id);
+      await updateDoc(claimedSequenceAssignmentDoc, { claimed: false, rejected: true });
+    }
+
     const participantSequenceAssignmentDoc = doc(
       sequenceAssignmentCollection,
       participantId,
     );
-    await updateDoc(participantSequenceAssignmentDoc, { rejected: true });
+    await updateDoc(participantSequenceAssignmentDoc, {
+      rejected: true,
+      timestamp: new Date().getTime(),
+    });
   }
 
   protected async _undoRejectParticipantRealtime(participantId: string) {
     await this.verifyStudyDatabase();
-    if (!this.currentParticipantId) {
-      throw new Error('Participant not initialized');
-    }
     if (!this.studyId) {
       throw new Error('Study ID is not set');
     }
@@ -300,7 +396,43 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
       sequenceAssignmentCollection,
       participantId,
     );
-    await updateDoc(participantSequenceAssignmentDoc, { rejected: false });
+    const participantSequenceAssignmentSnapshot = await getDoc(participantSequenceAssignmentDoc);
+    if (!participantSequenceAssignmentSnapshot.exists()) {
+      throw new Error('Failed to retrieve sequence assignment for current participant');
+    }
+
+    const participantSequenceAssignment = participantSequenceAssignmentSnapshot.data() as SequenceAssignment;
+    const toMillis = (value: unknown) => {
+      if (value instanceof Timestamp) {
+        return value.toMillis();
+      }
+      if (typeof value === 'number') {
+        return value;
+      }
+      return Number(value);
+    };
+    let restoredTimestamp: number | undefined;
+    if (participantSequenceAssignment.claimedParticipantId) {
+      const claimedSequenceAssignmentDoc = doc(
+        sequenceAssignmentCollection,
+        participantSequenceAssignment.claimedParticipantId,
+      );
+      const claimedSequenceAssignmentSnapshot = await getDoc(claimedSequenceAssignmentDoc);
+      if (!claimedSequenceAssignmentSnapshot.exists()) {
+        throw new Error('Failed to retrieve claimed sequence assignment for current participant');
+      }
+
+      const claimedSequenceAssignment = claimedSequenceAssignmentSnapshot.data() as SequenceAssignment;
+      restoredTimestamp = toMillis(claimedSequenceAssignment.timestamp);
+      await updateDoc(claimedSequenceAssignmentDoc, { claimed: true, rejected: true });
+    }
+
+    await updateDoc(
+      participantSequenceAssignmentDoc,
+      restoredTimestamp === undefined
+        ? { rejected: false }
+        : { rejected: false, timestamp: restoredTimestamp },
+    );
   }
 
   protected async _claimSequenceAssignment(participantId: string) {
@@ -325,22 +457,35 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
     await updateDoc(participantSequenceAssignmentDoc, { claimed: true });
   }
 
+  async initializeAnonymousAuth() {
+    const auth = getAuth();
+    await auth.authStateReady();
+
+    if (auth.currentUser) {
+      return true;
+    }
+
+    try {
+      await signInAnonymously(auth);
+      return !!auth.currentUser;
+    } catch (error) {
+      const errorMessage = 'Firebase anonymous sign-in failed. Please ensure Anonymous Authentication is enabled in your Firebase Console.';
+      console.error(errorMessage, error);
+      return false;
+    }
+  }
+
+  async checkAuthReadiness() {
+    const isReady = await this.initializeAnonymousAuth();
+    if (!isReady) {
+      this.connected = false;
+      throw new Error('FirebaseAuthError: Login failed with firebase');
+    }
+    this.connected = true;
+  }
+
   async initializeStudyDb(studyId: string) {
     try {
-      const auth = getAuth();
-      await auth.authStateReady();
-
-      if (!auth.currentUser) {
-        try {
-          await signInAnonymously(auth);
-          if (!auth.currentUser) {
-            throw new Error('Login failed with firebase');
-          }
-        } catch (error) {
-          console.error('Firebase anonymous sign-in failed:', error);
-        }
-      }
-
       // Create or retrieve database for study
       this.studyCollection = collection(
         this.firestore,
@@ -355,9 +500,9 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
   async connect() {
     try {
       await enableNetwork(this.firestore);
-
-      this.connected = true;
+      this.connected = await this.initializeAnonymousAuth();
     } catch {
+      this.connected = false;
       console.warn('Failed to connect to Firebase');
     }
   }
@@ -371,14 +516,23 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
     const revisitModesData = await getDoc(revisitModesDoc);
 
     if (revisitModesData.exists()) {
-      return revisitModesData.data() as Record<REVISIT_MODE, boolean>;
+      const modes = revisitModesData.data() as Record<string, boolean>;
+      const needsUpdate = 'studyNavigatorEnabled' in modes || 'analyticsInterfacePubliclyAccessible' in modes;
+
+      if (needsUpdate) {
+        const cleanedModes = cleanupModes(modes);
+        await setDoc(revisitModesDoc, cleanedModes);
+        return cleanedModes;
+      }
+
+      return modes;
     }
 
     // Else set to default values
     const defaultModes = {
       dataCollectionEnabled: true,
-      studyNavigatorEnabled: true,
-      analyticsInterfacePubliclyAccessible: true,
+      developmentModeEnabled: true,
+      dataSharingEnabled: true,
     };
     await setDoc(revisitModesDoc, defaultModes);
     return defaultModes;
@@ -586,12 +740,19 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
   }
 
   // Function to add collection name to metadata
-  protected async _addDirectoryNameToSnapshots(directoryName: string) {
+  protected async _addDirectoryNameToSnapshots(
+    directoryName: string,
+    studyId: string,
+    participantCounts?: SnapshotParticipantCounts,
+  ) {
     try {
-      const snapshotDoc = doc(this.firestore, `${this.collectionPrefix}${this.studyId}`, 'snapshots');
+      const snapshotDoc = doc(this.firestore, `${this.collectionPrefix}${studyId}`, 'snapshots');
+      const snapshotMetadata = participantCounts
+        ? { name: directoryName, participantCounts }
+        : { name: directoryName };
       await setDoc(
         snapshotDoc,
-        { [directoryName]: { name: directoryName } } as SnapshotDocContent,
+        { [directoryName]: snapshotMetadata } as SnapshotDocContent,
         { merge: true },
       );
     } catch (error) {
@@ -600,9 +761,9 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
     }
   }
 
-  protected async _removeDirectoryNameFromSnapshots(directoryName: string) {
+  protected async _removeDirectoryNameFromSnapshots(directoryName: string, studyId: string) {
     try {
-      const snapshotDoc = doc(this.firestore, `${this.collectionPrefix}${this.studyId}`, 'snapshots');
+      const snapshotDoc = doc(this.firestore, `${this.collectionPrefix}${studyId}`, 'snapshots');
       const snapshotData = await getDoc(snapshotDoc);
 
       if (snapshotData.exists()) {
@@ -622,11 +783,37 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
     }
   }
 
-  protected async _changeDirectoryNameInSnapshots(oldName: string, newName: string) {
-    const snapshotDoc = doc(this.firestore, `${this.collectionPrefix}${this.studyId}`, 'snapshots');
+  protected async _changeDirectoryNameInSnapshots(oldName: string, newName: string, studyId: string) {
+    const snapshotDoc = doc(this.firestore, `${this.collectionPrefix}${studyId}`, 'snapshots');
+    const snapshotData = await getDoc(snapshotDoc);
+    const existingMetadata = snapshotData.exists()
+      ? (snapshotData.data() as SnapshotDocContent)[oldName] ?? { name: oldName }
+      : { name: oldName };
     await setDoc(
       snapshotDoc,
-      { [oldName]: { name: newName } },
+      { [oldName]: { ...existingMetadata, name: newName } },
+      { merge: true },
+    );
+  }
+
+  protected async _updateSnapshotParticipantCounts(
+    snapshotName: string,
+    studyId: string,
+    participantCounts: SnapshotParticipantCounts,
+  ) {
+    const snapshotDoc = doc(this.firestore, `${this.collectionPrefix}${studyId}`, 'snapshots');
+    const snapshotData = await getDoc(snapshotDoc);
+    const existingMetadata = snapshotData.exists()
+      ? (snapshotData.data() as SnapshotDocContent)[snapshotName]
+      : undefined;
+
+    if (!existingMetadata) {
+      throw new Error(`Snapshot with name ${snapshotName} does not exist`);
+    }
+
+    await setDoc(
+      snapshotDoc,
+      { [snapshotName]: { ...existingMetadata, participantCounts } },
       { merge: true },
     );
   }

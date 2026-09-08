@@ -7,24 +7,33 @@ import {
   Group,
   LoadingOverlay,
   Modal,
+  Progress,
   Space,
   Table,
   Text,
 } from '@mantine/core';
 import {
+  IconAlertTriangle,
   IconBrandPython, IconLayoutColumns, IconTableExport, IconX,
 } from '@tabler/icons-react';
 import { useCallback, useMemo, useState } from 'react';
-import { ParticipantData } from '../../storage/types';
+import { ParticipantDataWithStatus } from '../../storage/types';
 import { Prettify, StudyConfig } from '../../parser/types';
 import { StorageEngine } from '../../storage/engines/types';
 import { useStorageEngine } from '../../storage/storageEngineHooks';
+import { FirebaseStorageEngine } from '../../storage/engines/FirebaseStorageEngine';
 import { useAsync } from '../../store/hooks/useAsync';
+import { useAuth } from '../../store/hooks/useAuth';
 import { getCleanedDuration } from '../../utils/getCleanedDuration';
 import { showNotification } from '../../utils/notifications';
 import { studyComponentToIndividualComponent } from '../../utils/handleComponentInheritance';
+import { parseConditionParam } from '../../utils/handleConditionLogic';
+import { getAnswerIdentifier, getParticipantQualitativeCodes } from './qualitativeCodes';
+import type { DownloadedQualitativeCodes } from './qualitativeCodes';
 
 const OPTIONAL_COMMON_PROPS = [
+  'condition',
+  'stage',
   'status',
   'rejectReason',
   'rejectTime',
@@ -37,11 +46,15 @@ const OPTIONAL_COMMON_PROPS = [
   'duration',
   'cleanedDuration',
   'meta',
+  'transcript',
   'startTime',
   'endTime',
   'responseMin',
   'responseMax',
   'configHash',
+  'metaData',
+  'participantTags',
+  'taskTags',
 ] as const;
 
 const REQUIRED_PROPS = [
@@ -56,6 +69,28 @@ type RequiredProperty = (typeof REQUIRED_PROPS)[number];
 type MetaProperty = `meta-${string}`;
 
 type Property = OptionalProperty | RequiredProperty | MetaProperty;
+// Cap in-flight transcript requests to avoid flooding browser/network/Firebase on large studies.
+const TRANSCRIPTION_CONCURRENCY_LIMIT = 50;
+
+async function runWithConcurrencyLimit(tasks: Array<() => Promise<void>>, concurrencyLimit: number) {
+  const safeLimit = Math.max(1, concurrencyLimit);
+  let nextIndex = 0;
+
+  const runNext = async (): Promise<void> => {
+    const currentIndex = nextIndex;
+    nextIndex += 1;
+
+    if (currentIndex >= tasks.length) {
+      return;
+    }
+
+    await tasks[currentIndex]();
+    await runNext();
+  };
+
+  const workers = Array.from({ length: Math.min(safeLimit, tasks.length) }, () => runNext());
+  await Promise.all(workers);
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type TidyRow = Prettify<Record<RequiredProperty, any> & Partial<Record<OptionalProperty | MetaProperty, any>>> & Record<string, number | string[] | boolean | string | null>;
@@ -70,24 +105,47 @@ export function download(graph: string, filename: string) {
   downloadAnchorNode.remove();
 }
 
-function participantDataToRows(participant: ParticipantData, properties: Property[], studyConfig: StudyConfig): [TidyRow[], string[]] {
+function participantDataToRows(
+  participant: ParticipantDataWithStatus,
+  properties: Property[],
+  studyConfig?: StudyConfig,
+  transcripts?: Record<string, string | null>,
+  qualitativeCodes?: DownloadedQualitativeCodes,
+): [TidyRow[], string[]] {
   const percentComplete = ((Object.entries(participant.answers).filter(([_, entry]) => entry.endTime !== -1).length / (Object.entries(participant.answers).length)) * 100).toFixed(2);
   const newHeaders = new Set<string>();
+  const participantConditions = parseConditionParam(participant.conditions ?? participant.searchParams?.condition);
+  const conditionValue = participantConditions.length > 0 ? participantConditions.join(',') : 'default';
+  const metaData = JSON.stringify(participant.metadata);
+  const participantQualitativeTags = JSON.stringify(qualitativeCodes?.participantTags ?? []);
 
   return [[
-    {
+    ...(properties.includes('participantTags') ? [{
       participantId: participant.participantId,
       trialId: 'participantTags',
       trialOrder: null,
       responseId: 'participantTags',
-      answer: JSON.stringify(participant.participantTags),
-    },
+      answer: participantQualitativeTags,
+      ...(properties.includes('condition') ? { condition: conditionValue } : {}),
+      ...(properties.includes('stage') ? { stage: participant.stage } : {}),
+    }] : []),
+    ...(properties.includes('metaData') ? [{
+      participantId: participant.participantId,
+      trialId: 'metaData',
+      trialOrder: null,
+      responseId: 'metaData',
+      answer: metaData,
+      ...(properties.includes('condition') ? { condition: conditionValue } : {}),
+      ...(properties.includes('stage') ? { stage: participant.stage } : {}),
+    }] : []),
     ...Object.values(participant.answers).map((trialAnswer) => {
       // Get the whole component, including the base component if there is inheritance
       const trialId = trialAnswer.componentName;
       const { trialOrder } = trialAnswer;
-      const trialConfig = studyConfig.components[trialId];
-      const completeComponent = studyComponentToIndividualComponent(trialConfig, studyConfig);
+      const trialConfig = studyConfig?.components?.[trialId];
+      const completeComponent = trialConfig && studyConfig ? studyComponentToIndividualComponent(trialConfig, studyConfig) : undefined;
+      const identifier = getAnswerIdentifier(trialAnswer);
+      const taskQualitativeTags = JSON.stringify(qualitativeCodes?.taskTags[identifier] ?? []);
 
       const duration = trialAnswer.endTime === -1 ? undefined : trialAnswer.endTime - trialAnswer.startTime;
       const cleanedDuration = getCleanedDuration(trialAnswer);
@@ -106,7 +164,13 @@ function participantDataToRows(participant: ParticipantData, properties: Propert
           newHeaders.add(`parameters_${_key}`);
         });
 
-        const response = completeComponent.response.find((resp) => resp.id === key);
+        const response = completeComponent?.response.find((resp) => resp.id === key);
+        if (properties.includes('condition')) {
+          tidyRow.condition = conditionValue;
+        }
+        if (properties.includes('stage')) {
+          tidyRow.stage = participant.stage;
+        }
         if (properties.includes('status')) {
           tidyRow.status = participant.rejected ? 'rejected' : (participant.completed ? 'completed' : 'in progress');
         }
@@ -123,10 +187,10 @@ function participantDataToRows(participant: ParticipantData, properties: Propert
           tidyRow.percentComplete = percentComplete;
         }
         if (properties.includes('description')) {
-          tidyRow.description = completeComponent.description;
+          tidyRow.description = completeComponent?.description;
         }
         if (properties.includes('instruction')) {
-          tidyRow.instruction = completeComponent.instruction;
+          tidyRow.instruction = completeComponent?.instruction;
         }
         if (properties.includes('responsePrompt')) {
           tidyRow.responsePrompt = response?.prompt;
@@ -134,13 +198,18 @@ function participantDataToRows(participant: ParticipantData, properties: Propert
         if (properties.includes('answer')) {
           tidyRow.answer = typeof value === 'object' ? JSON.stringify(value) : value;
         }
+        if (properties.includes('taskTags')) {
+          tidyRow.taskTags = taskQualitativeTags;
+        }
+        if (properties.includes('transcript')) {
+          tidyRow.transcript = transcripts?.[`${participant.participantId}_${identifier}`] ?? undefined;
+        }
         if (properties.includes('correctAnswer')) {
-          const configCorrectAnswer = completeComponent.correctAnswer?.find((ans) => ans.id === key)?.answer;
+          const configCorrectAnswer = completeComponent?.correctAnswer?.find((ans) => ans.id === key)?.answer;
           const answerCorrectAnswer = trialAnswer.correctAnswer.find((ans) => ans.id === key)?.answer;
-          const correctAnswer = answerCorrectAnswer || configCorrectAnswer;
+          const correctAnswer = answerCorrectAnswer ?? configCorrectAnswer;
           tidyRow.correctAnswer = typeof correctAnswer === 'object' ? JSON.stringify(correctAnswer) : correctAnswer;
         }
-
         if (properties.includes('startTime')) {
           tidyRow.startTime = new Date(trialAnswer.startTime).toISOString();
         }
@@ -154,7 +223,7 @@ function participantDataToRows(participant: ParticipantData, properties: Propert
           tidyRow.cleanedDuration = cleanedDuration;
         }
         if (properties.includes('meta')) {
-          tidyRow.meta = JSON.stringify(completeComponent.meta, null, 2);
+          tidyRow.meta = completeComponent?.meta ? JSON.stringify(completeComponent.meta, null, 2) : undefined;
         }
         if (properties.includes('responseMin')) {
           tidyRow.responseMin = response?.type === 'numerical' ? response.min : undefined;
@@ -162,7 +231,6 @@ function participantDataToRows(participant: ParticipantData, properties: Propert
         if (properties.includes('responseMax')) {
           tidyRow.responseMax = response?.type === 'numerical' ? response.max : undefined;
         }
-
         return tidyRow;
       }).flat();
 
@@ -186,25 +254,78 @@ function participantDataToRows(participant: ParticipantData, properties: Propert
         trialOrder,
         responseId: 'windowEvents',
         answer: JSON.stringify(windowEventsCount),
+        ...(properties.includes('condition') ? { condition: conditionValue } : {}),
+        ...(properties.includes('stage') ? { stage: participant.stage } : {}),
       } as TidyRow);
 
       return rows;
     }).flat()], Array.from(newHeaders)];
 }
 
-async function getTableData(selectedProperties: Property[], data: ParticipantData[], storageEngine: StorageEngine | undefined, studyId: string) {
+function hasStoredStudyConfig(config: StudyConfig | null | undefined): config is StudyConfig {
+  return config ? Object.keys(config).length > 0 : false;
+}
+
+export async function getTableData(
+  selectedProperties: Property[],
+  data: ParticipantDataWithStatus[],
+  storageEngine: StorageEngine | undefined,
+  studyId: string,
+  hasAudio?: boolean,
+  authEmail = 'temp',
+) {
   if (!storageEngine) {
-    return { header: [], rows: [] };
+    return { header: [], rows: [], missingConfigCount: 0 };
   }
 
   const combinedProperties = [...REQUIRED_PROPS, ...selectedProperties];
 
   const allConfigHashes = [...new Set(data.map((part) => part.participantConfigHash))];
   const allConfigs = await storageEngine.getAllConfigsFromHash(allConfigHashes, studyId);
+  const participantsMissingConfig = data.filter((participant) => !hasStoredStudyConfig(allConfigs[participant.participantConfigHash]));
 
-  const header = combinedProperties;
+  const transcripts: Record<string, string | null> = {};
+  const transcriptAvailable = storageEngine.getEngine() === 'firebase' && !!hasAudio;
+  if (selectedProperties.includes('transcript') && transcriptAvailable) {
+    const allAnswers = data.flatMap((p) => Object.values(p.answers)
+      // Only fetch transcripts for trials that were actually started or completed.
+      .filter((answer) => ((answer?.endTime ?? -1) > 0) || ((answer?.startTime ?? -1) > 0))
+      .map((answer) => ({ answer, participantId: p.participantId })));
+    const tasks = allAnswers.map(({ answer, participantId }) => async () => {
+      const identifier = getAnswerIdentifier(answer);
+      const key = `${participantId}_${identifier}`;
+
+      try {
+        const t = await (storageEngine as FirebaseStorageEngine).getTranscription(identifier, participantId);
+        const text = t?.results?.map((r) => r.alternatives?.[0]?.transcript).join(' ');
+        transcripts[key] = text || null;
+      } catch {
+        transcripts[key] = null;
+      }
+    });
+    await runWithConcurrencyLimit(tasks, TRANSCRIPTION_CONCURRENCY_LIMIT);
+  }
+
+  const hasCondition = data.some((p) => {
+    const legacyStudyCondition = (p as { studyCondition?: string | string[] }).studyCondition;
+    return parseConditionParam(p.conditions ?? legacyStudyCondition ?? p.searchParams?.condition).length > 0;
+  });
+  const header = combinedProperties
+    .filter((p) => p !== 'condition' || hasCondition)
+    .filter((p) => p !== 'metaData')
+    .filter((p) => p !== 'participantTags');
   const allData = await Promise.all(data.map(async (participant) => {
-    const partDataToRows = await participantDataToRows(participant, combinedProperties, allConfigs[participant.participantConfigHash]);
+    const participantConfig = allConfigs[participant.participantConfigHash];
+    const qualitativeCodes = selectedProperties.includes('participantTags') || selectedProperties.includes('taskTags')
+      ? await getParticipantQualitativeCodes(storageEngine, authEmail, participant)
+      : undefined;
+    const partDataToRows = await participantDataToRows(
+      participant,
+      combinedProperties,
+      hasStoredStudyConfig(participantConfig) ? participantConfig : undefined,
+      transcripts,
+      qualitativeCodes,
+    );
 
     return partDataToRows;
   }));
@@ -212,9 +333,21 @@ async function getTableData(selectedProperties: Property[], data: ParticipantDat
   const rows = allData.map((partData) => partData[0]);
   const newHeaders = new Set(allData.map((partData) => partData[1]).flat());
 
-  const flatRows = rows.flat().sort((a, b) => (a !== b ? a.participantId.localeCompare(b.participantId) : a.trialOrder - b.trialOrder));
+  // Sort rows by participantId and trialOrder
+  const flatRows = rows.flat().sort((a, b) => {
+    const participantIdCompare = a.participantId.localeCompare(b.participantId);
+    if (participantIdCompare) {
+      return participantIdCompare;
+    }
 
-  return { header: [...header, ...newHeaders], rows: flatRows };
+    return Number(a.trialOrder ?? -1) - Number(b.trialOrder ?? -1);
+  });
+
+  return {
+    header: [...header, ...newHeaders],
+    rows: flatRows,
+    missingConfigCount: participantsMissingConfig.length,
+  };
 }
 
 export function DownloadTidy({
@@ -223,14 +356,23 @@ export function DownloadTidy({
   filename,
   data,
   studyId,
+  hasAudio,
 }: {
   opened: boolean;
   close: () => void;
   filename: string;
-  data: ParticipantData[];
+  data: ParticipantDataWithStatus[];
   studyId: string;
+  hasAudio?: boolean;
 }) {
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
+  const [showTranscriptWarning, setShowTranscriptWarning] = useState(false);
+  const auth = useAuth();
+
   const [selectedProperties, setSelectedProperties] = useState<Array<OptionalProperty>>([
+    'condition',
+    'stage',
     'status',
     'rejectReason',
     'description',
@@ -244,25 +386,75 @@ export function DownloadTidy({
     'cleanedDuration',
   ]);
 
-  const storageEngine = useStorageEngine();
-  const { value: tableData, status: tableDataStatus, error: tableError } = useAsync(getTableData, [selectedProperties, data, storageEngine.storageEngine, studyId]);
+  const { storageEngine } = useStorageEngine();
+  const { value: tableData, status: tableDataStatus, error: tableError } = useAsync(getTableData, [selectedProperties, data, storageEngine, studyId, hasAudio, auth.user.user?.email || 'temp']);
+  const isFirebase = storageEngine?.getEngine() === 'firebase';
+  const transcriptAvailable = isFirebase && !!hasAudio;
+  const selectedParticipantCount = data.length;
+  const warnLargeTranscriptDownload = selectedProperties.includes('transcript') && selectedParticipantCount > 50;
+  const missingConfigCount = tableData?.missingConfigCount ?? 0;
 
-  const downloadTidy = useCallback(() => {
+  const downloadTidy = useCallback(async (skipWarning = false) => {
     if (!tableData) {
       return;
     }
 
-    const csv = [
-      tableData.header.join(','),
-      ...tableData.rows.map((row) => tableData.header.map((header) => {
-        const fieldValue = `${row[header]}`;
-        // Escape double quotes by replacing them with two double quotes
-        const escapedValue = fieldValue.replace(/"/g, '""');
-        return `"${escapedValue}"`; // Double-quote the field value
-      }).join(',')),
-    ].join('\n');
-    download(csv, filename);
-  }, [filename, tableData]);
+    if (warnLargeTranscriptDownload && !skipWarning) {
+      setShowTranscriptWarning(true);
+      return;
+    }
+
+    setShowTranscriptWarning(false);
+
+    setIsDownloading(true);
+    setDownloadProgress(0);
+
+    try {
+      const lines: string[] = [tableData.header.join(',')];
+      const totalRows = tableData.rows.length;
+
+      const chunkSize = 100;
+      const buildCsv = async (): Promise<void> => {
+        let startIndex = 0;
+
+        while (startIndex < totalRows) {
+          const endIndex = Math.min(startIndex + chunkSize, totalRows);
+
+          for (let index = startIndex; index < endIndex; index += 1) {
+            const row = tableData.rows[index];
+            const serializedRow = tableData.header.map((header) => {
+              const rawValue = row[header] ?? '';
+              const fieldValue = typeof rawValue === 'object' ? JSON.stringify(rawValue) : `${rawValue}`;
+              // Escape double quotes by replacing them with two double quotes
+              const escapedValue = fieldValue.replace(/"/g, '""');
+              return `"${escapedValue}"`; // Double-quote the field value
+            }).join(',');
+            lines.push(serializedRow);
+          }
+
+          setDownloadProgress(totalRows === 0 ? 100 : Math.round((endIndex / totalRows) * 100));
+          startIndex = endIndex;
+
+          if (startIndex < totalRows) {
+            // eslint-disable-next-line no-await-in-loop
+            await new Promise<void>((resolve) => {
+              setTimeout(resolve, 0);
+            });
+          }
+        }
+      };
+
+      await buildCsv();
+
+      download(lines.join('\n'), filename);
+    } finally {
+      setDownloadProgress(100);
+      setTimeout(() => {
+        setIsDownloading(false);
+        setDownloadProgress(0);
+      }, 250);
+    }
+  }, [filename, tableData, warnLargeTranscriptDownload]);
 
   const handlePythonExportTIDY = useCallback(() => {
     if (!tableData) {
@@ -291,16 +483,57 @@ export function DownloadTidy({
       title="Tidy CSV Exporter"
       centered
       withCloseButton={false}
+      closeOnClickOutside={!(isDownloading || (showTranscriptWarning && warnLargeTranscriptDownload))}
+      closeOnEscape={!(isDownloading || (showTranscriptWarning && warnLargeTranscriptDownload))}
     >
-      <Box>
-        <Text size="sm" fw={500} mb="xs">
-          <Flex align="center" gap="xs">
-            <IconLayoutColumns size={16} />
-            Optional columns:
+      {showTranscriptWarning && warnLargeTranscriptDownload && (
+        <Alert color="orange" icon={<IconAlertTriangle />} mb="sm">
+          This export includes transcripts for
+          {' '}
+          {selectedParticipantCount}
+          {' '}
+          selected participants, so it may take a while.
+        </Alert>
+      )}
+      {missingConfigCount > 0 && (
+        <Alert
+          color="orange"
+          icon={<IconAlertTriangle />}
+          mb="sm"
+          styles={{
+            icon: {
+              alignSelf: 'center',
+            },
+          }}
+        >
+          <Flex direction="column">
+            <Text size="sm">
+              Stored study configs could not be loaded for
+              {' '}
+              {missingConfigCount}
+              {' '}
+              selected
+              {' '}
+              {missingConfigCount === 1 ? 'participant' : 'participants'}
+              {'. '}
+              Config-derived columns, such as description and instruction, may be blank for those rows.
+            </Text>
+            <Text size="sm">
+              To restore the current config, reload the study page. However, historical configs that differ from the current config must be restored from a storage snapshot or backup.
+            </Text>
           </Flex>
-        </Text>
+        </Alert>
+      )}
+      {isDownloading && (
+        <Progress value={downloadProgress} animated />
+      )}
+      <Box>
+        <Flex align="center" gap="xs" mb="xs">
+          <IconLayoutColumns size={16} />
+          <Text size="sm" fw={500}>Optional columns:</Text>
+        </Flex>
         <Flex wrap="wrap" gap="4px">
-          {OPTIONAL_COMMON_PROPS.map((prop) => {
+          {OPTIONAL_COMMON_PROPS.filter((prop) => prop !== 'transcript' || transcriptAvailable).map((prop) => {
             const isSelected = selectedProperties.includes(prop);
 
             const button = (
@@ -367,7 +600,7 @@ export function DownloadTidy({
                   <Table.Tr key={index}>
                     {tableData.header.map((header) => (
                       <Table.Td
-                        key={`${index}-${header}`}
+                        key={`${index} - ${header}`}
                         style={{
                           whiteSpace: ['description', 'instruction', 'participantId'].includes(header) ? 'normal' : 'nowrap',
                         }}
@@ -392,23 +625,43 @@ export function DownloadTidy({
       <Space h="md" />
 
       <Group justify="right">
-        <Button onClick={close} color="dark" variant="subtle">
-          Close
-        </Button>
-        <Button
-          leftSection={<IconTableExport />}
-          onClick={downloadTidy}
-          data-autofocus
-        >
-          Download
-        </Button>
-        {studyId === '__revisit-widget' && (
-          <Button
-            onClick={handlePythonExportTIDY}
-          >
-            <IconBrandPython />
+        {!(showTranscriptWarning && warnLargeTranscriptDownload) && (
+          <Button onClick={close} color="dark" variant="subtle" disabled={isDownloading}>
+            Close
           </Button>
         )}
+
+        {showTranscriptWarning && warnLargeTranscriptDownload && (
+          <Button
+            variant="subtle"
+            color="gray"
+            onClick={() => setShowTranscriptWarning(false)}
+            disabled={isDownloading}
+          >
+            Cancel
+          </Button>
+        )}
+
+        <Button
+          leftSection={<IconTableExport />}
+          onClick={() => { downloadTidy(showTranscriptWarning); }}
+          data-autofocus
+          disabled={isDownloading || !tableData}
+          color={showTranscriptWarning && warnLargeTranscriptDownload ? 'orange' : undefined}
+        >
+          {showTranscriptWarning && warnLargeTranscriptDownload ? 'Continue Download' : 'Download'}
+        </Button>
+
+        {
+          studyId === '__revisit-widget' && (
+            <Button
+              onClick={handlePythonExportTIDY}
+              disabled={isDownloading}
+            >
+              <IconBrandPython />
+            </Button>
+          )
+        }
       </Group>
     </Modal>
   );

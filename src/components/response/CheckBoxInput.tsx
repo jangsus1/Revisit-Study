@@ -1,29 +1,35 @@
 import {
   Box, Checkbox, Input,
 } from '@mantine/core';
-import { useMemo, useState } from 'react';
-import { CheckboxResponse, StringOption } from '../../parser/types';
-import { generateErrorMessage } from './utils';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckboxResponse, ParsedStringOption } from '../../parser/types';
+import { DONT_KNOW_DEFAULT_VALUE, normalizeCheckboxDontKnowValue } from './utils';
 import { HorizontalHandler } from './HorizontalHandler';
 import classes from './css/Checkbox.module.css';
 import inputClasses from './css/Input.module.css';
 import { useStoredAnswer } from '../../store/hooks/useStoredAnswer';
 import { InputLabel } from './InputLabel';
+import { OptionLabel } from './OptionLabel';
+import { parseStringOptions } from '../../utils/stringOptions';
 
 export function CheckBoxInput({
   response,
   disabled,
   answer,
+  error,
   index,
   enumerateQuestions,
   otherValue,
+  dontKnowCheckbox,
 }: {
   response: CheckboxResponse;
   disabled: boolean;
-  answer: object;
+  answer: { value?: string[]; onChange?: (value: string[]) => void };
+  error?: string | null;
   index: number;
   enumerateQuestions: boolean;
   otherValue?: object;
+  dontKnowCheckbox?: { checked?: boolean; onChange?: (value: boolean) => void };
 }) {
   const {
     prompt,
@@ -36,13 +42,35 @@ export function CheckBoxInput({
   } = response;
 
   const storedAnswer = useStoredAnswer();
-  const optionOrders: Record<string, StringOption[]> = useMemo(() => (storedAnswer ? storedAnswer.optionOrders : {}), [storedAnswer]);
+  const optionOrders: Record<string, ParsedStringOption[]> = useMemo(() => storedAnswer?.optionOrders ?? {}, [storedAnswer]);
 
-  const orderedOptions = useMemo(() => optionOrders[response.id] || options.map((option) => (typeof (option) === 'string' ? { label: option, value: option } : option)), [optionOrders, options, response.id]);
+  const orderedOptions = useMemo(
+    () => parseStringOptions(optionOrders[response.id] || options),
+    [optionOrders, options, response.id],
+  );
 
   const [otherSelected, setOtherSelected] = useState(false);
+  const selectedValues = useMemo(() => (Array.isArray(answer.value) ? answer.value : []), [answer.value]);
 
-  const error = useMemo(() => generateErrorMessage(response, answer, orderedOptions), [response, answer, orderedOptions]);
+  useEffect(() => {
+    if (!response.withDontKnow || selectedValues.length === 0) {
+      return;
+    }
+
+    const containsDontKnowDefault = selectedValues.includes(DONT_KNOW_DEFAULT_VALUE);
+    if (!containsDontKnowDefault) {
+      return;
+    }
+
+    const normalizedValues = normalizeCheckboxDontKnowValue(selectedValues);
+    if (normalizedValues !== selectedValues) {
+      answer.onChange?.(normalizedValues);
+    }
+
+    if (!dontKnowCheckbox?.checked) {
+      dontKnowCheckbox?.onChange?.(true);
+    }
+  }, [response.withDontKnow, selectedValues, answer, dontKnowCheckbox]);
 
   return (
     <Checkbox.Group
@@ -50,7 +78,7 @@ export function CheckBoxInput({
       description={secondaryText}
       {...answer}
       error={error}
-      errorProps={{ c: required ? 'red' : 'orange' }}
+      errorProps={{ c: required ? 'red' : 'orange', fz: 'sm', mt: 'xs' }}
       style={{ '--input-description-size': 'calc(var(--mantine-font-size-md) - calc(0.125rem * var(--mantine-scale)))' }}
     >
       <Box mt="xs">
@@ -60,7 +88,7 @@ export function CheckBoxInput({
               key={option.value}
               disabled={disabled}
               value={option.value}
-              label={option.label}
+              label={<OptionLabel label={option.label} infoText={option.infoText} />}
               classNames={{ input: classes.fixDisabled, label: classes.fixDisabledLabel, icon: classes.fixDisabledIcon }}
             />
           ))}

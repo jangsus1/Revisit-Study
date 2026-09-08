@@ -34,9 +34,11 @@ import { VideoController } from './VideoController';
 import { studyComponentToIndividualComponent } from '../utils/handleComponentInheritance';
 import { useFetchStylesheet } from '../utils/fetchStylesheet';
 import { ScreenRecordingReplay } from '../components/screenRecording/ScreenRecordingReplay';
-import { useScreenRecordingContext } from '../store/hooks/useScreenRecording';
 import { decryptIndex, encryptIndex } from '../utils/encryptDecryptIndex';
 import { useRecordingConfig } from '../store/hooks/useRecordingConfig';
+import { getComponentContainerStyle } from '../utils/componentStyle';
+import { generateStimulusErrorMessage } from '../components/response/stimulusErrors';
+import { getStimulusProvenanceState, getStimulusShowErrorsFromState } from '../components/response/stimulusProvenance';
 
 // current active stimuli presented to the user
 export function ComponentController() {
@@ -44,37 +46,29 @@ export function ComponentController() {
   const studyConfig = useStudyConfig();
   const currentStep = useCurrentStep();
   const currentComponent = useCurrentComponent();
+  const currentIdentifier = useCurrentIdentifier();
   const studyId = useStudyId();
 
   const stepConfig = studyConfig.components[currentComponent];
   const { storageEngine } = useStorageEngine();
 
   const answers = useStoreSelector((store) => store.answers);
-  const audioStream = useRef<MediaRecorder | null>(null);
   const analysisCanPlayScreenRecording = useStoreSelector((state) => state.analysisCanPlayScreenRecording);
 
-  const { setIsRecording, setAnalysisCanPlayScreenRecording } = useStoreActions();
+  const { setAnalysisCanPlayScreenRecording } = useStoreActions();
 
-  const analysisProvState = useStoreSelector((state) => state.analysisProvState.stimulus);
-
-  const screenCaptureTrialName = useRef<string | null>(null);
-
-  const identifier = useCurrentIdentifier();
+  const analysisStimulusProvState = useStoreSelector((state) => state.analysisProvState.stimulus);
+  const stimulusValidation = useStoreSelector((state) => state.trialValidation[currentIdentifier]?.stimulus);
 
   const navigate = useNavigate();
 
-  const {
-    studyHasScreenRecording, studyHasAudioRecording, currentComponentHasAudioRecording, currentComponentHasScreenRecording,
-  } = useRecordingConfig();
-
-  const {
-    isMediaCapturing, stopScreenCapture, startScreenRecording, stopScreenRecording, combinedMediaRecorder: screenRecordingStream,
-  } = useScreenRecordingContext();
+  const { studyHasScreenRecording } = useRecordingConfig();
 
   const isAnalysis = useIsAnalysis();
 
   // If we have a trial, use that config to render the right component else use the step
   const status = useStoredAnswer();
+  const currentStimulusSubmitAttempted = useStoreSelector((state) => state.stimulusSubmitAttempted[currentIdentifier]);
   const sequence = useStoreSelector((state) => state.sequence);
   const modes = useStoreSelector((state) => state.modes);
 
@@ -90,86 +84,26 @@ export function ComponentController() {
   const storeDispatch = useStoreDispatch();
   const { setAlertModal } = useStoreActions();
   useEffect(() => {
-    if (storageEngine?.getEngine() !== import.meta.env.VITE_STORAGE_ENGINE) {
+    const configuredStorageEngine = import.meta.env.VITE_STORAGE_ENGINE;
+    const activeStorageEngine = storageEngine?.getEngine();
+    if (!configuredStorageEngine || activeStorageEngine === configuredStorageEngine) {
+      return;
+    }
+
+    if (activeStorageEngine === 'localStorage' && !import.meta.env.PROD) {
       storeDispatch(setAlertModal({
         show: true,
-        message: `There was an issue connecting to the ${import.meta.env.VITE_STORAGE_ENGINE} database. This could be caused by a network issue or your adblocker. If you are using an adblocker, please disable it for this website and refresh.`,
+        message: `There was an issue connecting to the ${configuredStorageEngine} database, so this development build is using localStorage instead. Study data will not be saved to cloud storage.`,
+        title: 'Using localStorage fallback',
+      }));
+    } else {
+      storeDispatch(setAlertModal({
+        show: true,
+        message: `There was an issue connecting to the ${configuredStorageEngine} database. This could be caused by a network issue or your adblocker. If you are using an adblocker, please disable it for this website and refresh.`,
         title: 'Failed to connect to the storage engine',
       }));
     }
   }, [setAlertModal, storageEngine, storeDispatch]);
-
-  // For study that does not involve screen recording
-  useEffect(() => {
-    if (!studyConfig || studyHasScreenRecording || !studyHasAudioRecording || !storageEngine || (status && status.endTime > 0) || isAnalysis) {
-      return;
-    }
-
-    if (audioStream.current) {
-      audioStream.current.stream.getTracks().forEach((track) => { track.stop(); audioStream.current?.stream.removeTrack(track); });
-      audioStream.current.stream.getAudioTracks().forEach((track) => { track.stop(); audioStream.current?.stream.removeTrack(track); });
-      audioStream.current.stop();
-      audioStream.current = null;
-    }
-
-    if ((stepConfig && !currentComponentHasAudioRecording) || currentComponent === 'end') {
-      storeDispatch(setIsRecording(false));
-    } else {
-      navigator.mediaDevices.getUserMedia({
-        audio: true,
-      }).then((s) => {
-        const recorder = new MediaRecorder(s);
-        audioStream.current = recorder;
-
-        let chunks : Blob[] = [];
-
-        recorder.addEventListener('start', () => {
-          chunks = [];
-        });
-
-        recorder.addEventListener('dataavailable', (event: BlobEvent) => {
-          if (event.data && event.data.size > 0) {
-            chunks.push(event.data);
-          }
-        });
-
-        const trialName = identifier;
-        recorder.addEventListener('stop', () => {
-          const { mimeType } = recorder;
-          const blob = new Blob(chunks, { type: mimeType });
-          storageEngine?.saveAudioRecording(blob, trialName);
-        });
-
-        audioStream.current.start();
-        storeDispatch(setIsRecording(true));
-      });
-    }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentComponent, identifier, currentComponentHasAudioRecording]);
-
-  // For study involving screen recording
-  useEffect(() => {
-    if (!studyConfig || !(studyHasScreenRecording) || !storageEngine || (status && status.endTime > 0) || isAnalysis) {
-      return;
-    }
-
-    if (screenRecordingStream.current) {
-      stopScreenRecording();
-      screenCaptureTrialName.current = null;
-    }
-
-    if (currentComponent !== 'end' && isMediaCapturing && screenCaptureTrialName.current !== identifier && (currentComponentHasAudioRecording || currentComponentHasScreenRecording)) {
-      screenCaptureTrialName.current = identifier;
-      startScreenRecording(identifier);
-    }
-
-    if (currentComponent === 'end') {
-      stopScreenCapture();
-    }
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentComponent, identifier, currentComponentHasAudioRecording, currentComponentHasScreenRecording, isMediaCapturing]);
 
   // Find current block, if it has an ID, add it as a participant tag
   const [blockForStep, setBlockForStep] = useState<string[]>([]);
@@ -204,7 +138,6 @@ export function ComponentController() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentStep, storageEngine, sequence]);
 
-  const currentIdentifier = useCurrentIdentifier();
   const currentConfig = useMemo(() => {
     const toReturn = currentComponent && currentComponent !== 'end' && !currentComponent.startsWith('__') && studyComponentToIndividualComponent(stepConfig, studyConfig) as IndividualComponent;
     if (typeof toReturn === 'object') {
@@ -221,6 +154,61 @@ export function ComponentController() {
     }
     return toReturn as unknown as IndividualComponent;
   }, [answers, currentComponent, currentIdentifier, stepConfig, studyConfig]);
+  const hasAnalysisStimulusProvenance = useMemo(
+    () => analysisStimulusProvState !== undefined,
+    [analysisStimulusProvState],
+  );
+  const analysisStimulusErrors = useMemo(
+    () => getStimulusShowErrorsFromState(analysisStimulusProvState),
+    [analysisStimulusProvState],
+  );
+  const showStimulusErrors = useMemo(
+    () => (isAnalysis
+      ? (hasAnalysisStimulusProvenance ? analysisStimulusErrors : false)
+      : !!currentStimulusSubmitAttempted),
+    [
+      analysisStimulusErrors,
+      currentStimulusSubmitAttempted,
+      hasAnalysisStimulusProvenance,
+      isAnalysis,
+    ],
+  );
+  const stimulusProvState = useMemo(
+    () => getStimulusProvenanceState(analysisStimulusProvState),
+    [analysisStimulusProvState],
+  );
+  const stimulusMessage = useMemo(
+    () => {
+      if (isAnalysis) {
+        return null;
+      }
+      return currentConfig
+        ? generateStimulusErrorMessage(currentConfig, stimulusValidation, { showStimulusErrors })
+        : null;
+    },
+    [currentConfig, isAnalysis, showStimulusErrors, stimulusValidation],
+  );
+  const hasStimulusIssue = useMemo(
+    () => !!stimulusMessage,
+    [stimulusMessage],
+  );
+  const componentContainerStyle = useMemo(
+    () => (currentConfig ? getComponentContainerStyle(currentConfig.type, currentConfig.style) : {}),
+    [currentConfig],
+  );
+  const stimulusContainerStyle = useMemo(() => {
+    if (!hasStimulusIssue) {
+      return componentContainerStyle;
+    }
+
+    return {
+      ...componentContainerStyle,
+      border: '1px solid var(--mantine-color-red-3)',
+      backgroundColor: 'var(--mantine-color-red-0)',
+      borderRadius: 'var(--mantine-radius-md)',
+      padding: 'var(--mantine-spacing-sm)',
+    };
+  }, [componentContainerStyle, hasStimulusIssue]);
 
   useEffect(() => {
     // Assume that screen recording video exists.
@@ -234,7 +222,7 @@ export function ComponentController() {
 
   // Automatically forward a user to their last completed trial if they are returning to the study
   useEffect(() => {
-    if (status && status.endTime > 0 && !isAnalysis && !modes.studyNavigatorEnabled && currentComponent !== 'end' && !currentComponent.startsWith('__') && typeof currentStep === 'number') {
+    if (status && status.endTime > 0 && !isAnalysis && !modes.developmentModeEnabled && currentComponent !== 'end' && !currentComponent.startsWith('__') && typeof currentStep === 'number') {
       let lastAnsweredTrialOrder = '0';
       Object.values(answers).forEach((a) => {
         if (a.endTime > 0) {
@@ -246,10 +234,10 @@ export function ComponentController() {
       const funcIndexNumber = trialOrderFuncIndex ? Number(trialOrderFuncIndex) : undefined;
 
       if (indexNumber > currentStep || (indexNumber === currentStep && funcIndexNumber !== undefined && funcIndex !== undefined && funcIndexNumber > Number(decryptIndex(funcIndex)))) {
-        navigate(`/${studyId}/${encryptIndex(indexNumber)}${funcIndexNumber !== undefined ? `/${encryptIndex(funcIndexNumber)}` : ''}`);
+        navigate(`/${studyId}/${encryptIndex(indexNumber)}${funcIndexNumber !== undefined ? `/${encryptIndex(funcIndexNumber)}` : ''}${window.location.search}`);
       }
     }
-  }, [answers, currentComponent, currentStep, funcIndex, isAnalysis, modes.studyNavigatorEnabled, navigate, status, studyId]);
+  }, [answers, currentComponent, currentStep, funcIndex, isAnalysis, modes.developmentModeEnabled, navigate, status, studyId]);
 
   // We're not using hooks below here, so we can return early if we're at the end of the study.
   // This avoids issues with the component config being undefined for the end of the study.
@@ -310,24 +298,23 @@ export function ComponentController() {
       <Box
         id={currentComponent}
         className={currentConfig.type}
-        style={{
-          width: '100%',
-          display: 'flex',
-          flexGrow: currentConfig.type === 'website' ? 1 : undefined,
-          flexDirection: 'column',
-          ...currentConfig.style,
-        }}
+        style={stimulusContainerStyle}
       >
         <Suspense key={`${currentStep}-stimulus`} fallback={<div>Loading...</div>}>
           <>
             {currentConfig.type === 'markdown' && <MarkdownController currentConfig={currentConfig} />}
-            {currentConfig.type === 'website' && <IframeController currentConfig={currentConfig} provState={analysisProvState} answers={answers} />}
+            {currentConfig.type === 'website' && <IframeController currentConfig={currentConfig} provState={stimulusProvState} answers={answers} />}
             {currentConfig.type === 'image' && <ImageController currentConfig={currentConfig} />}
-            {currentConfig.type === 'react-component' && <ReactComponentController currentConfig={currentConfig} provState={analysisProvState} answers={answers} />}
-            {currentConfig.type === 'vega' && <VegaController currentConfig={currentConfig} provState={analysisProvState as VegaProvState} />}
+            {currentConfig.type === 'react-component' && <ReactComponentController currentConfig={currentConfig} provState={stimulusProvState} answers={answers} />}
+            {currentConfig.type === 'vega' && <VegaController currentConfig={currentConfig} provState={stimulusProvState as VegaProvState} />}
             {currentConfig.type === 'video' && <VideoController currentConfig={currentConfig} />}
           </>
         </Suspense>
+        {hasStimulusIssue && (
+          <Text c="red" size="sm" mt="xs">
+            {stimulusMessage}
+          </Text>
+        )}
       </Box>
 
       {(instructionLocation === 'belowStimulus' || (instructionLocation === undefined && !instructionInSideBar)) && <ReactMarkdownWrapper text={instruction} />}

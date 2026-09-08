@@ -1,9 +1,68 @@
 {
-  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.3.2/src/parser/GlobalConfigSchema.json",
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/GlobalConfigSchema.json",
   "configsList": [
+    "scatterplot_duration",
     "scatterplot_extend",
     "scatterplot_interval",
-    "scatterplot_duration"
+    "tutorial",
+    "tutorial-replication",
+    "demo-html",
+    "demo-html-input",
+    "demo-form-elements",
+    "demo-training",
+    "demo-html-trrack",
+    "demo-svelte-trrack",
+    "demo-react-trrack",
+    "demo-screen-recording",
+    "demo-image",
+    "demo-vega",
+    "demo-video",
+    "demo-dynamic",
+    "demo-condition",
+    "demo-style",
+    "demo-yaml",
+    "demo-ranking-widget",
+    "demo-upset",
+    "demo-choropleth-map",
+    "example-brush-interactions",
+    "example-cleveland",
+    "example-llm-chatbot",
+    "example-mvnv",
+    "example-VLAT-adaptive",
+    "library-adaptive-vlat",
+    "library-beauvis",
+    "library-berlin-num",
+    "library-calvi",
+    "library-color-blindness",
+    "library-demographics",
+    "library-graph-literacy-scale",
+    "library-mic-check",
+    "library-mini-vlat",
+    "library-nasa-tlx",
+    "library-previs",
+    "library-quis",
+    "library-sam",
+    "library-screen-recording",
+    "library-smeq",
+    "library-sus",
+    "library-ueq",
+    "library-ueq-s",
+    "library-umux",
+    "library-umux-lite",
+    "library-virtual-chinrest",
+    "library-vlat",
+    "test-audio",
+    "test-device-restriction",
+    "test-library",
+    "test-likert-matrix",
+    "test-parser-errors",
+    "test-randomization",
+    "test-component-timeout",
+    "test-skip-logic",
+    "test-step-logic",
+    "cluster-flow-staircase",
+    "cluster-flow-gallery",
+    "test-cluster-flow"
   ],
   "configs": {
     "scatterplot_duration": {
@@ -12,11 +71,11 @@
     "scatterplot_extend": {
       "path": "scatterplot_extend/config.json"
     },
-    "scatterplot": {
-      "path": "scatterplot/config.json"
-    },
     "scatterplot_interval": {
       "path": "scatterplot_interval/config.json"
+    },
+    "scatterplot": {
+      "path": "scatterplot/config.json"
     },
     "scatterplot2": {
       "path": "scatterplot2/config.json"
@@ -24,8 +83,8 @@
     "scatterplot3": {
       "path": "scatterplot3/config.json"
     },
-    "flowchart": {
-      "path": "flowchart/config.json"
+    "scatterplot_tilt": {
+      "path": "scatterplot_tilt/config.json"
     },
     "gaze1": {
       "path": "gaze1/config.json"
@@ -33,14 +92,14 @@
     "gaze2": {
       "path": "gaze2/config.json"
     },
+    "flowchart": {
+      "path": "flowchart/config.json"
+    },
     "tutorial": {
       "path": "tutorial/config.json"
     },
     "tutorial-replication": {
       "path": "tutorial/replication-config.json"
-    },
-    "demo-video-slider": {
-      "path": "demo-video-slider/config.json"
     },
     "demo-html": {
       "path": "demo-html/config.json"
@@ -51,8 +110,8 @@
     "demo-html-input": {
       "path": "demo-html-input/config.json"
     },
-    "demo-survey": {
-      "path": "demo-survey/config.json"
+    "demo-form-elements": {
+      "path": "demo-form-elements/config.json"
     },
     "demo-training": {
       "path": "demo-training/config.json"
@@ -66,11 +125,17 @@
     "demo-dynamic": {
       "path": "demo-dynamic/config.json"
     },
+    "demo-condition": {
+      "path": "demo-condition/config.json"
+    },
     "demo-html-trrack": {
       "path": "demo-html-trrack/config.json"
     },
-    "demo-click-accuracy-test": {
-      "path": "demo-click-accuracy-test/config.json"
+    "demo-svelte-trrack": {
+      "path": "demo-svelte-trrack/config.json"
+    },
+    "demo-react-trrack": {
+      "path": "demo-react-trrack/config.json"
     },
     "demo-image": {
       "path": "demo-image/config.json"
@@ -87,6 +152,12 @@
     "demo-ranking-widget": {
       "path": "demo-ranking-widget/config.json"
     },
+    "demo-choropleth-map": {
+      "path": "demo-choropleth-map/config.json"
+    },
+    "example-llm-chatbot": {
+      "path": "example-llm-chatbot/config.json"
+    },
     "example-brush-interactions": {
       "path": "example-brush-interactions/config.json"
     },
@@ -95,12 +166,6 @@
     },
     "example-mvnv": {
       "path": "example-mvnv/config.json"
-    },
-    "example-VLAT-full-randomized": {
-      "path": "example-VLAT-full-randomized/config.json"
-    },
-    "example-VLAT-mini-randomized": {
-      "path": "example-VLAT-mini-randomized/config.json"
     },
     "library-adaptive-vlat": {
       "path": "library-adaptive-vlat/config.json",
@@ -166,6 +231,14 @@
       "path": "library-sus/config.json",
       "test": true
     },
+    "library-ueq": {
+      "path": "library-ueq/config.json",
+      "test": true
+    },
+    "library-ueq-s": {
+      "path": "library-ueq-s/config.json",
+      "test": true
+    },
     "library-vlat": {
       "path": "library-vlat/config.json",
       "test": true
@@ -173,6 +246,9 @@
     "test-audio": {
       "path": "test-audio/config.json",
       "test": true
+    },
+    "test-device-restriction": {
+      "path": "test-device-restriction/config.json"
     },
     "test-library": {
       "path": "test-library/config.json",
@@ -189,6 +265,10 @@
       "path": "test-randomization/config.json",
       "test": true
     },
+    "test-component-timeout": {
+      "path": "test-component-timeout/config.json",
+      "test": true
+    },
     "test-skip-logic": {
       "path": "test-skip-logic/config.json",
       "test": true
@@ -197,12 +277,30 @@
       "path": "test-step-logic/config.json",
       "test": true
     },
+    "library-umux": {
+      "path": "library-umux/config.json",
+      "test": true
+    },
+    "library-umux-lite": {
+      "path": "library-umux-lite/config.json",
+      "test": true
+    },
     "library-virtual-chinrest": {
       "path": "library-virtual-chinrest/config.json",
       "test": true
     },
     "example-VLAT-adaptive": {
       "path": "example-VLAT-adaptive/config.json",
+      "test": true
+    },
+    "cluster-flow-staircase": {
+      "path": "cluster-flow-staircase/config.json"
+    },
+    "cluster-flow-gallery": {
+      "path": "cluster-flow-gallery/config.json"
+    },
+    "test-cluster-flow": {
+      "path": "test-cluster-flow/config.json",
       "test": true
     }
   }

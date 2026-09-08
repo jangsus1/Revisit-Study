@@ -2,33 +2,32 @@ import {
   Box, Button, Title,
 } from '@mantine/core';
 import { useEffect, useState } from 'react';
-import { useScreenRecordingContext } from '../../../../store/hooks/useScreenRecording';
+import { useRecordingContext } from '../../../../store/hooks/useRecording';
 import { StimulusParams } from '../../../../store/types';
 import { RecordingAudioWaveform } from '../../../../components/interface/RecordingAudioWaveform';
 
 function ScreenRecordingPermission({ setAnswer }: StimulusParams<undefined>) {
   const {
-    recordAudio,
+    studyHasAudioRecording,
     recordVideoRef,
     startScreenCapture: startCapture,
     stopScreenCapture: stopCapture,
     isScreenCapturing: screenCapturing,
-    screenRecordingError: error,
+    isAudioCapturing: audioCapturing,
     audioMediaStream,
-  } = useScreenRecordingContext();
+  } = useRecordingContext();
 
   // audioCapturingSuccess is set to true when we detect sound.
   const [audioCapturingSuccess, setAudioCapturingSuccess] = useState(false);
 
   useEffect(() => {
     setAnswer({
-      status: screenCapturing && (recordAudio ? audioCapturingSuccess : true),
-      provenanceGraph: undefined,
+      status: screenCapturing && (studyHasAudioRecording ? audioCapturingSuccess : true),
       answers: {
         screenRecordingPermission: screenCapturing,
       },
     });
-  }, [screenCapturing, audioCapturingSuccess, setAnswer, recordAudio]);
+  }, [screenCapturing, audioCapturingSuccess, setAnswer, studyHasAudioRecording]);
 
   useEffect(() => {
     if (!screenCapturing) {
@@ -78,12 +77,12 @@ function ScreenRecordingPermission({ setAnswer }: StimulusParams<undefined>) {
     <Box p="md">
       <Title order={1} size="h2">
         Screen
-        {recordAudio && ' and Audio'}
+        {studyHasAudioRecording && ' and Audio'}
         {' '}
         Recording Permission
       </Title>
 
-      {recordAudio ? (
+      {studyHasAudioRecording ? (
         <>
           {/* Record both screen and audio */}
           <p>
@@ -113,15 +112,14 @@ function ScreenRecordingPermission({ setAnswer }: StimulusParams<undefined>) {
                 muted
                 style={{ width: '400px', border: '1px solid #ccc', marginTop: '1rem' }}
               />
-              {error && <p style={{ color: 'red' }}>{error}</p>}
-              <p><i>Note: Please make sure you are recording the correct tab or window. Otherwise, stop and re-share the correct one.</i></p>
+              <p><i>Please make sure you are recording the correct tab or window. Otherwise, stop and re-share the correct one.</i></p>
 
             </li>
             <li>
               <strong>Speak</strong>
               {' '}
               into your microphone to check if audio is working.
-              {(recordAudio && screenCapturing) ? <Box h={200} w={400} bd="1px solid #ccc"><RecordingAudioWaveform height={200} width={400} /></Box> : <Box h={200} w={400} bd="1px solid #ccc" />}
+              {audioCapturing ? <Box h={200} w={400} bd="1px solid #ccc"><RecordingAudioWaveform height={200} width={400} /></Box> : <Box h={200} w={400} bd="1px solid #ccc" />}
             </li>
           </ol>
           <strong>Note:</strong>
@@ -158,8 +156,7 @@ function ScreenRecordingPermission({ setAnswer }: StimulusParams<undefined>) {
             muted
             style={{ width: '400px', border: '1px solid #ccc', marginTop: '1rem' }}
           />
-          {error && <p style={{ color: 'red' }}>{error}</p>}
-          <p><i>Note: Please make sure you are recording the correct tab or window. Otherwise, stop and re-share the correct one.</i></p>
+          <p><i>Please make sure you are recording the correct tab or window. Otherwise, stop and re-share the correct one.</i></p>
 
           <strong>Note:</strong>
           <ul>
