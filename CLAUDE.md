@@ -71,3 +71,10 @@ The study `sequence` tree is flattened to a list by `utils/getSequenceFlatMap.ts
 - Study folder names may contain spaces/periods; the app normalizes them to underscores in URLs, so use in-app generated links.
 - Large library media belongs in the `revisit-studies/library-assets` repo, referenced by tag-pinned raw GitHub URLs, not committed here.
 - Releases: feature branches → `dev` → one PR into protected `main` whose title is exactly the version (e.g. `v2.4.4`); the release workflow updates pinned references (like the `$schema` URLs in configs) and tags automatically.
+
+## This fork
+
+This is `jangsus1/Revisit-Study`, a fork of reVISit v2.4.4 used to deploy Minsuk Chang's studies. Storage is Firebase (project set in `.env`); the production base path is the fork's GitHub Pages URL.
+
+- **Cluster-flow staircase** (`public/cluster-flow-staircase`, `public/cluster-flow-gallery`, `public/test-cluster-flow`; code in `src/public/cluster-flow-staircase/assets/`). Research context, design rationale, stored-data contract and open design issues are documented in the sibling repo `../GestaltFlowchart/CLAUDE.md`, which is also where analysis code and results live. `generator/SPEC.md` and `generator/config.ts` are the source of truth for the stimuli; `staircase.ts` is pure and re-derives block state from stored answers. Run its tests with `yarn unittest run src/public/cluster-flow-staircase` and `yarn test tests/cluster-flow.spec.ts --project=chromium`.
+- **Scatterplot studies** (`public/scatterplot*`): each has a Python `config.py` that generates its `config.json`; edit the script, not the JSON.
