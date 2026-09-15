@@ -296,14 +296,22 @@ function Phase2Gaze({ parameters, setAnswer }) {
 
   return (
     <div>
-      {example && (
+      {example && view !== "scatter" && (
         <h1 style={{ color: "red" }}>Example Question</h1>
       )}
       {view === "shortcalib" && (
         <CalibrationOverlay dot={dot} collecting={collecting} message={message} />
       )}
       {view === "scatter" && (
-        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", width: "100%", padding: "20px" }}>
+        // Full-viewport, plain white screen: hides the platform header, progress bar and Next
+        // button so nothing but the plot competes for gaze. Same frame as the calibration dots.
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 2000, background: "#ffffff",
+          display: "flex", justifyContent: "center", alignItems: "center", cursor: isBlurred ? "pointer" : "none"
+        }}>
+          {example && (
+            <h1 style={{ color: "red", position: "absolute", top: 16, left: 24, margin: 0, fontSize: 22 }}>Example Question</h1>
+          )}
           <div style={{ display: 'inline-block', position: 'relative' }}>
             <svg
               id="clickAccuracySvg"
