@@ -30,9 +30,10 @@ const OUTER: NormPoint[] = [
   { nx: -0.35, ny: -0.35 }, { nx: 0, ny: -0.35 }, { nx: 0.35, ny: -0.35 }, { nx: 0.35, ny: 0 },
   { nx: 0.35, ny: 0.35 }, { nx: 0, ny: 0.35 }, { nx: -0.35, ny: 0.35 }, { nx: -0.35, ny: 0 },
 ];
-export function shortCalibPoints(trialIndex: number): NormPoint[] {
+export function shortCalibPoints(trialIndex: number, count = 3): NormPoint[] {
   const start = ((trialIndex % 8) + 8) % 8;
-  return [OUTER[start], OUTER[(start + 3) % 8], OUTER[(start + 6) % 8]];
+  const step = count >= 8 ? 1 : Math.max(1, Math.round(8 / count));
+  return Array.from({ length: Math.min(count, 8) }, (_, i) => OUTER[(start + i * step) % 8]);
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
@@ -93,19 +94,20 @@ export function useDotSequence() {
       const [tx, ty] = normToPx(points[i].nx, points[i].ny);
       // eslint-disable-next-line no-await-in-loop
       const r = await showDot(points[i], dwellMs, collectMs, () => new Promise<ValidationPoint>((resolve) => {
+        // Use the raw (affine-corrected, un-smoothed) estimate: the Kalman output lags large
+        // saccades by several hundred ms and would inflate the error right after a dot jump.
         const errors: number[] = [];
         const unsub = gazeTracker.onSample((s: GazeSample) => {
           if (!s.open || !s.face) return;
-          const [gx, gy] = normToPx(s.nx, s.ny);
+          const [gx, gy] = normToPx(s.rx, s.ry);
           errors.push(Math.hypot(gx - tx, gy - ty));
         });
         setTimeout(() => {
           unsub();
-          resolve({
-            ...points[i],
-            n: errors.length,
-            errorPx: errors.length ? errors.reduce((a, b) => a + b, 0) / errors.length : null,
-          });
+          // Median of the most recent half of the window: robust to a late-arriving fixation
+          const recent = errors.slice(-Math.max(3, Math.floor(errors.length / 2))).sort((a, b) => a - b);
+          const median = recent.length ? recent[Math.floor(recent.length / 2)] : null;
+          resolve({ ...points[i], n: errors.length, errorPx: median });
         }, collectMs);
       }));
       if (r) out.push(r as ValidationPoint);

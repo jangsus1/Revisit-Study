@@ -42,6 +42,9 @@ class GazeTracker {
 
   fullCalib?: CalibrationSummary;
 
+  /** Centre-dot error (px) measured at the start/end of the previous trial's short calibration. */
+  lastTrialErrorPx: number | null = null;
+
   sampleCount = 0;
 
   private proxy?: import('../../../gazeEngine/webeyetrack/WebEyeTrackProxy').default;

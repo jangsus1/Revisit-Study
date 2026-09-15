@@ -56,15 +56,35 @@ function Phase2Gaze({ parameters, setAnswer }) {
     if (view !== "shortcalib" || calibStarted.current) return;
     calibStarted.current = true;
     (async () => {
-      let fullCalibPresent = !!gazeTracker.fullCalib;
-      let result = { errorPx: null, n: 0, calib: [], error: null };
+      // Test-first, tiered calibration:
+      //   1. one centre validation dot measures the current error (~1.3 s)
+      //   2. if it is within threshold -> no calibration, start the trial
+      //      else -> 3-dot refresh ('light'); if the error is also worse than the previous
+      //      trial's -> 5-dot refresh ('strong'); then re-check with the centre dot
+      const fullCalibPresent = !!gazeTracker.fullCalib;
+      const thresholdPx = Math.round(0.06 * window.innerWidth);
+      const prevErrorPx = gazeTracker.lastTrialErrorPx ?? null;
+      const result = {
+        preErrorPx: null, postErrorPx: null, errorPx: null, n: 0, tier: "none", dots: 0,
+        thresholdPx, prevErrorPx, calib: [], error: null,
+      };
       try {
         await gazeTracker.init();
-        setMessage("Quick calibration: look at each dot");
-        result.calib = await runCalibration(shortCalibPoints(label_idx ?? 0), "click", 1500, 900);
-        const v = await runValidation([{ nx: 0, ny: 0 }], 1400, 800, "Look at the centre dot");
-        result.errorPx = v.meanErrorPx;
-        result.n = v.points[0]?.n ?? 0;
+        const pre = await runValidation([{ nx: 0, ny: 0 }], 1300, 700, "Look at the centre dot");
+        result.preErrorPx = pre.meanErrorPx;
+        result.n = pre.points[0]?.n ?? 0;
+        const needs = pre.meanErrorPx === null || pre.meanErrorPx > thresholdPx;
+        if (needs) {
+          const worsening = prevErrorPx !== null && pre.meanErrorPx !== null && pre.meanErrorPx > prevErrorPx;
+          result.tier = worsening ? "strong" : "light";
+          result.dots = worsening ? 5 : 3;
+          setMessage("Quick calibration: look at each dot");
+          result.calib = await runCalibration(shortCalibPoints(label_idx ?? 0, result.dots), "click", 1300, 800);
+          const post = await runValidation([{ nx: 0, ny: 0 }], 1300, 700, "Look at the centre dot");
+          result.postErrorPx = post.meanErrorPx;
+        }
+        result.errorPx = result.postErrorPx ?? result.preErrorPx;
+        gazeTracker.lastTrialErrorPx = result.errorPx;
       } catch (err) {
         result.error = err instanceof Error ? err.message : String(err);
       }
@@ -169,7 +189,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
           fullCalib: gazeTracker.fullCalib ?? null,
           hz: samples.length > 1 ? Math.round((samples.length - 1) * 1000 / Math.max(1, durationMs) * 10) / 10 : 0,
           hidden: hiddenEventsRef.current,
-          // [t_ms_since_click, x_px, y_px, open(1/0)] in viewport pixels
+          // [t_ms_since_click, x_px, y_px, open(1/0), raw_x_px, raw_y_px] in viewport pixels
           samples,
         }),
       }
@@ -290,7 +310,9 @@ function Phase2Gaze({ parameters, setAnswer }) {
     stopRecording();
     unsubRef.current = gazeTracker.onSample((s) => {
       const [x, y] = normToPx(s.nx, s.ny);
-      samplesRef.current.push([Math.round(s.t - startAt), Math.round(x), Math.round(y), s.open && s.face ? 1 : 0]);
+      const [rx, ry] = normToPx(s.rx, s.ry);
+      // [t_ms, x_px, y_px, open01, raw_x_px, raw_y_px] — x/y are Kalman-smoothed, raw is affine-only
+      samplesRef.current.push([Math.round(s.t - startAt), Math.round(x), Math.round(y), s.open && s.face ? 1 : 0, Math.round(rx), Math.round(ry)]);
     });
   }, [hasClicked, captureGeometry, stopRecording]);
 

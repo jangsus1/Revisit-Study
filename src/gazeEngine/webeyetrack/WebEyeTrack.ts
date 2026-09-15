@@ -95,8 +95,9 @@ export default class WebEyeTrack {
     // Initialize services
     this.blazeGaze = new BlazeGaze();
     this.faceLandmarkerClient = new FaceLandmarkerClient();
-    this.kalmanFilter = new KalmanFilter2D();
-    
+    // Higher process noise than upstream (1e-4) so the smoothed gaze follows saccades with less lag
+    this.kalmanFilter = new KalmanFilter2D(1.0, 2e-3, 1e-2);
+
     // Storing configs
     this.maxPoints = maxPoints;
     this.clickTTL = clickTTL;
@@ -154,7 +155,7 @@ export default class WebEyeTrack {
   async resetCalib(baseUrl?: string): Promise<void> {
     while (this.calibData.supportX.length > 0) this.removeCalibEntry(0);
     if (this.affineMatrix) { tf.dispose(this.affineMatrix); this.affineMatrix = null; }
-    this.kalmanFilter = new KalmanFilter2D();
+    this.kalmanFilter = new KalmanFilter2D(1.0, 2e-3, 1e-2);
     this.latestMouseClick = null;
     await this.blazeGaze.loadModel(baseUrl ?? this.baseUrl);
   }
