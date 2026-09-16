@@ -53,7 +53,7 @@ def generate_base_components():
                     "id": "answer",
                     "prompt": "",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -68,7 +68,7 @@ def generate_base_components():
                     "id": "answer",
                     "prompt": "",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -83,7 +83,7 @@ def generate_base_components():
                     "id": "answer",
                     "prompt": "",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -143,7 +143,7 @@ def create_default_components(fail_link):
                     "id": "attention_check_failed_1",
                     "prompt": "",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
