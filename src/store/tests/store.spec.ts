@@ -584,6 +584,26 @@ describe('studyStoreCreator', () => {
     expect(store.getState().checkAnswer.myFunc_5_intro_0).toBeUndefined();
     expect(store.getState().checkAnswer.intro_0).toBeDefined();
   });
+
+  test('advanceRequested starts empty and requestAdvance / clearAdvanceRequest toggle it per identifier', async () => {
+    const { store, actions } = await studyStoreCreator('test', minimalConfig, minimalSequence, metadata, emptyAnswers, modes, 'p1', false, false);
+    expect(store.getState().advanceRequested).toEqual({});
+
+    store.dispatch(actions.requestAdvance({ identifier: 'trial_3' }));
+    expect(store.getState().advanceRequested).toEqual({ trial_3: true });
+
+    store.dispatch(actions.clearAdvanceRequest({ identifier: 'trial_3' }));
+    expect(store.getState().advanceRequested).toEqual({});
+  });
+
+  test('deleteDynamicBlockAnswers clears pending advance requests for the deleted steps', async () => {
+    const { store, actions } = await studyStoreCreator('test', minimalConfig, minimalSequence, metadata, emptyAnswers, modes, 'p1', false, false);
+    store.dispatch(actions.requestAdvance({ identifier: 'myFunc_5_intro_0' }));
+    store.dispatch(actions.requestAdvance({ identifier: 'intro_0' }));
+    store.dispatch(actions.deleteDynamicBlockAnswers({ currentStep: 5, funcIndex: 0, funcName: 'myFunc' }));
+    expect(store.getState().advanceRequested.myFunc_5_intro_0).toBeUndefined();
+    expect(store.getState().advanceRequested.intro_0).toBe(true);
+  });
 });
 
 describe('useStoreActions hook', () => {

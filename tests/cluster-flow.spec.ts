@@ -14,25 +14,41 @@ interface StoredTrialData {
   seedA: number;
   seedB: number;
   nB: number;
-  correct: boolean;
   refreshMs: number;
   staircaseId: string;
   measured: { fixation: number, a: number, blank1: number, b: number, blank2: number };
 }
 
+/** One stored trial: the platform record around the hidden telemetry. */
+interface StoredTrial {
+  trial: string;
+  trialData: StoredTrialData;
+  correctAnswer: { id: string, answer: string }[];
+  checkAnswer?: { attemptsUsed: number, correct: boolean };
+}
+
 /** Reads every stored trial record of the local (IndexedDB) storage engine. */
-async function readStoredTrials(page: Page): Promise<StoredTrialData[]> {
+async function readStoredTrials(page: Page): Promise<StoredTrial[]> {
   const assignments = await readStoredValue<Record<string, unknown>>(page, `dev-${STUDY_ID}/sequenceAssignment`);
   const participantId = Object.keys(assignments ?? {})[0];
   expect(participantId, 'a participant should have been assigned a sequence').toBeTruthy();
 
   const participant = await readStoredValue<{
-    answers?: Record<string, { answer?: { trialData?: StoredTrialData } }>;
+    answers?: Record<string, {
+      answer?: { trial?: string, trialData?: StoredTrialData },
+      correctAnswer?: { id: string, answer: string }[],
+      checkAnswer?: { attemptsUsed: number, correct: boolean },
+    }>;
   }>(page, `dev-${STUDY_ID}/participants/${participantId}_participantData`);
 
   return Object.values(participant?.answers ?? {})
-    .map((answer) => answer.answer?.trialData)
-    .filter((trialData): trialData is StoredTrialData => !!trialData && typeof trialData.seedA === 'number');
+    .filter((answer) => !!answer.answer?.trialData && typeof answer.answer.trialData.seedA === 'number')
+    .map((answer) => ({
+      trial: answer.answer?.trial ?? '',
+      trialData: answer.answer?.trialData as StoredTrialData,
+      correctAnswer: answer.correctAnswer ?? [],
+      checkAnswer: answer.checkAnswer,
+    }));
 }
 
 test('cluster-flow staircase runs a shortened session and stores full trial records', async ({ page }) => {
@@ -50,11 +66,16 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   await page.keyboard.press('Enter');
 
   // Practice and the shortened staircase cell. Correctness does not matter, so the keys alternate.
+  // Practice trials hand over to reVISit's Check Answer flow: Enter grades, Enter again moves on.
+  // Main trials advance on their own once the key is pressed.
   const gateButton = page.getByRole('button', { name: 'Click to return to fullscreen' });
   const prompt = page.getByTestId('trial-prompt');
+  const practiceDone = page.getByTestId('practice-done');
+  const feedback = page.getByText(/Correct Answer|Incorrect Answer/);
   const completed = page.getByText(COMPLETED_MESSAGE, { exact: true });
 
   let trials = 0;
+  let practiceTrials = 0;
   const deadline = Date.now() + 45000;
   while (Date.now() < deadline) {
     if (await completed.isVisible()) {
@@ -62,6 +83,12 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
     }
     if (await gateButton.isVisible()) {
       await gateButton.click();
+    } else if (await practiceDone.isVisible()) {
+      practiceTrials += 1;
+      await page.keyboard.press('Enter');
+      await expect(feedback).toBeVisible({ timeout: 10000 });
+      await page.keyboard.press('Enter');
+      await practiceDone.waitFor({ state: 'hidden', timeout: 10000 });
     } else if (await prompt.isVisible()) {
       await page.keyboard.press(trials % 2 === 0 ? 'f' : 'ArrowRight');
       trials += 1;
@@ -73,22 +100,33 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
 
   await waitForStudyEndMessage(page);
   // two practice trials plus the shortened cell
+  expect(practiceTrials).toBe(2);
   expect(trials).toBeGreaterThanOrEqual(3);
 
   const stored = await readStoredTrials(page);
   expect(stored.length).toBe(trials);
 
   const [first] = stored;
-  expect(typeof first.seedA).toBe('number');
-  expect(first.seedA).not.toBe(first.seedB);
-  expect(typeof first.nB).toBe('number');
-  expect(typeof first.correct).toBe('boolean');
-  expect(['practice', 'above', 'below', 'catch']).toContain(first.staircaseId);
+  expect(typeof first.trialData.seedA).toBe('number');
+  expect(first.trialData.seedA).not.toBe(first.trialData.seedB);
+  expect(typeof first.trialData.nB).toBe('number');
+  expect(['practice', 'above', 'below', 'catch']).toContain(first.trialData.staircaseId);
 
   // Stimulus A is shown for 200 ms; allow two frames of slack for the animation-frame scheduler.
-  const tolerance = 2 * first.refreshMs + 5;
+  const tolerance = 2 * first.trialData.refreshMs + 5;
   stored.forEach((trial) => {
-    expect(Math.abs(trial.measured.a - 200)).toBeLessThanOrEqual(tolerance);
-    expect(Math.abs(trial.measured.b - 200)).toBeLessThanOrEqual(tolerance);
+    // the graded answer and the block's expected answer live on the platform record
+    expect(['first', 'second']).toContain(trial.trial);
+    expect(trial.correctAnswer).toHaveLength(1);
+    expect(['first', 'second']).toContain(trial.correctAnswer[0].answer);
+
+    if (trial.trialData.staircaseId === 'practice') {
+      // practice answers were graded by reVISit's Check Answer
+      expect(trial.checkAnswer?.attemptsUsed).toBe(1);
+      expect(trial.checkAnswer?.correct).toBe(trial.trial === trial.correctAnswer[0].answer);
+    }
+
+    expect(Math.abs(trial.trialData.measured.a - 200)).toBeLessThanOrEqual(tolerance);
+    expect(Math.abs(trial.trialData.measured.b - 200)).toBeLessThanOrEqual(tolerance);
   });
 });

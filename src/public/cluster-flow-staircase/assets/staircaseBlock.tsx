@@ -40,16 +40,31 @@ export function readSetupAnswer(answers: JumpFunctionParameters<unknown>['answer
   };
 }
 
-/** Collects the completed trials of this block, in the order they were run. */
+/** A stored trial with its correctness derived from the platform record. */
+export type BlockTrial = TrialAnswer & { correct: boolean };
+
+/**
+ * Collects the completed trials of this block, in the order they were run. Correctness comes from
+ * reVISit's own record: the `trial` answer compared with the `correctAnswer` the block returned when
+ * it scheduled that trial. Records lacking either are skipped.
+ */
 export function collectBlockTrials(
   answers: JumpFunctionParameters<unknown>['answers'],
   currentBlock: string,
   currentStep: number,
-): TrialAnswer[] {
+): BlockTrial[] {
   return Object.entries(answers)
     .filter(([key, value]) => key.startsWith(`${currentBlock}_${currentStep}_`) && value.endTime > -1)
-    .map(([, value]) => value.answer.trialData as unknown as TrialAnswer)
-    .filter((trial): trial is TrialAnswer => !!trial && typeof trial.staircaseId === 'string');
+    .map(([, value]) => {
+      const trialData = value.answer.trialData as unknown as TrialAnswer | undefined;
+      const response = value.answer.trial;
+      const expected = value.correctAnswer?.find((entry) => entry.id === 'trial')?.answer;
+      if (!trialData || typeof trialData.staircaseId !== 'string' || expected === undefined) {
+        return null;
+      }
+      return { ...trialData, correct: response === expected };
+    })
+    .filter((trial): trial is BlockTrial => trial !== null);
 }
 
 export default function staircaseBlock({
@@ -87,7 +102,6 @@ export default function staircaseBlock({
     cellId,
     trialIndex,
     staircaseId: next.staircaseId,
-    feedback: false,
     refreshMs,
   };
 

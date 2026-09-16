@@ -40,6 +40,7 @@ let mockStoreActions = {
   setReactiveAnswers: vi.fn(),
   updateProvenance: vi.fn(),
   updateResponseBlockValidation: vi.fn(),
+  requestAdvance: vi.fn(),
   setAlertModal: vi.fn(),
   setAnalysisCanPlayScreenRecording: vi.fn(),
 };
@@ -546,6 +547,7 @@ describe('ComponentController — effect coverage (render-based)', () => {
       setReactiveAnswers: vi.fn(),
       updateProvenance: vi.fn(),
       updateResponseBlockValidation: vi.fn(),
+      requestAdvance: vi.fn(),
       setAlertModal: vi.fn(),
       setAnalysisCanPlayScreenRecording: vi.fn(),
     };
@@ -640,6 +642,7 @@ describe('ComponentController — effect coverage (render-based)', () => {
       setReactiveAnswers: vi.fn(),
       updateProvenance: vi.fn(),
       updateResponseBlockValidation: vi.fn(),
+      requestAdvance: vi.fn(),
       setAlertModal: vi.fn(),
       setAnalysisCanPlayScreenRecording: setAnalysisCanPlaySpy,
     };
@@ -695,6 +698,7 @@ describe('VegaController — signal and event coverage', () => {
       setReactiveAnswers: vi.fn(),
       updateProvenance: vi.fn(),
       updateResponseBlockValidation: vi.fn(),
+      requestAdvance: vi.fn(),
       setAlertModal: vi.fn(),
       setAnalysisCanPlayScreenRecording: vi.fn(),
     };

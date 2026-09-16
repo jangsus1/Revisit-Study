@@ -426,4 +426,74 @@ describe('NextButton', () => {
     expect(mockGoToNextStep).toHaveBeenLastCalledWith(false);
     vi.useRealTimers();
   });
+
+  describe('advanceRequested (StimulusParams.advance)', () => {
+    test('calls onNext and consumes the request when Next is allowed', async () => {
+      const onNext = vi.fn();
+      const onAdvanceConsumed = vi.fn();
+      await act(async () => {
+        render(<NextButton checkAnswer={null} onNext={onNext} advanceRequested onAdvanceConsumed={onAdvanceConsumed} />);
+      });
+      expect(onNext).toHaveBeenCalledTimes(1);
+      expect(onAdvanceConsumed).toHaveBeenCalledTimes(1);
+    });
+
+    test('does nothing when no request is pending', async () => {
+      const onNext = vi.fn();
+      const onAdvanceConsumed = vi.fn();
+      await act(async () => {
+        render(<NextButton checkAnswer={null} onNext={onNext} advanceRequested={false} onAdvanceConsumed={onAdvanceConsumed} />);
+      });
+      expect(onNext).not.toHaveBeenCalled();
+      expect(onAdvanceConsumed).not.toHaveBeenCalled();
+    });
+
+    test('drops the request without grading while Check Answer is expected', async () => {
+      const onNext = vi.fn();
+      const onCheckAnswer = vi.fn();
+      const onAdvanceConsumed = vi.fn();
+      await act(async () => {
+        render(
+          <NextButton
+            checkAnswer={<div>Check Answer</div>}
+            onCheckAnswer={onCheckAnswer}
+            onNext={onNext}
+            advanceRequested
+            onAdvanceConsumed={onAdvanceConsumed}
+          />,
+        );
+      });
+      expect(onNext).not.toHaveBeenCalled();
+      expect(onCheckAnswer).not.toHaveBeenCalled();
+      expect(onAdvanceConsumed).toHaveBeenCalledTimes(1);
+    });
+
+    test('leaves the request pending while Next is disabled', async () => {
+      mockIsNextDisabled = true;
+      const onNext = vi.fn();
+      const onAdvanceConsumed = vi.fn();
+      await act(async () => {
+        render(<NextButton checkAnswer={null} onNext={onNext} advanceRequested onAdvanceConsumed={onAdvanceConsumed} />);
+      });
+      expect(onNext).not.toHaveBeenCalled();
+      expect(onAdvanceConsumed).not.toHaveBeenCalled();
+    });
+
+    test('waits for nextButtonEnableTime and then fires', async () => {
+      vi.useFakeTimers();
+      mockStudyConfig = { uiConfig: { ...mockStudyConfig.uiConfig, nextButtonEnableTime: 500 } };
+      const onNext = vi.fn();
+      const onAdvanceConsumed = vi.fn();
+      await act(async () => {
+        render(<NextButton checkAnswer={null} onNext={onNext} advanceRequested onAdvanceConsumed={onAdvanceConsumed} />);
+      });
+      expect(onNext).not.toHaveBeenCalled();
+
+      await act(async () => {
+        vi.advanceTimersByTime(700);
+      });
+      expect(onNext).toHaveBeenCalledTimes(1);
+      expect(onAdvanceConsumed).toHaveBeenCalledTimes(1);
+    });
+  });
 });

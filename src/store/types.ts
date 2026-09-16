@@ -208,7 +208,15 @@ export interface StimulusParams<T, S = never> {
     answers: StoredAnswer['answer'],
     reason?: StimulusIssueReason,
     message?: string,
-  }) => void
+  }) => void;
+  /**
+   * Asks reVISit to advance to the next step, exactly as if the participant had pressed Next (or Enter with `nextOnEnter`).
+   * The request obeys the same rules as the Next button: the stimulus and responses must validate and any
+   * `nextButtonEnableTime` must have elapsed (the request waits for it). It is dropped while a Check Answer is still
+   * expected (`provideFeedback`), so it never grades an answer. Call it after `setAnswer`.
+   * Always supplied by reVISit; optional only so a stimulus can be rendered standalone in tests.
+   */
+  advance?: () => void;
 }
 
 export interface CustomResponseField<TValue extends JsonValue = JsonValue> {
@@ -261,6 +269,8 @@ export interface StoreState {
   alertModal: AlertModalState;
   trialValidation: TrialValidation;
   responseSubmitAttempted: Record<string, boolean>;
+  /** Identifiers whose stimulus has called `advance()` and is waiting for the Next button to honour it. */
+  advanceRequested: Record<string, boolean>;
   stimulusSubmitAttempted: Record<string, boolean>;
   checkAnswer: Record<string, CheckAnswerState>;
   reactiveAnswers: Record<string, ValueOf<StoredAnswer['answer']>>;

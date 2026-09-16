@@ -28,6 +28,8 @@ const {
   },
   capturedNextButtonProps: {
     onCheckAnswer: undefined as (() => void) | undefined,
+    advanceRequested: undefined as boolean | undefined,
+    onAdvanceConsumed: undefined as (() => void) | undefined,
   },
   capturedSwitcherProps: {
     storedAnswer: undefined as Record<string, unknown> | undefined,
@@ -172,9 +174,14 @@ vi.mock('../FeedbackAlert', () => ({
 
 vi.mock('../../NextButton', () => ({
   NextButton: ({
-    label, disabled, checkAnswer, onCheckAnswer,
-  }: { label?: string; disabled?: boolean; checkAnswer?: ReactNode; onCheckAnswer?: () => void }) => {
+    label, disabled, checkAnswer, onCheckAnswer, advanceRequested, onAdvanceConsumed,
+  }: {
+    label?: string; disabled?: boolean; checkAnswer?: ReactNode; onCheckAnswer?: () => void;
+    advanceRequested?: boolean; onAdvanceConsumed?: () => void;
+  }) => {
     capturedNextButtonProps.onCheckAnswer = onCheckAnswer;
+    capturedNextButtonProps.advanceRequested = advanceRequested;
+    capturedNextButtonProps.onAdvanceConsumed = onAdvanceConsumed;
     return (
       <div>
         {checkAnswer}
@@ -285,6 +292,8 @@ beforeEach(() => {
   mockStoredAnswerData.responseSubmitAttempted = undefined;
   mockStoredAnswerData.checkAnswer = undefined;
   capturedNextButtonProps.onCheckAnswer = undefined;
+  capturedNextButtonProps.advanceRequested = undefined;
+  capturedNextButtonProps.onAdvanceConsumed = undefined;
   capturedSwitcherProps.storedAnswer = undefined;
   capturedSwitcherProps.answerFinalized = undefined;
   mockIsAnalysis.value = false;
@@ -848,5 +857,27 @@ describe('ResponseBlock unlimited attempts', () => {
     );
     await act(async () => { fireEvent.click(findButton(container, 'Check Answer')); });
     expect(findButton(container, 'Next')).toHaveProperty('disabled', false);
+  });
+
+  test('forwards a pending advance request for the current identifier to NextButton and clears it on consume', async () => {
+    const { studyStore } = await renderWithStore(<ResponseBlock config={baseConfig} location="belowStimulus" />);
+    expect(capturedNextButtonProps.advanceRequested).toBe(false);
+
+    await act(async () => {
+      studyStore.store.dispatch(studyStore.actions.requestAdvance({ identifier: 'trial1_0' }));
+    });
+    expect(capturedNextButtonProps.advanceRequested).toBe(true);
+
+    await act(async () => { capturedNextButtonProps.onAdvanceConsumed?.(); });
+    expect(studyStore.store.getState().advanceRequested.trial1_0).toBeUndefined();
+    expect(capturedNextButtonProps.advanceRequested).toBe(false);
+  });
+
+  test('ignores advance requests for other identifiers', async () => {
+    const { studyStore } = await renderWithStore(<ResponseBlock config={baseConfig} location="belowStimulus" />);
+    await act(async () => {
+      studyStore.store.dispatch(studyStore.actions.requestAdvance({ identifier: 'somewhere_else_0' }));
+    });
+    expect(capturedNextButtonProps.advanceRequested).toBe(false);
   });
 });

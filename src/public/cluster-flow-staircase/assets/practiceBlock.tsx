@@ -1,6 +1,8 @@
 /**
- * Dynamic block for the practice phase: a short fixed run of easy trials with on-screen feedback,
- * cycling through the cues and densities so the participant sees what the task looks like.
+ * Dynamic block for the practice phase: a short fixed run of easy trials, cycling through the cues
+ * and densities so the participant sees what the task looks like. Feedback is reVISit's own
+ * Check Answer flow: the `practice-trial` component has `provideFeedback` and this block supplies
+ * the `correctAnswer` it grades against.
  */
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
 import type { Density, TrialParams } from './generator';
@@ -40,12 +42,11 @@ export default function practiceBlock({
     cellId: PRACTICE_CELL,
     trialIndex,
     staircaseId: 'practice',
-    feedback: true,
     refreshMs,
   };
 
   return {
-    component: 'trial',
+    component: 'practice-trial',
     parameters: { ...parameters },
     correctAnswer: [{ id: 'trial', answer: nB > TARGET ? 'second' : 'first' }],
   };

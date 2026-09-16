@@ -96,7 +96,6 @@ export interface TrialParams {
   cellId: string;
   trialIndex: number;
   staircaseId: StaircaseId;
-  feedback: boolean;
   /** measured frame period in ms from the setup component; defaults to 1000/60 */
   refreshMs: number;
 }
@@ -109,9 +108,13 @@ export interface MeasuredDurations {
   blank2: number;
 }
 
+/**
+ * Telemetry stored in the hidden `trialData` response. Correctness is not stored here: reVISit keeps
+ * the participant's `trial` answer and the block's `correctAnswer` on the same record, and the
+ * dynamic block derives `correct` from those two when it replays the staircase.
+ */
 export interface TrialAnswer {
   response: 'first' | 'second';
-  correct: boolean;
   rtMs: number;
   nA: number;
   nB: number;

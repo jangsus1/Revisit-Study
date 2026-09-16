@@ -19,7 +19,10 @@ vi.mock('../generator', () => ({
 const BLOCK = 'cell-color-sparse';
 const STEP = 5;
 
-function trialAnswer(overrides: Partial<TrialAnswer>): TrialAnswer {
+/** A stored trial plus the correctness the fixture should encode through `answer.trial` vs `correctAnswer`. */
+type FixtureTrial = TrialAnswer & { correct: boolean };
+
+function trialAnswer(overrides: Partial<FixtureTrial>): FixtureTrial {
   return {
     response: 'first',
     correct: true,
@@ -41,18 +44,30 @@ function trialAnswer(overrides: Partial<TrialAnswer>): TrialAnswer {
     refreshMs: 16.67,
     fullscreen: true,
     ...overrides,
-  } as TrialAnswer;
+  } as FixtureTrial;
 }
 
 function answers(entries: Record<string, unknown>): ParticipantData['answers'] {
   return entries as unknown as ParticipantData['answers'];
 }
 
-function blockAnswers(trials: TrialAnswer[]) {
-  return Object.fromEntries(trials.map((trial, index) => [
-    `${BLOCK}_${STEP}_trial_${index}`,
-    { componentName: 'trial', endTime: index + 1, answer: { trial: trial.response, trialData: trial } },
-  ]));
+/**
+ * Builds the platform records for a run of trials. The expected answer is chosen so that the
+ * participant's `trial` answer is correct exactly when the fixture says so.
+ */
+function blockAnswers(trials: FixtureTrial[]) {
+  return Object.fromEntries(trials.map(({ correct, ...trial }, index) => {
+    const other = trial.response === 'first' ? 'second' : 'first';
+    return [
+      `${BLOCK}_${STEP}_trial_${index}`,
+      {
+        componentName: 'trial',
+        endTime: index + 1,
+        answer: { trial: trial.response, trialData: trial },
+        correctAnswer: [{ id: 'trial', answer: correct ? trial.response : other }],
+      },
+    ];
+  }));
 }
 
 const params = { cellId: 'cell-color-sparse', cue: 'color' as const, density: 'sparse' as const };
@@ -92,6 +107,24 @@ describe('collectBlockTrials', () => {
 
     expect(collected.map((trial) => trial.trialIndex)).toEqual([0, 1]);
   });
+
+  test('derives correctness from the stored answer and the platform correctAnswer', () => {
+    const collected = collectBlockTrials(answers(blockAnswers([
+      trialAnswer({ trialIndex: 0, response: 'first', correct: true }),
+      trialAnswer({ trialIndex: 1, response: 'second', correct: false }),
+    ])), BLOCK, STEP);
+
+    expect(collected.map((trial) => trial.correct)).toEqual([true, false]);
+    expect(collected.map((trial) => trial.response)).toEqual(['first', 'second']);
+  });
+
+  test('skips records that carry no correctAnswer', () => {
+    const { correct: _ignored, ...trial } = trialAnswer({ trialIndex: 0 });
+    const collected = collectBlockTrials(answers({
+      [`${BLOCK}_${STEP}_trial_0`]: { componentName: 'trial', endTime: 1, answer: { trial: 'first', trialData: trial } },
+    }), BLOCK, STEP);
+    expect(collected).toEqual([]);
+  });
 });
 
 describe('staircaseBlock', () => {
@@ -105,7 +138,6 @@ describe('staircaseBlock', () => {
     expect([34, 14]).toContain(parameters.nB);
     expect(['above', 'below']).toContain(parameters.staircaseId);
     expect(parameters.trialIndex).toBe(0);
-    expect(parameters.feedback).toBe(false);
     expect(parameters.cue).toBe('color');
     expect(parameters.density).toBe('sparse');
     expect(parameters.cellId).toBe('cell-color-sparse');

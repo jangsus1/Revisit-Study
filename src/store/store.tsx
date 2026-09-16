@@ -138,6 +138,7 @@ export async function studyStoreCreator(
     responseSubmitAttempted: {},
     stimulusSubmitAttempted: {},
     checkAnswer: {},
+    advanceRequested: {},
     reactiveAnswers: {},
     metadata,
     analysisProvState: {
@@ -384,6 +385,12 @@ export async function studyStoreCreator(
       setCheckAnswerResult(state, { payload }: PayloadAction<{ identifier: string } & CheckAnswerState>) {
         state.checkAnswer[payload.identifier] = { attemptsUsed: payload.attemptsUsed, correct: payload.correct, responses: payload.responses };
       },
+      requestAdvance(state, { payload }: PayloadAction<{ identifier: string }>) {
+        state.advanceRequested[payload.identifier] = true;
+      },
+      clearAdvanceRequest(state, { payload }: PayloadAction<{ identifier: string }>) {
+        delete state.advanceRequested[payload.identifier];
+      },
       saveTrialAnswer(state, { payload }: PayloadAction<{ identifier: string } & StoredAnswer>) {
         state.answers[payload.identifier] = { ...payload };
       },
@@ -429,6 +436,11 @@ export async function studyStoreCreator(
         Object.keys(state.checkAnswer).forEach((key) => {
           if (matchesDeletedIteration(key)) {
             delete state.checkAnswer[key];
+          }
+        });
+        Object.keys(state.advanceRequested).forEach((key) => {
+          if (matchesDeletedIteration(key)) {
+            delete state.advanceRequested[key];
           }
         });
 

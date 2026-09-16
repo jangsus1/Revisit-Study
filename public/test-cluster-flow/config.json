@@ -23,6 +23,29 @@
     "autoDownloadStudy": false,
     "numSequences": 1
   },
+  "baseComponents": {
+    "trial-base": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/TrialRunner.tsx",
+      "nextOnEnter": true,
+      "response": [
+        {
+          "id": "trial",
+          "prompt": "Trial",
+          "location": "belowStimulus",
+          "type": "reactive"
+        },
+        {
+          "id": "trialData",
+          "prompt": "Trial data",
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true,
+          "required": false
+        }
+      ]
+    }
+  },
   "components": {
     "introduction": {
       "type": "markdown",
@@ -48,25 +71,13 @@
       }
     },
     "trial": {
-      "type": "react-component",
-      "path": "cluster-flow-staircase/assets/TrialRunner.tsx",
-      "nextOnEnter": true,
-      "response": [
-        {
-          "id": "trial",
-          "prompt": "Trial",
-          "location": "belowStimulus",
-          "type": "reactive"
-        },
-        {
-          "id": "trialData",
-          "prompt": "Trial data",
-          "location": "belowStimulus",
-          "type": "reactive",
-          "hidden": true,
-          "required": false
-        }
-      ]
+      "baseComponent": "trial-base"
+    },
+    "practice-trial": {
+      "baseComponent": "trial-base",
+      "provideFeedback": true,
+      "trainingAttempts": 1,
+      "allowFailedTraining": true
     }
   },
   "sequence": {

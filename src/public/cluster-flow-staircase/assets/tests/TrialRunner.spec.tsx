@@ -50,7 +50,6 @@ const params: TrialParams = {
   cellId: 'cell-color-sparse',
   trialIndex: 3,
   staircaseId: 'above',
-  feedback: false,
   refreshMs: FRAME_MS,
 };
 
@@ -72,17 +71,19 @@ function runFrames(count: number) {
 
 function renderTrial(overrides: Partial<TrialParams> = {}) {
   const setAnswer = vi.fn();
+  const advance = vi.fn();
   render(
     <MantineProvider>
       <TrialRunner
         parameters={{ ...params, ...overrides }}
         setAnswer={setAnswer}
+        advance={advance}
         answers={{}}
         useTrrack={(() => undefined) as never}
       />
     </MantineProvider>,
   );
-  return setAnswer;
+  return { setAnswer, advance };
 }
 
 beforeEach(() => {
@@ -116,7 +117,7 @@ afterEach(() => {
 
 describe('TrialRunner', () => {
   test('runs the timeline and collects a first-interval response', () => {
-    const setAnswer = renderTrial();
+    const { setAnswer } = renderTrial();
 
     // no gate in jsdom: the Fullscreen API is unavailable, so the trial starts straight away
     expect(screen.queryByTestId('fullscreen-gate')).toBeNull();
@@ -134,8 +135,8 @@ describe('TrialRunner', () => {
 
     const { trialData } = answers;
     expect(trialData.response).toBe('first');
-    // nB (34) is larger, so 'first' is wrong
-    expect(trialData.correct).toBe(false);
+    // correctness is not stored here: reVISit keeps the block's correctAnswer on the same record
+    expect(trialData.correct).toBeUndefined();
     expect(trialData.nA).toBe(24);
     expect(trialData.nB).toBe(34);
     expect(trialData.seedA).toBe(11);
@@ -151,7 +152,7 @@ describe('TrialRunner', () => {
   });
 
   test('measures every phase to within a frame of its target', () => {
-    const setAnswer = renderTrial();
+    const { setAnswer } = renderTrial();
     runFrames(200);
     fireEvent.keyDown(window, { key: 'j' });
 
@@ -163,21 +164,14 @@ describe('TrialRunner', () => {
     expect(measured.blank2).toBeCloseTo(400, 0);
   });
 
-  test('scores the second interval as correct when it has more items', () => {
-    const setAnswer = renderTrial();
+  test('writes the second interval to the graded trial response', () => {
+    const { setAnswer } = renderTrial();
     runFrames(200);
     fireEvent.keyDown(window, { key: 'j' });
 
     const { trial, trialData } = setAnswer.mock.calls[0][0].answers;
     expect(trial).toBe('second');
-    expect(trialData.correct).toBe(true);
-  });
-
-  test('scores the first interval as correct when the baseline is smaller', () => {
-    const setAnswer = renderTrial({ nB: 14 });
-    runFrames(200);
-    fireEvent.keyDown(window, { key: 'f' });
-    expect(setAnswer.mock.calls[0][0].answers.trialData.correct).toBe(true);
+    expect(trialData.response).toBe('second');
   });
 
   test('shows the stimuli only during their own phases', () => {
@@ -195,7 +189,7 @@ describe('TrialRunner', () => {
   });
 
   test('ignores keys other than i and j, and only responds once', () => {
-    const setAnswer = renderTrial();
+    const { setAnswer } = renderTrial();
     runFrames(200);
 
     fireEvent.keyDown(window, { key: 'a' });
@@ -209,49 +203,95 @@ describe('TrialRunner', () => {
   });
 
   test('ignores i and j before the prompt', () => {
-    const setAnswer = renderTrial();
+    const { setAnswer } = renderTrial();
     runFrames(10);
     fireEvent.keyDown(window, { key: 'f' });
     expect(setAnswer).not.toHaveBeenCalled();
   });
 
-  test('dispatches a synthetic Enter so the study advances', () => {
-    const dispatched: KeyboardEvent[] = [];
-    window.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') {
-        dispatched.push(event);
-      }
-    });
+  test('calls advance() exactly once, after the answer and not before', () => {
+    const { advance } = renderTrial();
+    runFrames(200);
+    expect(advance).not.toHaveBeenCalled();
 
+    fireEvent.keyDown(window, { key: 'f' });
+    expect(advance).toHaveBeenCalledTimes(1);
+
+    fireEvent.keyDown(window, { key: 'j' });
+    expect(advance).toHaveBeenCalledTimes(1);
+  });
+
+  test('keeps the blank overlay after a main-trial answer', () => {
     renderTrial();
     runFrames(200);
     fireEvent.keyDown(window, { key: 'f' });
-    expect(dispatched).toHaveLength(0);
-
-    act(() => {
-      vi.advanceTimersByTime(100);
-    });
-    expect(dispatched.length).toBeGreaterThan(0);
+    expect(screen.getByTestId('trial-runner')).toBeTruthy();
+    expect(screen.queryByTestId('trial-prompt')).toBeNull();
+    expect(screen.queryByTestId('practice-done')).toBeNull();
   });
 
-  test('shows feedback for practice trials before advancing', () => {
-    renderTrial({ feedback: true, nB: 40 });
+  test('practice trials hand over to the platform instead of advancing', () => {
+    const { setAnswer, advance } = renderTrial({ staircaseId: 'practice', cellId: 'practice', nB: 40 });
     runFrames(200);
     fireEvent.keyDown(window, { key: 'j' });
 
-    expect(screen.getByTestId('trial-feedback').textContent).toBe('Correct');
+    expect(setAnswer).toHaveBeenCalledTimes(1);
+    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('second');
+    expect(advance).not.toHaveBeenCalled();
 
-    act(() => {
-      vi.advanceTimersByTime(700);
-    });
-    expect(screen.queryByTestId('trial-feedback')).toBeNull();
+    // the fixed overlay is gone so reVISit's feedback and Next button are visible
+    expect(screen.queryByTestId('trial-runner')).toBeNull();
+    expect(screen.getByTestId('practice-done').textContent).toContain('second');
+    expect(screen.getByTestId('practice-done').textContent).toContain('Enter');
   });
 
-  test('shows Incorrect for a wrong practice answer', () => {
-    renderTrial({ feedback: true, nB: 40 });
-    runFrames(200);
-    fireEvent.keyDown(window, { key: 'f' });
-    expect(screen.getByTestId('trial-feedback').textContent).toBe('Incorrect');
+  test('swallows Enter until the answer is in', () => {
+    const seen: string[] = [];
+    const bubble = (event: KeyboardEvent) => {
+      seen.push(event.key);
+    };
+    window.addEventListener('keydown', bubble);
+
+    try {
+      renderTrial();
+      runFrames(10);
+      fireEvent.keyDown(window, { key: 'Enter' });
+      expect(seen).toEqual([]);
+
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'Enter' });
+      expect(seen).toEqual([]);
+
+      fireEvent.keyDown(window, { key: 'f' });
+      fireEvent.keyDown(window, { key: 'Enter' });
+      expect(seen).toContain('Enter');
+    } finally {
+      window.removeEventListener('keydown', bubble);
+    }
+  });
+
+  test('records the fullscreen state at the time of the answer', () => {
+    let fullscreenElement: Element | null = null;
+    Object.defineProperty(document, 'fullscreenElement', {
+      configurable: true,
+      get: () => fullscreenElement,
+    });
+
+    try {
+      const { setAnswer } = renderTrial();
+      runFrames(100);
+
+      fullscreenElement = document.documentElement;
+      act(() => {
+        document.dispatchEvent(new Event('fullscreenchange'));
+      });
+
+      runFrames(100);
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(setAnswer.mock.calls[0][0].answers.trialData.fullscreen).toBe(true);
+    } finally {
+      Reflect.deleteProperty(document, 'fullscreenElement');
+    }
   });
 
   test('gates the trial behind a fullscreen prompt when the API is available', () => {
@@ -263,7 +303,7 @@ describe('TrialRunner', () => {
     });
 
     try {
-      const setAnswer = renderTrial();
+      const { setAnswer } = renderTrial();
       expect(screen.getByTestId('fullscreen-gate')).toBeTruthy();
 
       runFrames(200);

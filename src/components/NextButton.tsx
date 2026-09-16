@@ -30,6 +30,10 @@ type Props = {
   checkAnswer: JSX.Element | null;
   onCheckAnswer?: () => void;
   onNext: () => void;
+  /** True while the stimulus has asked to advance via `StimulusParams.advance()`. */
+  advanceRequested?: boolean;
+  /** Called once the request has been honoured or dropped. */
+  onAdvanceConsumed?: () => void;
 };
 
 export function NextButton({
@@ -40,6 +44,8 @@ export function NextButton({
   checkAnswer,
   onCheckAnswer,
   onNext,
+  advanceRequested = false,
+  onAdvanceConsumed,
 }: Props) {
   const { isNextDisabled, goToNextStep } = useNextStep();
   const studyConfig = useStudyConfig();
@@ -128,6 +134,31 @@ export function NextButton({
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [disabled, isNextDisabled, buttonTimerSatisfied, onCheckAnswer, onNext, nextOnEnter]);
+
+  // A programmatic advance from the stimulus behaves like Enter, except that it never triggers Check Answer:
+  // while feedback is pending the request is dropped, and while a timer or validation blocks Next it waits.
+  // Each request is honoured at most once, however often the guards re-evaluate before the parent clears it.
+  const advancePendingRef = useRef(false);
+  useEffect(() => {
+    advancePendingRef.current = advanceRequested;
+  }, [advanceRequested]);
+  useEffect(() => {
+    if (!advanceRequested || !advancePendingRef.current || !onAdvanceConsumed) {
+      return;
+    }
+    if (onCheckAnswer) {
+      advancePendingRef.current = false;
+      onAdvanceConsumed();
+      return;
+    }
+    // `timer` is undefined only before the mount effect starts it; wait so an enable time is honoured.
+    if (disabled || isNextDisabled || timer === undefined || !buttonTimerSatisfied) {
+      return;
+    }
+    advancePendingRef.current = false;
+    onAdvanceConsumed();
+    onNext();
+  }, [advanceRequested, onAdvanceConsumed, onCheckAnswer, disabled, isNextDisabled, timer, buttonTimerSatisfied, onNext]);
 
   const nextButtonDisabled = disabled || isNextDisabled || !buttonTimerSatisfied;
   const previousButtonText = config?.previousButtonText ?? studyConfig.uiConfig.previousButtonText ?? 'Previous';

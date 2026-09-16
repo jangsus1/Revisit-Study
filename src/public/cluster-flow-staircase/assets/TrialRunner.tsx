@@ -8,6 +8,11 @@
  * Both stimuli are mounted for the whole trial and only their `visibility` is toggled, so a phase
  * change costs a paint and not a layout. Phase starts are timestamped in the animation frame that
  * follows the state commit, which makes the recorded durations paint-to-paint.
+ *
+ * What is reVISit's and what is ours: the key press is read here (the platform has no keypress
+ * response type) and written to the `trial` reactive response, which is what enables Next. Main
+ * trials then call the platform's `advance()`; practice trials leave the platform's Check Answer
+ * flow (`provideFeedback` on the `practice-trial` component) to grade the answer and show feedback.
  */
 import { Button } from '@mantine/core';
 import {
@@ -20,7 +25,7 @@ import { generateDisplay } from './generator';
 import { GENERATOR_CONFIG as C } from './generator/config';
 import { StimulusFrame } from './render/StimulusSVG';
 
-type Phase = 'gate' | 'fixation' | 'a' | 'blank1' | 'b' | 'blank2' | 'prompt' | 'feedback' | 'done';
+type Phase = 'gate' | 'fixation' | 'a' | 'blank1' | 'b' | 'blank2' | 'prompt' | 'done';
 type TimedPhase = keyof MeasuredDurations;
 
 const TIMELINE: { phase: TimedPhase, ms: number }[] = [
@@ -31,18 +36,15 @@ const TIMELINE: { phase: TimedPhase, ms: number }[] = [
   { phase: 'blank2', ms: 400 },
 ];
 
-const FEEDBACK_MS = 600;
 const DEFAULT_REFRESH_MS = 1000 / 60;
-/** The synthetic Enter is retried because the Next button only unlocks after the store round-trip. */
-const ADVANCE_RETRY_DELAYS = [60, 160, 300, 500, 800, 1200];
 
-const PROMPT_TEXT = 'Which one has more items?  Press  F  or  \u2190  (first)  /  J  or  \u2192  (second)';
+const PROMPT_TEXT = 'Which one has more items?  Press  F  or  ←  (first)  /  J  or  →  (second)';
 
 /** Keys that answer "first" and "second": f / j on the home row, or the left / right arrows. */
 const FIRST_KEYS = new Set(['f', 'arrowleft']);
 const SECOND_KEYS = new Set(['j', 'arrowright']);
 
-/** The trial owns the whole viewport: a dark ground, the frame centred, and nothing else. */
+/** The trial owns the whole viewport: a plain ground, the frame centred, and nothing else. */
 const overlayStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
@@ -58,14 +60,30 @@ const overlayStyle: CSSProperties = {
   fontSize: 18,
 };
 
+/** After a practice answer the overlay gives way to reVISit's response block, feedback and Next. */
+const practiceDoneStyle: CSSProperties = {
+  background: C.SURROUND,
+  color: C.INK,
+  padding: '24px 32px',
+  borderRadius: 8,
+  fontFamily: 'system-ui, sans-serif',
+  fontSize: 18,
+  textAlign: 'center',
+};
+
 function canRequestFullscreen(): boolean {
   return typeof document !== 'undefined' && typeof document.documentElement?.requestFullscreen === 'function';
 }
 
-export default function TrialRunner({ parameters, setAnswer }: StimulusParams<TrialParams>) {
+function isFullscreen(): boolean {
+  return typeof document !== 'undefined' && !!document.fullscreenElement;
+}
+
+export default function TrialRunner({ parameters, setAnswer, advance }: StimulusParams<TrialParams>) {
   const {
-    seedA, seedB, nB, cue, density, cellId, trialIndex, staircaseId, feedback, refreshMs,
+    seedA, seedB, nB, cue, density, cellId, trialIndex, staircaseId, refreshMs,
   } = parameters;
+  const isPractice = staircaseId === 'practice';
 
   const displayA = useMemo(() => generateDisplay(seedA, { kind: 'A', cue, density }), [seedA, cue, density]);
   const displayB = useMemo(() => generateDisplay(seedB, {
@@ -73,37 +91,32 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
   }), [seedB, cue, density, nB]);
 
   // Without the Fullscreen API (jsdom, and any browser that refuses it) the gate is skipped.
-  const needsGate = useMemo(
-    () => canRequestFullscreen() && !document.fullscreenElement,
-    [],
-  );
+  const [phase, setPhase] = useState<Phase>(() => (canRequestFullscreen() && !isFullscreen() ? 'gate' : 'fixation'));
+  const [running, setRunning] = useState(() => !(canRequestFullscreen() && !isFullscreen()));
+  const [response, setResponse] = useState<TrialAnswer['response'] | null>(null);
 
-  const [phase, setPhase] = useState<Phase>(needsGate ? 'gate' : 'fixation');
-  const [running, setRunning] = useState(!needsGate);
-  const [wasCorrect, setWasCorrect] = useState<boolean | null>(null);
+  // Fullscreen state is tracked live so the answer records what was true at the key press. Losing
+  // fullscreen mid-trial does not abort the trial; the next trial mounts fresh and gates again.
+  const fullscreenRef = useRef(isFullscreen());
+  useEffect(() => {
+    if (typeof document === 'undefined') {
+      return undefined;
+    }
+    const onChange = () => {
+      fullscreenRef.current = isFullscreen();
+    };
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
 
   const measuredRef = useRef<MeasuredDurations>({
     fixation: 0, a: 0, blank1: 0, b: 0, blank2: 0,
   });
   const promptStartRef = useRef(0);
   const respondedRef = useRef(false);
-  const timeoutsRef = useRef<number[]>([]);
-
-  useEffect(() => () => {
-    timeoutsRef.current.forEach((id) => window.clearTimeout(id));
-    timeoutsRef.current = [];
-  }, []);
-
-  /** Advances via the study's `nextOnEnter` handler; retried until the Next button accepts it. */
-  const advance = useCallback(() => {
-    const fire = () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
-    ADVANCE_RETRY_DELAYS.forEach((delay) => {
-      timeoutsRef.current.push(window.setTimeout(fire, delay));
-    });
-  }, []);
 
   const startTrial = useCallback(() => {
-    if (canRequestFullscreen() && !document.fullscreenElement) {
+    if (canRequestFullscreen() && !isFullscreen()) {
       // Proceed even when the request is refused: a refused fullscreen is recorded, not blocking.
       document.documentElement.requestFullscreen().catch(() => undefined);
     }
@@ -169,6 +182,22 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
     };
   }, [running, refreshMs]);
 
+  // Until the answer is in, Enter must not reach the study's `nextOnEnter` handler: the stimulus is
+  // still invalid, and the platform would surface a validation message over the display.
+  useEffect(() => {
+    if (phase === 'done') {
+      return undefined;
+    }
+    const swallowEnter = (event: KeyboardEvent) => {
+      if (event.key === 'Enter') {
+        event.stopImmediatePropagation();
+        event.preventDefault();
+      }
+    };
+    window.addEventListener('keydown', swallowEnter, true);
+    return () => window.removeEventListener('keydown', swallowEnter, true);
+  }, [phase]);
+
   // Response collection: only f / left arrow and j / right arrow count, and only while the prompt is up.
   useEffect(() => {
     if (phase !== 'prompt') {
@@ -183,11 +212,9 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
       event.preventDefault();
       respondedRef.current = true;
 
-      const response: TrialAnswer['response'] = FIRST_KEYS.has(key) ? 'first' : 'second';
-      const correct = (nB > displayA.n ? 'second' : 'first') === response;
+      const chosen: TrialAnswer['response'] = FIRST_KEYS.has(key) ? 'first' : 'second';
       const trialAnswer: TrialAnswer = {
-        response,
-        correct,
+        response: chosen,
         rtMs: performance.now() - promptStartRef.current,
         nA: displayA.n,
         nB,
@@ -202,36 +229,32 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
         attemptsB: displayB.attempts,
         measured: { ...measuredRef.current },
         refreshMs,
-        fullscreen: typeof document !== 'undefined' && !!document.fullscreenElement,
+        fullscreen: fullscreenRef.current,
         displayA,
         displayB,
       };
 
+      // `trial` is the graded response; `trialData` is the hidden telemetry record.
       setAnswer({
         status: true,
         answers: {
-          trial: response,
+          trial: chosen,
           trialData: trialAnswer as unknown as JsonValue,
         },
       });
+      setResponse(chosen);
+      setPhase('done');
 
-      if (feedback) {
-        setWasCorrect(correct);
-        setPhase('feedback');
-        timeoutsRef.current.push(window.setTimeout(() => {
-          setPhase('done');
-          advance();
-        }, FEEDBACK_MS));
-      } else {
-        setPhase('done');
-        advance();
+      // Practice trials are graded by the platform (Check Answer on Enter); main trials move on.
+      if (!isPractice) {
+        advance?.();
       }
     };
 
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
-    advance, cellId, cue, density, displayA, displayB, feedback, nB, phase, refreshMs, seedA, seedB,
+    advance, cellId, cue, density, displayA, displayB, isPractice, nB, phase, refreshMs, seedA, seedB,
     setAnswer, staircaseId, trialIndex,
   ]);
 
@@ -249,6 +272,30 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
           This study runs in fullscreen so that the timing of the displays is accurate.
         </p>
         <Button onClick={startTrial}>Click to return to fullscreen</Button>
+      </div>
+    );
+  }
+
+  if (phase === 'done' && isPractice) {
+    return (
+      <div style={practiceDoneStyle} data-testid="practice-done">
+        <p>
+          You answered
+          {' '}
+          <strong>{response === 'first' ? 'first' : 'second'}</strong>
+          .
+        </p>
+        <p>
+          Press
+          {' '}
+          <strong>Enter</strong>
+          {' '}
+          to check your answer, then
+          {' '}
+          <strong>Enter</strong>
+          {' '}
+          again to continue.
+        </p>
       </div>
     );
   }
@@ -275,11 +322,6 @@ export default function TrialRunner({ parameters, setAnswer }: StimulusParams<Tr
       }}
       >
         {phase === 'prompt' && <span data-testid="trial-prompt">{PROMPT_TEXT}</span>}
-        {phase === 'feedback' && (
-          <span data-testid="trial-feedback" style={{ color: wasCorrect ? '#4CAF50' : '#E53935' }}>
-            {wasCorrect ? 'Correct' : 'Incorrect'}
-          </span>
-        )}
       </div>
     </div>
   );

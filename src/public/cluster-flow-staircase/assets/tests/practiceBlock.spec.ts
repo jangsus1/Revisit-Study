@@ -19,11 +19,12 @@ const STEP = 4;
 
 function storedTrials(count: number): ParticipantData['answers'] {
   return Object.fromEntries(new Array(count).fill(null).map((_, index) => [
-    `${BLOCK}_${STEP}_trial_${index}`,
+    `${BLOCK}_${STEP}_practice-trial_${index}`,
     {
-      componentName: 'trial',
+      componentName: 'practice-trial',
       endTime: index + 1,
       answer: { trial: 'first', trialData: { staircaseId: 'practice', trialIndex: index } as unknown as TrialAnswer },
+      correctAnswer: [{ id: 'trial', answer: 'first' }],
     },
   ])) as unknown as ParticipantData['answers'];
 }
@@ -35,11 +36,10 @@ function runPractice(count: number, customParameters?: { trials?: number }) {
 }
 
 describe('practiceBlock', () => {
-  test('shows a practice trial with feedback', () => {
+  test('schedules the practice-trial component, which carries the platform feedback', () => {
     const result = runPractice(0);
     const parameters = result.parameters as unknown as TrialParams;
-    expect(result.component).toBe('trial');
-    expect(parameters.feedback).toBe(true);
+    expect(result.component).toBe('practice-trial');
     expect(parameters.staircaseId).toBe('practice');
     expect(parameters.cellId).toBe('practice');
     expect(parameters.trialIndex).toBe(0);
@@ -62,12 +62,12 @@ describe('practiceBlock', () => {
   });
 
   test('ends after eight trials by default', () => {
-    expect(runPractice(7).component).toBe('trial');
+    expect(runPractice(7).component).toBe('practice-trial');
     expect(runPractice(8)).toEqual({ component: null });
   });
 
   test('honours the trials override', () => {
-    expect(runPractice(1, { trials: 2 }).component).toBe('trial');
+    expect(runPractice(1, { trials: 2 }).component).toBe('practice-trial');
     expect(runPractice(2, { trials: 2 })).toEqual({ component: null });
   });
 
