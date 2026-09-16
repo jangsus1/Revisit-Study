@@ -53,14 +53,14 @@ def generate_base_components():
                     "id": "answer",
                     "prompt": "",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 },
                 {
                     "id": "gaze",
                     "prompt": "Gaze trace",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive",
                     "hidden": True
                 }
@@ -76,7 +76,7 @@ def generate_base_components():
                     "id": "answer",
                     "prompt": "",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -91,7 +91,7 @@ def generate_base_components():
                     "id": "answer",
                     "prompt": "",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -151,7 +151,7 @@ def create_default_components(fail_link):
                     "id": "attention_check_failed_1",
                     "prompt": "",
                     "required": True,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -709,7 +709,7 @@ def create_gaze_components(fail_link):
     """Eye-tracking components: webcam permission, full calibration, and camera shutdown."""
     hidden = lambda rid, prompt: [{
         "id": rid, "prompt": prompt, "required": True,
-        "location": "sidebar", "type": "reactive", "hidden": True
+        "location": "belowStimulus", "type": "reactive", "hidden": True
     }]
     return {
         "webcamPermission": {

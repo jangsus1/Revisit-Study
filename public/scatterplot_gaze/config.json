@@ -109,7 +109,7 @@
                     "id": "attention_check_failed_1",
                     "prompt": "",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -231,7 +231,7 @@
                     "id": "webcamPermission",
                     "prompt": "Webcam permission",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive",
                     "hidden": true
                 }
@@ -251,7 +251,7 @@
                     "id": "calibration",
                     "prompt": "Calibration result",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive",
                     "hidden": true
                 }
@@ -267,7 +267,7 @@
                     "id": "gazeEnd",
                     "prompt": "Eye tracking finished",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive",
                     "hidden": true
                 }
@@ -109272,14 +109272,14 @@
                     "id": "answer",
                     "prompt": "",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 },
                 {
                     "id": "gaze",
                     "prompt": "Gaze trace",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive",
                     "hidden": true
                 }
@@ -109295,7 +109295,7 @@
                     "id": "answer",
                     "prompt": "",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -109310,7 +109310,7 @@
                     "id": "answer",
                     "prompt": "",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],

@@ -72,7 +72,7 @@
                     "id": "attention_check_failed_1",
                     "prompt": "",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -109177,7 +109177,7 @@
                     "id": "answer",
                     "prompt": "",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -109192,7 +109192,7 @@
                     "id": "answer",
                     "prompt": "",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
@@ -109207,7 +109207,7 @@
                     "id": "answer",
                     "prompt": "",
                     "required": true,
-                    "location": "sidebar",
+                    "location": "belowStimulus",
                     "type": "reactive"
                 }
             ],
