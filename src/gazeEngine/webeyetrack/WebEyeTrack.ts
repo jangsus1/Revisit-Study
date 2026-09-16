@@ -83,6 +83,13 @@ export default class WebEyeTrack {
   };
   private baseUrl: string | undefined;
 
+  /** Constant drift correction (normalized units) added after the affine map; see setOffset(). */
+  public offset: [number, number] = [0, 0];
+  private snapshot: {
+    supportX: SupportX[]; supportY: tf.Tensor[]; timestamps: number[]; ptType: ('calib' | 'click')[];
+    targets: number[][]; affineMatrix: tf.Tensor | null; weights: tf.Tensor[]; offset: [number, number];
+  } | null = null;
+
   // Configuration
   public maxPoints: number = 5;
   public clickTTL: number = 60; // Time-to-live for click points in seconds
@@ -150,6 +157,58 @@ export default class WebEyeTrack {
     };
   }
 
+  /** Replace the drift correction (normalized units, same frame as normPog). */
+  setOffset(dx: number, dy: number) {
+    this.offset = [dx, dy];
+  }
+
+  private disposeSnapshot() {
+    if (!this.snapshot) return;
+    for (const sx of this.snapshot.supportX) tf.dispose([sx.eyePatches, sx.headVectors, sx.faceOrigins3D]);
+    tf.dispose(this.snapshot.supportY);
+    if (this.snapshot.affineMatrix) tf.dispose(this.snapshot.affineMatrix);
+    tf.dispose(this.snapshot.weights);
+    this.snapshot = null;
+  }
+
+  /** Copy the whole calibration state (support set, affine map, MLP weights, offset) so a
+   *  later adapt() that makes things worse can be undone with restoreCalib(). */
+  snapshotCalib() {
+    this.disposeSnapshot();
+    this.snapshot = {
+      supportX: this.calibData.supportX.map(sx => ({
+        eyePatches: tf.clone(sx.eyePatches), headVectors: tf.clone(sx.headVectors), faceOrigins3D: tf.clone(sx.faceOrigins3D),
+      })),
+      supportY: this.calibData.supportY.map(t => tf.clone(t)),
+      timestamps: [...this.calibData.timestamps],
+      ptType: [...this.calibData.ptType],
+      targets: this.calibData.targets.map(t => [...t]),
+      affineMatrix: this.affineMatrix ? tf.clone(this.affineMatrix) : null,
+      weights: this.blazeGaze.getWeights().map(w => tf.clone(w)),
+      offset: [...this.offset] as [number, number],
+    };
+  }
+
+  /** Put back the state saved by snapshotCalib(); returns false when there is none. */
+  restoreCalib(): boolean {
+    const snap = this.snapshot;
+    if (!snap) return false;
+    while (this.calibData.supportX.length > 0) this.removeCalibEntry(0);
+    if (this.affineMatrix) { tf.dispose(this.affineMatrix); this.affineMatrix = null; }
+    this.calibData.supportX = snap.supportX;
+    this.calibData.supportY = snap.supportY;
+    this.calibData.timestamps = snap.timestamps;
+    this.calibData.ptType = snap.ptType;
+    this.calibData.targets = snap.targets;
+    this.affineMatrix = snap.affineMatrix;
+    this.blazeGaze.setWeights(snap.weights);
+    tf.dispose(snap.weights);
+    this.offset = snap.offset;
+    this.snapshot = null;
+    this.kalmanFilter = new KalmanFilter2D(1.0, 2e-3, 1e-2);
+    return true;
+  }
+
   /** Forget all calibration data, reset smoothing and reload pristine model weights
    *  (adapt() also takes optimizer steps on the gaze MLP, so a clean retry needs a reload). */
   async resetCalib(baseUrl?: string): Promise<void> {
@@ -157,6 +216,8 @@ export default class WebEyeTrack {
     if (this.affineMatrix) { tf.dispose(this.affineMatrix); this.affineMatrix = null; }
     this.kalmanFilter = new KalmanFilter2D(1.0, 2e-3, 1e-2);
     this.latestMouseClick = null;
+    this.offset = [0, 0];
+    this.disposeSnapshot();
     await this.blazeGaze.loadModel(baseUrl ?? this.baseUrl);
   }
 
@@ -464,6 +525,8 @@ export default class WebEyeTrack {
 
     const normPog = predNormPog.arraySync() as number[][];
     tf.dispose(predNormPog);
+    normPog[0][0] += this.offset[0];
+    normPog[0][1] += this.offset[1];
 
     // Apply Kalman filter to smooth the gaze point
     const kalmanOutput = this.kalmanFilter.step(normPog[0]);

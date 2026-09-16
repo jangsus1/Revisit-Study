@@ -155,9 +155,41 @@ class GazeTracker {
     return this.proxy.calibEnd(ptType, 10);
   }
 
+  /** Current drift correction in normalized units (mirrors the worker's value). */
+  offset: [number, number] = [0, 0];
+
+  async snapshotCalibration(): Promise<void> {
+    if (!this.proxy) throw new Error('tracker not started');
+    await this.proxy.snapshotCalib();
+    this.snapshotOffset = this.offset;
+  }
+
+  async restoreCalibration(): Promise<boolean> {
+    if (!this.proxy) throw new Error('tracker not started');
+    const r = await this.proxy.restoreCalib();
+    if (r.restored) this.offset = this.snapshotOffset;
+    return r.restored;
+  }
+
+  private snapshotOffset: [number, number] = [0, 0];
+
+  /** Set the drift correction in viewport pixels (added to every estimate, raw and smoothed). */
+  async setOffsetPx(dx: number, dy: number): Promise<void> {
+    if (!this.proxy) throw new Error('tracker not started');
+    const off: [number, number] = [dx / window.innerWidth, dy / window.innerHeight];
+    await this.proxy.setOffset(off[0], off[1]);
+    this.offset = off;
+  }
+
+  get offsetPx(): [number, number] {
+    return [this.offset[0] * window.innerWidth, this.offset[1] * window.innerHeight];
+  }
+
   async resetCalibration(): Promise<void> {
     if (!this.proxy) throw new Error('tracker not started');
     await this.proxy.resetCalib();
+    this.offset = [0, 0];
+    this.snapshotOffset = [0, 0];
   }
 
   stop(): void {

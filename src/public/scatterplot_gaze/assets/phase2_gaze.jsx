@@ -57,33 +57,77 @@ function Phase2Gaze({ parameters, setAnswer }) {
     calibStarted.current = true;
     (async () => {
       // Test-first, tiered calibration:
-      //   1. one centre validation dot measures the current error (~1.3 s)
-      //   2. if it is within threshold -> no calibration, start the trial
-      //      else -> 3-dot refresh ('light'); if the error is also worse than the previous
-      //      trial's -> 5-dot refresh ('strong'); then re-check with the centre dot
+      //   1. one centre validation dot measures the current error and its direction (~1.3 s)
+      //   2. error <= threshold (6 % of width)        -> nothing, start the trial
+      //      error <= large (15 % of width)           -> 'offset': shift every estimate by the measured
+      //                                                  drift vector (no dots), then re-check
+      //      error >  large                           -> dots: 3 ('light') or 5 ('strong' when the error
+      //                                                  also grew since the previous trial), then re-check
+      //   3. any step whose re-check is worse than the pre-check is reverted (offset put back /
+      //      calibration state restored from a snapshot), and the drift offset is tried as a fallback
       const fullCalibPresent = !!gazeTracker.fullCalib;
       const thresholdPx = Math.round(0.06 * window.innerWidth);
+      const largePx = Math.round(0.15 * window.innerWidth);
       const prevErrorPx = gazeTracker.lastTrialErrorPx ?? null;
       const result = {
-        preErrorPx: null, postErrorPx: null, errorPx: null, n: 0, tier: "none", dots: 0,
-        thresholdPx, prevErrorPx, calib: [], error: null,
+        preErrorPx: null, preOffsetPx: null, postErrorPx: null, fallbackErrorPx: null, errorPx: null, n: 0,
+        tier: "none", dots: 0, reverted: false, thresholdPx, largePx, prevErrorPx,
+        offsetBeforePx: null, offsetPx: null, calib: [], error: null,
       };
+      const check = (label) => runValidation([{ nx: 0, ny: 0 }], 1300, 700, label);
       try {
         await gazeTracker.init();
-        const pre = await runValidation([{ nx: 0, ny: 0 }], 1300, 700, "Look at the centre dot");
+        const off0 = gazeTracker.offsetPx;
+        result.offsetBeforePx = [Math.round(off0[0]), Math.round(off0[1])];
+        const pre = await check("Look at the centre dot");
         result.preErrorPx = pre.meanErrorPx;
+        result.preOffsetPx = pre.meanOffsetPx ? [Math.round(pre.meanOffsetPx[0]), Math.round(pre.meanOffsetPx[1])] : null;
         result.n = pre.points[0]?.n ?? 0;
-        const needs = pre.meanErrorPx === null || pre.meanErrorPx > thresholdPx;
-        if (needs) {
-          const worsening = prevErrorPx !== null && pre.meanErrorPx !== null && pre.meanErrorPx > prevErrorPx;
-          result.tier = worsening ? "strong" : "light";
-          result.dots = worsening ? 5 : 3;
-          setMessage("Quick calibration: look at each dot");
-          result.calib = await runCalibration(shortCalibPoints(label_idx ?? 0, result.dots), "click", 1300, 800);
-          const post = await runValidation([{ nx: 0, ny: 0 }], 1300, 700, "Look at the centre dot");
-          result.postErrorPx = post.meanErrorPx;
+        // Offset that cancels the measured drift (gaze - target) on top of the current one
+        const driftFixed = pre.meanOffsetPx ? [off0[0] - pre.meanOffsetPx[0], off0[1] - pre.meanOffsetPx[1]] : null;
+        const worse = (post, base) => post.meanErrorPx === null || post.meanErrorPx > base;
+
+        if (pre.meanErrorPx !== null && pre.meanErrorPx > thresholdPx) {
+          if (pre.meanErrorPx <= largePx && driftFixed) {
+            result.tier = "offset";
+            await gazeTracker.setOffsetPx(driftFixed[0], driftFixed[1]);
+            const post = await check("Look at the centre dot");
+            result.postErrorPx = post.meanErrorPx;
+            if (worse(post, pre.meanErrorPx)) {
+              await gazeTracker.setOffsetPx(off0[0], off0[1]);
+              result.reverted = true;
+            }
+          } else {
+            const worsening = prevErrorPx !== null && pre.meanErrorPx > prevErrorPx;
+            result.tier = worsening ? "strong" : "light";
+            result.dots = worsening ? 5 : 3;
+            await gazeTracker.snapshotCalibration();
+            // The refit maps raw predictions straight onto the targets, so the old drift offset
+            // must not be applied on top of it (the snapshot keeps it for a revert).
+            await gazeTracker.setOffsetPx(0, 0);
+            setMessage("Quick calibration: look at each dot");
+            result.calib = await runCalibration(shortCalibPoints(label_idx ?? 0, result.dots), "click", 1300, 800);
+            const post = await check("Look at the centre dot");
+            result.postErrorPx = post.meanErrorPx;
+            if (worse(post, pre.meanErrorPx)) {
+              await gazeTracker.restoreCalibration();
+              result.reverted = true;
+              if (driftFixed) {
+                // Fallback: plain drift correction from the pre-check
+                await gazeTracker.setOffsetPx(driftFixed[0], driftFixed[1]);
+                const post2 = await check("Look at the centre dot");
+                result.fallbackErrorPx = post2.meanErrorPx;
+                if (worse(post2, pre.meanErrorPx)) await gazeTracker.setOffsetPx(off0[0], off0[1]);
+              }
+            }
+          }
         }
-        result.errorPx = result.postErrorPx ?? result.preErrorPx;
+        // Final accepted error: the last check that was kept
+        result.errorPx = result.reverted
+          ? (result.fallbackErrorPx !== null && result.fallbackErrorPx <= result.preErrorPx ? result.fallbackErrorPx : result.preErrorPx)
+          : (result.postErrorPx ?? result.preErrorPx);
+        const offF = gazeTracker.offsetPx;
+        result.offsetPx = [Math.round(offF[0]), Math.round(offF[1])];
         gazeTracker.lastTrialErrorPx = result.errorPx;
       } catch (err) {
         result.error = err instanceof Error ? err.message : String(err);

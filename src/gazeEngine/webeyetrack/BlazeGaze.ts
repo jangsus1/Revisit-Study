@@ -30,6 +30,16 @@ export default class BlazeGaze {
         this.model.getLayer('cnn_encoder').trainable = false;
     }
 
+    getWeights(): tf.Tensor[] {
+        if (!this.model) throw new Error('Model not loaded. Call loadModel() first.');
+        return this.model.getWeights();
+    }
+
+    setWeights(weights: tf.Tensor[]): void {
+        if (!this.model) throw new Error('Model not loaded. Call loadModel() first.');
+        this.model.setWeights(weights);
+    }
+
     predict(image: tf.Tensor, head_vector: tf.Tensor, face_origin_3d: tf.Tensor): tf.Tensor {
         if (!this.model) {
             throw new Error('Model not loaded. Call loadModel() first.');

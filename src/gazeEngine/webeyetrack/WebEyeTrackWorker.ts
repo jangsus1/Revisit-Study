@@ -118,6 +118,20 @@ async function handle(e: MessageEvent) {
       setStatus('idle');
       break;
     }
+    case 'snapshotCalib': {
+      try { tracker.snapshotCalib(); respond(reqId); } catch (err) { respond(reqId, undefined, String(err?.message ?? err)); }
+      break;
+    }
+    case 'restoreCalib': {
+      collecting = null;
+      try { respond(reqId, { restored: tracker.restoreCalib(), ...tracker.calibStats() }); } catch (err) { respond(reqId, undefined, String(err?.message ?? err)); }
+      break;
+    }
+    case 'setOffset': {
+      tracker.setOffset(payload?.dx ?? 0, payload?.dy ?? 0);
+      respond(reqId, { offset: tracker.offset });
+      break;
+    }
     case 'resetCalib': {
       collecting = null;
       setStatus('calib');

@@ -75,7 +75,7 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
       setAttempts((prev) => {
         setPhase(prev.length + 1 >= maxAttempts ? 'done' : 'retry');
         return [...prev, {
-          points: [], meanErrorPx: null, meanErrorPctW: null, viewport: [window.innerWidth, window.innerHeight], hz: 0,
+          points: [], meanErrorPx: null, meanErrorPctW: null, meanOffsetPx: null, viewport: [window.innerWidth, window.innerHeight], hz: 0,
         }];
       });
     }

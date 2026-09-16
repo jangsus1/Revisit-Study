@@ -88,11 +88,6 @@
             "path": "scatterplot_gaze/assets/phase2_examples.md",
             "response": []
         },
-        "phase2_main": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase2_main.md",
-            "response": []
-        },
         "phase3_intro": {
             "type": "markdown",
             "path": "scatterplot_gaze/assets/phase3_intro.md",
@@ -108051,7 +108046,6 @@
             "phase2_examples",
             "phase2_example_1",
             "phase2_example_2",
-            "phase2_main",
             {
                 "id": "phase2",
                 "order": "random",

@@ -130,11 +130,6 @@ def create_default_components(fail_link):
             "path": "scatterplot_gaze/assets/phase2_examples.md",
             "response": []
         },
-        "phase2_main": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase2_main.md",
-            "response": []
-        },
         "phase3_intro": {
             "type": "markdown",
             "path": "scatterplot_gaze/assets/phase3_intro.md",
@@ -684,8 +679,8 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
             "gazeCalibration",    # 9-point calibration + 5-point validation, <= 3 attempts
             "phase2_examples",
             *example_component_names,  # Add the 2 example tasks
-
-            "phase2_main",
+            # No instruction page between the examples and the main trials: a text page invites the
+            # participant to move/lean and breaks the calibration frame.
             {
                 "id": "phase2",
                 "order": "random",

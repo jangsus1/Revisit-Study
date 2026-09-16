@@ -12,11 +12,16 @@ import type { CalibResult } from '../../../gazeEngine/webeyetrack/types';
 
 export type NormPoint = { nx: number; ny: number };
 
-export type ValidationPoint = NormPoint & { n: number; errorPx: number | null };
+export type ValidationPoint = NormPoint & {
+  n: number;
+  errorPx: number | null;
+  offsetPx: [number, number] | null;   // median (gaze - target) in viewport px
+};
 export type ValidationResult = {
   points: ValidationPoint[];
   meanErrorPx: number | null;   // null when no usable samples were collected
   meanErrorPctW: number | null;
+  meanOffsetPx: [number, number] | null;
   viewport: [number, number];
   hz: number;
 };
@@ -97,17 +102,29 @@ export function useDotSequence() {
         // Use the raw (affine-corrected, un-smoothed) estimate: the Kalman output lags large
         // saccades by several hundred ms and would inflate the error right after a dot jump.
         const errors: number[] = [];
+        const dxs: number[] = [];
+        const dys: number[] = [];
         const unsub = gazeTracker.onSample((s: GazeSample) => {
           if (!s.open || !s.face) return;
           const [gx, gy] = normToPx(s.rx, s.ry);
           errors.push(Math.hypot(gx - tx, gy - ty));
+          dxs.push(gx - tx);
+          dys.push(gy - ty);
         });
         setTimeout(() => {
           unsub();
           // Median of the most recent half of the window: robust to a late-arriving fixation
-          const recent = errors.slice(-Math.max(3, Math.floor(errors.length / 2))).sort((a, b) => a - b);
-          const median = recent.length ? recent[Math.floor(recent.length / 2)] : null;
-          resolve({ ...points[i], n: errors.length, errorPx: median });
+          const keep = Math.max(3, Math.floor(errors.length / 2));
+          const med = (arr: number[]) => {
+            const recent = arr.slice(-keep).sort((a, b) => a - b);
+            return recent.length ? recent[Math.floor(recent.length / 2)] : null;
+          };
+          const median = med(errors);
+          const mdx = med(dxs);
+          const mdy = med(dys);
+          resolve({
+            ...points[i], n: errors.length, errorPx: median, offsetPx: mdx === null || mdy === null ? null : [mdx, mdy],
+          });
         }, collectMs);
       }));
       if (r) out.push(r as ValidationPoint);
@@ -115,10 +132,15 @@ export function useDotSequence() {
     setDot(null);
     const valid = out.filter((p) => p.errorPx !== null) as (ValidationPoint & { errorPx: number })[];
     const meanErrorPx = valid.length ? valid.reduce((a, p) => a + p.errorPx, 0) / valid.length : null;
+    const withOff = out.filter((p) => p.offsetPx !== null) as (ValidationPoint & { offsetPx: [number, number] })[];
+    const meanOffsetPx: [number, number] | null = withOff.length
+      ? [withOff.reduce((a, p) => a + p.offsetPx[0], 0) / withOff.length, withOff.reduce((a, p) => a + p.offsetPx[1], 0) / withOff.length]
+      : null;
     return {
       points: out,
       meanErrorPx,
       meanErrorPctW: meanErrorPx === null ? null : meanErrorPx / window.innerWidth,
+      meanOffsetPx,
       viewport: [window.innerWidth, window.innerHeight],
       hz: gazeTracker.hz,
     };

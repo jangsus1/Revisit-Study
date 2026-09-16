@@ -123,6 +123,21 @@ export default class WebEyeTrackProxy {
     return this.request<CalibResult>('calibEnd', { ptType, maxSamples });
   }
 
+  /** Save the current calibration state so a harmful adapt() can be undone. */
+  snapshotCalib(): Promise<void> {
+    return this.request<void>('snapshotCalib');
+  }
+
+  /** Restore the state saved by snapshotCalib(). */
+  restoreCalib(): Promise<{ restored: boolean } & CalibResult> {
+    return this.request<{ restored: boolean } & CalibResult>('restoreCalib');
+  }
+
+  /** Replace the constant drift correction (normalized units). */
+  setOffset(dx: number, dy: number): Promise<{ offset: [number, number] }> {
+    return this.request<{ offset: [number, number] }>('setOffset', { dx, dy });
+  }
+
   /** Forget all calibration data and reload pristine model weights. */
   resetCalib(): Promise<void> {
     return this.request<void>('resetCalib');
