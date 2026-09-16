@@ -100,6 +100,10 @@
             "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
             "type": "number"
           },
+          "nextButtonDisabledUntilValid": {
+            "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+            "type": "boolean"
+          },
           "nextButtonEnableTime": {
             "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
             "type": "number"
@@ -980,6 +984,10 @@
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
         },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
+        },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
           "type": "number"
@@ -1258,6 +1266,10 @@
         "nextButtonDisableTime": {
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
+        },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
         },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
@@ -1792,6 +1804,10 @@
         "nextButtonDisableTime": {
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
+        },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
         },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
@@ -2405,6 +2421,10 @@
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
         },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
+        },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
           "type": "number"
@@ -2830,6 +2850,10 @@
         "nextButtonDisableTime": {
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
+        },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
         },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
@@ -3653,6 +3677,10 @@
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
         },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
+        },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
           "type": "number"
@@ -3823,6 +3851,10 @@
         "nextButtonDisableTime": {
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
+        },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
         },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
@@ -4003,6 +4035,10 @@
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
         },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
+        },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",
           "type": "number"
@@ -4177,6 +4213,10 @@
         "nextButtonDisableTime": {
           "description": "The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig.",
           "type": "number"
+        },
+        "nextButtonDisabledUntilValid": {
+          "description": "Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting.",
+          "type": "boolean"
         },
         "nextButtonEnableTime": {
           "description": "The time in milliseconds to wait before the next button is enabled. If present, will override the next button enable time setting in the uiConfig.",

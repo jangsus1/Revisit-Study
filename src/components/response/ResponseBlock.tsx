@@ -85,7 +85,7 @@ export function ResponseBlock({
 }: Props) {
   const storeDispatch = useStoreDispatch();
   const {
-    updateProvenance, updateResponseBlockValidation, saveIncorrectAnswer, saveTrialAnswer, setResponseSubmitAttempt, setStimulusSubmitAttempt, setCheckAnswerResult,
+    updateProvenance, updateResponseBlockValidation, saveIncorrectAnswer, saveTrialAnswer, setResponseSubmitAttempt, setStimulusSubmitAttempt, setCheckAnswerResult, clearAdvanceRequest,
   } = useStoreActions();
 
   const currentStep = useCurrentStep();
@@ -185,6 +185,10 @@ export function ResponseBlock({
   const liveErrors = currentSubmitAttempt ?? savedSubmitAttempt;
   const savedCheckAnswer = storedAnswerData?.checkAnswer ?? status?.checkAnswer;
   const currentCheckAnswer = useStoreSelector((state) => state.checkAnswer[identifier]);
+  const advanceRequested = useStoreSelector((state) => state.advanceRequested[identifier] ?? false);
+  const consumeAdvanceRequest = useCallback(() => {
+    storeDispatch(clearAdvanceRequest({ identifier }));
+  }, [clearAdvanceRequest, identifier, storeDispatch]);
   const storeAnswers = useStoreSelector((state) => state.answers);
   const dataCollectionEnabled = useStoreSelector((state) => state.modes.dataCollectionEnabled);
   const { storageEngine } = useStorageEngine();
@@ -647,6 +651,15 @@ export function ResponseBlock({
     return () => clearTimeout(timer);
   }, [allowFailedTraining, currentCheckAnswer, hasCorrectAnswer, isAnalysis, navigate, showBtnsInLocation, usedAllAttempts]);
 
+  // Opt-in: keep Next disabled while incomplete instead of warning after a click
+  const nextButtonDisabledUntilValid = useMemo(
+    () => config?.nextButtonDisabledUntilValid ?? studyConfig.uiConfig.nextButtonDisabledUntilValid ?? false,
+    [config, studyConfig],
+  );
+  const nextDisabledForValidity = !isAnalysis
+    && nextButtonDisabledUntilValid
+    && !bypassValidationForFailedTraining
+    && (hasStimulusIssue || hasResponseIssues);
   const handleNextClick = useCallback(() => {
     if (hasStimulusIssue) {
       revealStimulusErrors();
@@ -767,11 +780,13 @@ export function ResponseBlock({
 
       {showBtnsInLocation && (
         <NextButton
-          disabled={(hasCorrectAnswerFeedback && !enableNextButton)}
+          disabled={(hasCorrectAnswerFeedback && !enableNextButton) || nextDisabledForValidity}
           label={nextButtonText}
           config={config}
           location={location}
           onNext={handleNextClick}
+          advanceRequested={advanceRequested}
+          onAdvanceConsumed={consumeAdvanceRequest}
           onCheckAnswer={!isAnalysis && hasCorrectAnswerFeedback && !disabledAttempts ? checkAnswerProvideFeedback : undefined}
           checkAnswer={showBtnsInLocation && hasCorrectAnswerFeedback ? (
             <Button

@@ -44,6 +44,8 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
         calibration: JSON.stringify({
           ...summary,
           acceptPctW,
+          windowPos: [window.screenX, window.screenY, window.outerWidth, window.outerHeight],
+          screen: [window.screen.width, window.screen.height],
           dpr: window.devicePixelRatio,
           inferenceHz: Math.round(gazeTracker.hz * 10) / 10,
           perAttempt: attempts,

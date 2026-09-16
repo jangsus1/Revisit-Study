@@ -161,6 +161,10 @@ function Phase2Gaze({ parameters, setAnswer }) {
       plotArea: [Math.round(r.left + margin.left), Math.round(r.top + margin.top), Math.round(plotWidth), Math.round(plotHeight)],
       labelRects: { x: rect(svg.querySelector('.x-label')), y: rect(svg.querySelector('.y-label')) },
       viewport: [window.innerWidth, window.innerHeight],
+      // Browser window placement on the physical screen: a change since calibration means the
+      // calibration frame moved relative to the camera and the trial should be flagged.
+      windowPos: [window.screenX, window.screenY, window.outerWidth, window.outerHeight],
+      screen: [window.screen.width, window.screen.height],
       dpr: window.devicePixelRatio,
       scroll: [Math.round(window.scrollX), Math.round(window.scrollY)],
     };

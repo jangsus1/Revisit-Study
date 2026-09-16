@@ -283,6 +283,8 @@ export interface UIConfig {
   nextButtonEnableTime?: number;
   /** The time in milliseconds to wait before the next button is disabled. */
   nextButtonDisableTime?: number;
+  /** Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. Defaults to false. */
+  nextButtonDisabledUntilValid?: boolean;
   /** The text that is displayed on the previous button. */
   previousButtonText?: string;
   /** Whether to redirect a timed out participant to a rejection page. This only works for components where the `nextButtonDisableTime` field is set. */
@@ -1058,6 +1060,8 @@ export interface BaseIndividualComponent {
   nextButtonEnableTime?: number;
   /** The time in milliseconds to wait before the next button is disabled. If present, will override the next button disable time setting in the uiConfig. */
   nextButtonDisableTime?: number;
+  /** Whether the next button is disabled (instead of showing an error after a click) while the stimulus or a required response is still incomplete. If present, will override the uiConfig setting. */
+  nextButtonDisabledUntilValid?: boolean;
   /** The time in milliseconds after which the participant is automatically advanced to the next component without saving answers from the current component. */
   nextButtonAutoAdvanceTime?: number;
   /** The time in milliseconds before auto-advance when the warning message is shown. Defaults to 30000. */
