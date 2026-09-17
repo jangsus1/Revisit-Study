@@ -601,14 +601,27 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
     reVISit deals the schemes out evenly (each scheme once per 47 participants).
     """
 
+    # Each scheme gets ONE fixed, pre-shuffled order in which the two trials that share a
+    # scatterplot (revealed + baseline) are at least MIN_GAP positions apart, so nobody sees the
+    # same plot twice in a row. reVISit's "random" order cannot enforce that constraint, so the
+    # shuffle is done here (seeded per scheme) and the block is emitted as "fixed".
+    MIN_GAP = 4
     schemes = []
     for si, trials in enumerate(SCHEMES):
-        comps = []
+        pairs = []
         for t in trials:
             stem = f"phase2_{t['label_idx']}_{t['corr']}_{t['exp']}"
-            comps.append(f"{stem}_{cond_name(t['cond'])}")   # revealed trial
-            comps.append(f"{stem}_base")                       # matched baseline, same coordinates
-        schemes.append({"id": f"scheme_{si}", "order": "random", "components": comps})
+            pairs.append((f"{stem}_{cond_name(t['cond'])}", f"{stem}_base"))
+        rng = np.random.RandomState(1000 + si)
+        flat = [c for pr in pairs for c in pr]
+        for _ in range(100000):
+            order = list(rng.permutation(flat))
+            pos = {c: i for i, c in enumerate(order)}
+            if all(abs(pos[a] - pos[b]) >= MIN_GAP for a, b in pairs):
+                break
+        else:
+            raise RuntimeError(f"could not separate pairs in scheme {si}")
+        schemes.append({"id": f"scheme_{si}", "order": "fixed", "components": order})
 
     # Create list of example component names
     example_component_names = list(phase2_example_components.keys())
