@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/GlobalConfigSchema.json",
   "configsList": [
+    "scatterplot_timing",
     "scatterplot_gaze",
     "scatterplot_duration",
     "scatterplot_extend",
@@ -66,6 +67,9 @@
     "test-cluster-flow"
   ],
   "configs": {
+    "scatterplot_timing": {
+      "path": "scatterplot_timing/config.json"
+    },
     "scatterplot_gaze": {
       "path": "scatterplot_gaze/config.json"
     },
