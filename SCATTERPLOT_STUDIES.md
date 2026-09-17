@@ -33,6 +33,8 @@ yarn), push `main` to deploy to GitHub Pages.
 | `scatterplot_gaze/assets/phase2_gaze.jsx` | as `phase2.jsx` | full-screen plot + webcam gaze recording + per-trial calibration |
 
 All variants emit `answer = {actualCorr, corrAfter}` via `setAnswer({status:true, answers:{answer: JSON}})`.
+Every reactive response must carry `"hidden": true`, otherwise reVISit renders the raw answer
+JSON as a bullet under the stimulus (visible since responses moved off the disabled sidebar).
 Plot: fixed 500 × 500 px area, 50 points, r = 3 px, labels blurred with `blur(50px)`.
 Every file under `src/public/**` is eagerly bundled (`import.meta.glob`), so keep heavy
 dependencies out of there (the gaze engine lives in `src/gazeEngine/` and is imported dynamically).

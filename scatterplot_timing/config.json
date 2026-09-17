@@ -74,7 +74,8 @@
                     "prompt": "",
                     "required": true,
                     "location": "belowStimulus",
-                    "type": "reactive"
+                    "type": "reactive",
+                    "hidden": true
                 }
             ],
             "instructionLocation": "belowStimulus",
@@ -107987,7 +107988,8 @@
                     "prompt": "",
                     "required": true,
                     "location": "belowStimulus",
-                    "type": "reactive"
+                    "type": "reactive",
+                    "hidden": true
                 }
             ],
             "instructionLocation": "belowStimulus",
@@ -108002,7 +108004,8 @@
                     "prompt": "",
                     "required": true,
                     "location": "belowStimulus",
-                    "type": "reactive"
+                    "type": "reactive",
+                    "hidden": true
                 }
             ],
             "instructionLocation": "belowStimulus",
@@ -108017,7 +108020,8 @@
                     "prompt": "",
                     "required": true,
                     "location": "belowStimulus",
-                    "type": "reactive"
+                    "type": "reactive",
+                    "hidden": true
                 }
             ],
             "instructionLocation": "belowStimulus",

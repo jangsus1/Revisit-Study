@@ -54,7 +54,8 @@ def generate_base_components():
                     "prompt": "",
                     "required": True,
                     "location": "belowStimulus",
-                    "type": "reactive"
+                    "type": "reactive",
+                    "hidden": True
                 }
             ],
             "instructionLocation": "belowStimulus",
@@ -69,7 +70,8 @@ def generate_base_components():
                     "prompt": "",
                     "required": True,
                     "location": "belowStimulus",
-                    "type": "reactive"
+                    "type": "reactive",
+                    "hidden": True
                 }
             ],
             "instructionLocation": "belowStimulus",
@@ -84,7 +86,8 @@ def generate_base_components():
                     "prompt": "",
                     "required": True,
                     "location": "belowStimulus",
-                    "type": "reactive"
+                    "type": "reactive",
+                    "hidden": True
                 }
             ],
             "instructionLocation": "belowStimulus",
@@ -144,7 +147,8 @@ def create_default_components(fail_link):
                     "prompt": "",
                     "required": True,
                     "location": "belowStimulus",
-                    "type": "reactive"
+                    "type": "reactive",
+                    "hidden": True
                 }
             ],
             "instructionLocation": "belowStimulus",
