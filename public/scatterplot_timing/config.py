@@ -20,7 +20,7 @@ CONDITIONS = [
     (5,1,5),
 ]
 assert len(CONDITIONS) == 47 and len(set(CONDITIONS)) == 47
-CONDITIONS_PER_PARTICIPANT = 10
+CONDITIONS_PER_PARTICIPANT = 12
 N_SCHEMES = len(CONDITIONS)          # one scheme per Latin-square row
 BASELINE_SECONDS = 5                 # labels never shown, same coordinates as the revealed trial
 
@@ -31,9 +31,9 @@ def cond_name(c):
 
 
 def build_schemes():
-    """47 schemes. Scheme s holds 10 conditions, 10 of the 12 labels, a corr rotation and an exp
+    """47 schemes. Scheme s holds 12 conditions, all 12 labels, a corr rotation and an exp
     pattern. Condition j of scheme s is CONDITIONS[(s + 5*j) % 47] (47 is prime, so across the 47
-    schemes every condition sits in every slot exactly once -> each condition is seen by 10 of every
+    schemes every condition sits in every slot exactly once -> each condition is seen by 12 of every
     47 participants). reVISit's `latinSquare` + `numSamples: 1` over the scheme blocks hands the
     schemes out evenly across participants."""
     corrs = [2, 4, 6, 8]
@@ -42,8 +42,8 @@ def build_schemes():
         trials = []
         for j in range(CONDITIONS_PER_PARTICIPANT):
             cond = CONDITIONS[(s + 5 * j) % N_SCHEMES]
-            label_idx = (s + j) % len(labels)                 # 10 distinct labels, rotating start
-            corr = corrs[(j + s) % 4]                          # 3/3/2/2 split, rotating
+            label_idx = (s + j) % len(labels)                 # 12 distinct labels, rotating start
+            corr = corrs[(j + s) % 4]                          # 3 labels per corr level, rotating
             exp = (j + s // 4) % 2
             trials.append(dict(label_idx=label_idx, corr=corr, exp=exp, cond=cond))
         schemes.append(trials)
@@ -596,7 +596,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
     """Generate the study sequence with scheme-based random for phase 2.
 
     Phase 2: 47 (blur_before, blur_after, label_display) conditions, 10 per participant.
-    47 scheme blocks (see build_schemes); each holds 10 revealed trials + 10 matched baselines,
+    47 scheme blocks (see build_schemes); each holds 12 revealed trials + 12 matched baselines,
     interleaved randomly. The phase2 block uses order=latinSquare with numSamples=1, so
     reVISit deals the schemes out evenly (each scheme once per 47 participants).
     """

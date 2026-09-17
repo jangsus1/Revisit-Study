@@ -2,7 +2,7 @@
 
 In this final experiment, you will see the scatterplot with two **real-world variables**. The labels may be shown from the start, after a few seconds, or never, and they may be blurred again before the plot disappears.
 
-There are total **20** tasks to solve after 2 example tasks.
+There are total **24** tasks to solve after 2 example tasks.
 
 ## How It Works
 
