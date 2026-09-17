@@ -22,7 +22,8 @@
         "urlParticipantIdParam": "PROLIFIC_PID",
         "studyEndMsg": "**Thank you for completing the study. You may click this link and return to Prolific**: [https://app.prolific.com/submissions/complete?cc=C17DENOG](https://app.prolific.com/submissions/complete?cc=C17DENOG)",
         "participantNameField": "introduction.prolificId",
-        "showTitle": false
+        "showTitle": false,
+        "nextButtonDisabledUntilValid": true
     },
     "components": {
         "consent": {
