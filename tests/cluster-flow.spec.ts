@@ -116,9 +116,9 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   const tolerance = 2 * first.trialData.refreshMs + 5;
   stored.forEach((trial) => {
     // the graded answer and the block's expected answer live on the platform record
-    expect(['first', 'second']).toContain(trial.trial);
+    expect(['left', 'right']).toContain(trial.trial);
     expect(trial.correctAnswer).toHaveLength(1);
-    expect(['first', 'second']).toContain(trial.correctAnswer[0].answer);
+    expect(['left', 'right']).toContain(trial.correctAnswer[0].answer);
 
     if (trial.trialData.staircaseId === 'practice') {
       // practice answers were graded by reVISit's Check Answer

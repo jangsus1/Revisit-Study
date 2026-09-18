@@ -3,7 +3,9 @@ import {
 } from 'vitest';
 import type { ParticipantData } from '../../../../parser/types';
 import type { TrialAnswer, TrialParams } from '../generator/types';
-import staircaseBlock, { collectBlockTrials, readSetupAnswer } from '../staircaseBlock';
+import staircaseBlock, {
+  collectBlockTrials, correctSide, drawAOnLeft, readSetupAnswer,
+} from '../staircaseBlock';
 
 // The generator is mocked everywhere in these component tests: the block only needs `hashSeed`
 // to be deterministic, and the real generator is covered by its own suite.
@@ -24,7 +26,8 @@ type FixtureTrial = TrialAnswer & { correct: boolean };
 
 function trialAnswer(overrides: Partial<FixtureTrial>): FixtureTrial {
   return {
-    response: 'first',
+    response: 'left',
+    aOnLeft: true,
     correct: true,
     rtMs: 500,
     nA: 24,
@@ -57,7 +60,7 @@ function answers(entries: Record<string, unknown>): ParticipantData['answers'] {
  */
 function blockAnswers(trials: FixtureTrial[]) {
   return Object.fromEntries(trials.map(({ correct, ...trial }, index) => {
-    const other = trial.response === 'first' ? 'second' : 'first';
+    const other = trial.response === 'left' ? 'right' : 'left';
     return [
       `${BLOCK}_${STEP}_trial_${index}`,
       {
@@ -110,20 +113,42 @@ describe('collectBlockTrials', () => {
 
   test('derives correctness from the stored answer and the platform correctAnswer', () => {
     const collected = collectBlockTrials(answers(blockAnswers([
-      trialAnswer({ trialIndex: 0, response: 'first', correct: true }),
-      trialAnswer({ trialIndex: 1, response: 'second', correct: false }),
+      trialAnswer({ trialIndex: 0, response: 'left', correct: true }),
+      trialAnswer({ trialIndex: 1, response: 'right', correct: false }),
     ])), BLOCK, STEP);
 
     expect(collected.map((trial) => trial.correct)).toEqual([true, false]);
-    expect(collected.map((trial) => trial.response)).toEqual(['first', 'second']);
+    expect(collected.map((trial) => trial.response)).toEqual(['left', 'right']);
   });
 
   test('skips records that carry no correctAnswer', () => {
     const { correct: _ignored, ...trial } = trialAnswer({ trialIndex: 0 });
     const collected = collectBlockTrials(answers({
-      [`${BLOCK}_${STEP}_trial_0`]: { componentName: 'trial', endTime: 1, answer: { trial: 'first', trialData: trial } },
+      [`${BLOCK}_${STEP}_trial_0`]: { componentName: 'trial', endTime: 1, answer: { trial: 'left', trialData: trial } },
     }), BLOCK, STEP);
     expect(collected).toEqual([]);
+  });
+});
+
+describe('correctSide', () => {
+  test('names the side holding the larger display', () => {
+    // B larger, A on the left -> B is on the right
+    expect(correctSide(34, true, 24)).toBe('right');
+    // B larger, A on the right -> B is on the left
+    expect(correctSide(34, false, 24)).toBe('left');
+    // A larger, A on the left
+    expect(correctSide(14, true, 24)).toBe('left');
+    // A larger, A on the right
+    expect(correctSide(14, false, 24)).toBe('right');
+  });
+});
+
+describe('drawAOnLeft', () => {
+  test('is deterministic and varies across trials', () => {
+    expect(drawAOnLeft(7, 'cell-x', 3)).toBe(drawAOnLeft(7, 'cell-x', 3));
+    const sides = new Array(40).fill(null).map((_, index) => drawAOnLeft(7, 'cell-x', index));
+    expect(sides).toContain(true);
+    expect(sides).toContain(false);
   });
 });
 
@@ -178,7 +203,8 @@ describe('staircaseBlock', () => {
         currentBlock: BLOCK,
       });
       const parameters = result.parameters as unknown as TrialParams;
-      expect(result.correctAnswer).toEqual([{ id: 'trial', answer: parameters.nB > 24 ? 'second' : 'first' }]);
+      expect(typeof parameters.aOnLeft).toBe('boolean');
+      expect(result.correctAnswer).toEqual([{ id: 'trial', answer: correctSide(parameters.nB, parameters.aOnLeft, 24) }]);
     }
   });
 

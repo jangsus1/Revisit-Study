@@ -5,8 +5,10 @@
  * stimulus durations are integer multiples of the display's frame time):
  *   fixation 500 ms -> A 200 ms -> blank 400 ms -> B 200 ms -> blank 400 ms -> prompt (until a key).
  *
- * Both stimuli are mounted for the whole trial and only their `visibility` is toggled, so a phase
- * change costs a paint and not a layout. Phase starts are timestamped in the animation frame that
+ * A and B flash in two different slots, one left and one right of a central fixation cross, so the
+ * afterimage of the first display never overlaps the second. Which slot holds A is drawn per trial
+ * (`aOnLeft`), and the answer names a side. Both stimuli are mounted for the whole trial and only
+ * their `visibility` is toggled, so a phase change costs a paint and not a layout. Phase starts are timestamped in the animation frame that
  * follows the state commit, which makes the recorded durations paint-to-paint.
  *
  * What is reVISit's and what is ours: the key press is read here (the platform has no keypress
@@ -38,11 +40,14 @@ const TIMELINE: { phase: TimedPhase, ms: number }[] = [
 
 const DEFAULT_REFRESH_MS = 1000 / 60;
 
-const PROMPT_TEXT = 'Which one has more items?  Press  F  or  ←  (first)  /  J  or  →  (second)';
+const PROMPT_TEXT = 'Which side had more items?  Press  F  or  ←  (left)  /  J  or  →  (right)';
 
-/** Keys that answer "first" and "second": f / j on the home row, or the left / right arrows. */
-const FIRST_KEYS = new Set(['f', 'arrowleft']);
-const SECOND_KEYS = new Set(['j', 'arrowright']);
+/** Keys that answer "left" and "right": f / j on the home row, or the left / right arrows. */
+const LEFT_KEYS = new Set(['f', 'arrowleft']);
+const RIGHT_KEYS = new Set(['j', 'arrowright']);
+
+/** Horizontal gap between the two stimulus slots; the fixation cross sits in its middle. */
+const SLOT_GAP = 96;
 
 /** The trial owns the whole viewport: a plain ground, the frame centred, and nothing else. */
 const overlayStyle: CSSProperties = {
@@ -81,7 +86,7 @@ function isFullscreen(): boolean {
 
 export default function TrialRunner({ parameters, setAnswer, advance }: StimulusParams<TrialParams>) {
   const {
-    seedA, seedB, nB, cue, density, cellId, trialIndex, staircaseId, refreshMs,
+    seedA, seedB, nB, cue, density, cellId, trialIndex, staircaseId, aOnLeft, refreshMs,
   } = parameters;
   const isPractice = staircaseId === 'practice';
 
@@ -206,15 +211,16 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
 
     const onKeyDown = (event: KeyboardEvent) => {
       const key = event.key.toLowerCase();
-      if (respondedRef.current || (!FIRST_KEYS.has(key) && !SECOND_KEYS.has(key))) {
+      if (respondedRef.current || (!LEFT_KEYS.has(key) && !RIGHT_KEYS.has(key))) {
         return;
       }
       event.preventDefault();
       respondedRef.current = true;
 
-      const chosen: TrialAnswer['response'] = FIRST_KEYS.has(key) ? 'first' : 'second';
+      const chosen: TrialAnswer['response'] = LEFT_KEYS.has(key) ? 'left' : 'right';
       const trialAnswer: TrialAnswer = {
         response: chosen,
+        aOnLeft,
         rtMs: performance.now() - promptStartRef.current,
         nA: displayA.n,
         nB,
@@ -254,8 +260,8 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
-    advance, cellId, cue, density, displayA, displayB, isPractice, nB, phase, refreshMs, seedA, seedB,
-    setAnswer, staircaseId, trialIndex,
+    advance, aOnLeft, cellId, cue, density, displayA, displayB, isPractice, nB, phase, refreshMs, seedA,
+    seedB, setAnswer, staircaseId, trialIndex,
   ]);
 
   const layer = (visible: boolean) => ({
@@ -264,6 +270,22 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
     left: 0,
     visibility: (visible ? 'visible' : 'hidden') as 'visible' | 'hidden',
   });
+
+  const slotWidth = displayA.width;
+  const slotHeight = displayA.height;
+  const stageWidth = slotWidth * 2 + SLOT_GAP;
+
+  /** One slot: a blank canvas that is always visible, with its stimulus layered on top. */
+  const slot = (side: 'left' | 'right', display: typeof displayA, visible: boolean) => (
+    <div
+      data-testid={`slot-${side}`}
+      data-stimulus={display.kind}
+      style={{ position: 'relative', width: slotWidth, height: slotHeight }}
+    >
+      <StimulusFrame />
+      <div style={layer(visible)}><StimulusFrame display={display} /></div>
+    </div>
+  );
 
   if (phase === 'gate') {
     return (
@@ -282,7 +304,7 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
         <p>
           You answered
           {' '}
-          <strong>{response === 'first' ? 'first' : 'second'}</strong>
+          <strong>{response === 'left' ? 'left' : 'right'}</strong>
           .
         </p>
         <p>
@@ -303,16 +325,15 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
   return (
     <div style={overlayStyle} data-testid="trial-runner">
       <div style={{
-        position: 'relative', width: displayA.width, height: displayA.height,
+        position: 'relative', width: stageWidth, height: slotHeight, display: 'flex', gap: SLOT_GAP,
       }}
       >
-        <StimulusFrame />
-        <div style={layer(phase === 'a')}><StimulusFrame display={displayA} /></div>
-        <div style={layer(phase === 'b')}><StimulusFrame display={displayB} /></div>
-        <div style={layer(phase === 'fixation')}>
-          <svg width={displayA.width} height={displayA.height} aria-hidden>
-            <line x1={displayA.width / 2 - 10} y1={displayA.height / 2} x2={displayA.width / 2 + 10} y2={displayA.height / 2} stroke={C.INK} strokeWidth={2} />
-            <line x1={displayA.width / 2} y1={displayA.height / 2 - 10} x2={displayA.width / 2} y2={displayA.height / 2 + 10} stroke={C.INK} strokeWidth={2} />
+        {aOnLeft ? slot('left', displayA, phase === 'a') : slot('left', displayB, phase === 'b')}
+        {aOnLeft ? slot('right', displayB, phase === 'b') : slot('right', displayA, phase === 'a')}
+        <div style={{ ...layer(phase === 'fixation'), width: stageWidth, height: slotHeight }}>
+          <svg width={stageWidth} height={slotHeight} aria-hidden>
+            <line x1={stageWidth / 2 - 10} y1={slotHeight / 2} x2={stageWidth / 2 + 10} y2={slotHeight / 2} stroke={C.INK} strokeWidth={2} />
+            <line x1={stageWidth / 2} y1={slotHeight / 2 - 10} x2={stageWidth / 2} y2={slotHeight / 2 + 10} stroke={C.INK} strokeWidth={2} />
           </svg>
         </div>
       </div>

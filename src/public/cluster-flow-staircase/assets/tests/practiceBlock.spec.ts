@@ -4,6 +4,7 @@ import {
 import type { ParticipantData } from '../../../../parser/types';
 import type { TrialAnswer, TrialParams } from '../generator/types';
 import practiceBlock from '../practiceBlock';
+import { correctSide } from '../staircaseBlock';
 
 vi.mock('../generator', () => ({
   hashSeed: (...parts: (string | number)[]) => parts.reduce<number>(
@@ -23,8 +24,8 @@ function storedTrials(count: number): ParticipantData['answers'] {
     {
       componentName: 'practice-trial',
       endTime: index + 1,
-      answer: { trial: 'first', trialData: { staircaseId: 'practice', trialIndex: index } as unknown as TrialAnswer },
-      correctAnswer: [{ id: 'trial', answer: 'first' }],
+      answer: { trial: 'left', trialData: { staircaseId: 'practice', trialIndex: index } as unknown as TrialAnswer },
+      correctAnswer: [{ id: 'trial', answer: 'left' }],
     },
   ])) as unknown as ParticipantData['answers'];
 }
@@ -56,9 +57,16 @@ describe('practiceBlock', () => {
     expect(new Set(seen.map((parameters) => parameters.seedA)).size).toBe(8);
   });
 
-  test('marks the larger display as the correct answer', () => {
-    expect(runPractice(0).correctAnswer).toEqual([{ id: 'trial', answer: 'first' }]);
-    expect(runPractice(1).correctAnswer).toEqual([{ id: 'trial', answer: 'second' }]);
+  test('marks the side of the larger display as the correct answer', () => {
+    const easyA = runPractice(0);
+    const easyB = runPractice(1);
+    const aOnLeft0 = (easyA.parameters as unknown as TrialParams).aOnLeft;
+    const aOnLeft1 = (easyB.parameters as unknown as TrialParams).aOnLeft;
+    // trial 0 has nB = 12 (A larger), trial 1 has nB = 40 (B larger)
+    expect(easyA.correctAnswer).toEqual([{ id: 'trial', answer: correctSide(12, aOnLeft0, 24) }]);
+    expect(easyB.correctAnswer).toEqual([{ id: 'trial', answer: correctSide(40, aOnLeft1, 24) }]);
+    expect(easyA.correctAnswer?.[0].answer).toBe(aOnLeft0 ? 'left' : 'right');
+    expect(easyB.correctAnswer?.[0].answer).toBe(aOnLeft1 ? 'right' : 'left');
   });
 
   test('ends after eight trials by default', () => {

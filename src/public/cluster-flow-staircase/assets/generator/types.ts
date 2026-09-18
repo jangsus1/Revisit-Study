@@ -96,6 +96,8 @@ export interface TrialParams {
   cellId: string;
   trialIndex: number;
   staircaseId: StaircaseId;
+  /** true when stimulus A flashes in the left slot and B in the right; drawn per trial from the seed */
+  aOnLeft: boolean;
   /** measured frame period in ms from the setup component; defaults to 1000/60 */
   refreshMs: number;
 }
@@ -114,7 +116,10 @@ export interface MeasuredDurations {
  * dynamic block derives `correct` from those two when it replays the staircase.
  */
 export interface TrialAnswer {
-  response: 'first' | 'second';
+  /** the side the participant judged to hold more items */
+  response: 'left' | 'right';
+  /** which slot held stimulus A on this trial */
+  aOnLeft: boolean;
   rtMs: number;
   nA: number;
   nB: number;

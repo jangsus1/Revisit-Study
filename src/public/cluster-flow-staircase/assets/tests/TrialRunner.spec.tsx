@@ -50,6 +50,7 @@ const params: TrialParams = {
   cellId: 'cell-color-sparse',
   trialIndex: 3,
   staircaseId: 'above',
+  aOnLeft: true,
   refreshMs: FRAME_MS,
 };
 
@@ -124,17 +125,18 @@ describe('TrialRunner', () => {
     expect(screen.getByTestId('trial-runner')).toBeTruthy();
 
     runFrames(200);
-    expect(screen.getByTestId('trial-prompt').textContent).toContain('Which one has more items?');
+    expect(screen.getByTestId('trial-prompt').textContent).toContain('Which side had more items?');
 
     fireEvent.keyDown(window, { key: 'f' });
 
     expect(setAnswer).toHaveBeenCalledTimes(1);
     const { status, answers } = setAnswer.mock.calls[0][0];
     expect(status).toBe(true);
-    expect(answers.trial).toBe('first');
+    expect(answers.trial).toBe('left');
 
     const { trialData } = answers;
-    expect(trialData.response).toBe('first');
+    expect(trialData.response).toBe('left');
+    expect(trialData.aOnLeft).toBe(true);
     // correctness is not stored here: reVISit keeps the block's correctAnswer on the same record
     expect(trialData.correct).toBeUndefined();
     expect(trialData.nA).toBe(24);
@@ -164,14 +166,39 @@ describe('TrialRunner', () => {
     expect(measured.blank2).toBeCloseTo(400, 0);
   });
 
-  test('writes the second interval to the graded trial response', () => {
+  test('writes the right side to the graded trial response', () => {
     const { setAnswer } = renderTrial();
     runFrames(200);
     fireEvent.keyDown(window, { key: 'j' });
 
     const { trial, trialData } = setAnswer.mock.calls[0][0].answers;
-    expect(trial).toBe('second');
-    expect(trialData.response).toBe('second');
+    expect(trial).toBe('right');
+    expect(trialData.response).toBe('right');
+  });
+
+  test('the arrow keys answer by side as well', () => {
+    const { setAnswer } = renderTrial();
+    runFrames(200);
+    fireEvent.keyDown(window, { key: 'ArrowRight' });
+    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('right');
+  });
+
+  test('places A in the left slot and B in the right when aOnLeft is true', () => {
+    renderTrial({ aOnLeft: true });
+    expect(screen.getByTestId('slot-left').getAttribute('data-stimulus')).toBe('A');
+    expect(screen.getByTestId('slot-right').getAttribute('data-stimulus')).toBe('B');
+    expect(screen.getByTestId('slot-left').contains(screen.getByTestId('frame-A'))).toBe(true);
+    expect(screen.getByTestId('slot-right').contains(screen.getByTestId('frame-B'))).toBe(true);
+  });
+
+  test('swaps the slots when aOnLeft is false and records it', () => {
+    const { setAnswer } = renderTrial({ aOnLeft: false });
+    expect(screen.getByTestId('slot-left').getAttribute('data-stimulus')).toBe('B');
+    expect(screen.getByTestId('slot-right').getAttribute('data-stimulus')).toBe('A');
+
+    runFrames(200);
+    fireEvent.keyDown(window, { key: 'f' });
+    expect(setAnswer.mock.calls[0][0].answers.trialData.aOnLeft).toBe(false);
   });
 
   test('shows the stimuli only during their own phases', () => {
@@ -236,12 +263,12 @@ describe('TrialRunner', () => {
     fireEvent.keyDown(window, { key: 'j' });
 
     expect(setAnswer).toHaveBeenCalledTimes(1);
-    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('second');
+    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('right');
     expect(advance).not.toHaveBeenCalled();
 
     // the fixed overlay is gone so reVISit's feedback and Next button are visible
     expect(screen.queryByTestId('trial-runner')).toBeNull();
-    expect(screen.getByTestId('practice-done').textContent).toContain('second');
+    expect(screen.getByTestId('practice-done').textContent).toContain('right');
     expect(screen.getByTestId('practice-done').textContent).toContain('Enter');
   });
 

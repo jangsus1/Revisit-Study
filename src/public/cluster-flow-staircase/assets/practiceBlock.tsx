@@ -7,7 +7,9 @@
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
 import type { Density, TrialParams } from './generator';
 import { CUES, DENSITIES, hashSeed } from './generator';
-import { collectBlockTrials, readSetupAnswer } from './staircaseBlock';
+import {
+  collectBlockTrials, correctSide, drawAOnLeft, readSetupAnswer,
+} from './staircaseBlock';
 
 export interface PracticeBlockParameters {
   /** number of practice trials; defaults to 8 */
@@ -33,6 +35,7 @@ export default function practiceBlock({
   const nB = PRACTICE_NB[trialIndex % PRACTICE_NB.length];
   const density: Density = DENSITIES[Math.floor(trialIndex / PRACTICE_NB.length) % DENSITIES.length];
 
+  const aOnLeft = drawAOnLeft(sessionSalt, PRACTICE_CELL, trialIndex);
   const parameters: TrialParams = {
     seedA: hashSeed(sessionSalt, PRACTICE_CELL, trialIndex, 'A'),
     seedB: hashSeed(sessionSalt, PRACTICE_CELL, trialIndex, 'B'),
@@ -42,12 +45,13 @@ export default function practiceBlock({
     cellId: PRACTICE_CELL,
     trialIndex,
     staircaseId: 'practice',
+    aOnLeft,
     refreshMs,
   };
 
   return {
     component: 'practice-trial',
     parameters: { ...parameters },
-    correctAnswer: [{ id: 'trial', answer: nB > TARGET ? 'second' : 'first' }],
+    correctAnswer: [{ id: 'trial', answer: correctSide(nB, aOnLeft, TARGET) }],
   };
 }

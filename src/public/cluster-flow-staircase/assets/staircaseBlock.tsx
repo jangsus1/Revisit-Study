@@ -28,6 +28,19 @@ export interface StaircaseBlockParameters {
 const DEFAULT_REFRESH_MS = 1000 / 60;
 const DEFAULT_SALT = 1;
 
+/** The side that holds the display with more items: B when N_B exceeds the reference, else A. */
+export function correctSide(nB: number, aOnLeft: boolean, target: number): 'left' | 'right' {
+  const bIsLarger = nB > target;
+  const bSide = aOnLeft ? 'right' : 'left';
+  const aSide = aOnLeft ? 'left' : 'right';
+  return bIsLarger ? bSide : aSide;
+}
+
+/** Draws which slot shows stimulus A, from its own seed so the arm-choice draw sequence is unchanged. */
+export function drawAOnLeft(sessionSalt: number, cellId: string, trialIndex: number): boolean {
+  return mulberry32(hashSeed(sessionSalt, cellId, trialIndex, 'side'))() < 0.5;
+}
+
 /** Reads the session salt and measured refresh rate written by the `setup` component. */
 export function readSetupAnswer(answers: JumpFunctionParameters<unknown>['answers']): { sessionSalt: number, refreshMs: number } {
   const setupEntry = Object.values(answers)
@@ -93,6 +106,7 @@ export default function staircaseBlock({
     return { component: null };
   }
 
+  const aOnLeft = drawAOnLeft(sessionSalt, cellId, trialIndex);
   const parameters: TrialParams = {
     seedA: hashSeed(sessionSalt, cellId, trialIndex, 'A'),
     seedB: hashSeed(sessionSalt, cellId, trialIndex, 'B'),
@@ -102,12 +116,13 @@ export default function staircaseBlock({
     cellId,
     trialIndex,
     staircaseId: next.staircaseId,
+    aOnLeft,
     refreshMs,
   };
 
   return {
     component: 'trial',
     parameters: { ...parameters },
-    correctAnswer: [{ id: 'trial', answer: next.nB > cfg.target ? 'second' : 'first' }],
+    correctAnswer: [{ id: 'trial', answer: correctSide(next.nB, aOnLeft, cfg.target) }],
   };
 }
