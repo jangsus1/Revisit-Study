@@ -698,7 +698,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
 
 
 # Optional: Set Prolific redirection URL
-prolificRedirection = "https://app.prolific.com/submissions/complete?cc=C17DENOG"
+prolificRedirection = "https://app.prolific.com/submissions/complete?cc=C1OCRYTV"
 prolificRedirectionFailedAttentionCheck = "https://app.prolific.com/submissions/complete?cc=CASYDYPP"
 
 
