@@ -91,3 +91,13 @@ completion link, `helpTextPath`.
   placeholders — replace them before collection.
 - Data export: analysis dashboard → tidy CSV → `../ScatterplotMitigation/data/<study>_all_tidy.csv`.
 - The embedded browser pane blocks the webcam; gaze studies must be tested in a real Chrome window.
+
+## Gaze tracker playground
+
+`http://localhost:8080/gaze_playground` (also deployed, but not listed on the landing page) is a
+one-page test bench for the vendored WebEyeTrack engine: start camera, full 9 + 5 calibration,
+validation on 5 / 9 / 25 dots or the centre, 3 click-dot refresh, drift offset from a centre
+check, reset, and a live smoothed (red) + raw (blue ring) gaze point. Component:
+`src/public/scatterplot_gaze/assets/GazePlayground.tsx`; it reuses `gazeTracker` and
+`CalibrationOverlay`, so it exercises exactly the code the gaze study runs. Open it in a real
+Chrome window (the embedded browser has no camera).

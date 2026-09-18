@@ -1,0 +1,31 @@
+{
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.0.1/src/parser/StudyConfigSchema.json",
+  "studyMetadata": {
+    "title": "Gaze tracker playground",
+    "version": "dev",
+    "authors": ["Minsuk Chang"],
+    "date": "2026-09-18",
+    "description": "Local test bench for the vendored WebEyeTrack engine: calibration, validation grids, drift offset, live gaze point.",
+    "organizations": ["Georgia Institute of Technology"]
+  },
+  "uiConfig": {
+    "contactEmail": "minsuk@gatech.edu",
+    "logoPath": "revisitAssets/gt_logo.png",
+    "withProgressBar": false,
+    "autoDownloadStudy": false,
+    "withSidebar": false,
+    "showTitle": false,
+    "studyEndMsg": "Done."
+  },
+  "components": {
+    "playground": {
+      "type": "react-component",
+      "path": "scatterplot_gaze/assets/GazePlayground.tsx",
+      "response": [
+        { "id": "playground", "prompt": "", "required": false, "location": "belowStimulus", "type": "reactive", "hidden": true }
+      ],
+      "nextButtonLocation": "belowStimulus"
+    }
+  },
+  "sequence": { "order": "fixed", "components": ["playground"] }
+}
