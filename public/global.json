@@ -310,6 +310,9 @@
     "test-cluster-flow": {
       "path": "test-cluster-flow/config.json",
       "test": true
+    },
+    "gaze_playground": {
+      "path": "gaze_playground/config.json"
     }
   }
 }
