@@ -3,7 +3,8 @@
 **Study title.** Counting items in flow diagrams.
 
 **What you will do.** You will view pairs of briefly presented diagrams (each shown for about
-0.2 seconds) and press one of two keys to indicate which of the two diagrams contained more items.
+0.2 seconds, one on the left and one on the right of the screen) and press one of two keys to
+indicate which side contained more items.
 The session includes practice trials, twelve blocks of the main task, and a short demographic
 questionnaire. It takes approximately 60 to 90 minutes.
 
