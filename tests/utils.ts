@@ -91,6 +91,14 @@ export async function openStudyFromLanding(
   await page.goto('/');
 
   const matchers = Array.isArray(cardTitle) ? cardTitle : [cardTitle];
+
+  // The landing page opens whichever tab comes first ("Your Studies" when
+  // any non-demo study exists), so select the requested section explicitly.
+  const sectionTab = page.getByRole('tab', { name: sectionLabel, exact: true });
+  await expect(sectionTab).toBeVisible();
+  await expect(sectionTab).toBeEnabled();
+  await sectionTab.click();
+
   const section = page.getByLabel(sectionLabel);
   await expect(section).toBeVisible();
 

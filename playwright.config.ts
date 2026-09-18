@@ -9,6 +9,11 @@ const ciWorkers = Number.isFinite(configuredCiWorkers) && configuredCiWorkers > 
 export default defineConfig({
   webServer: {
     command: 'yarn serve',
+    // The e2e helpers in tests/utils.ts read the localforage IndexedDB
+    // database that only LocalStorageEngine writes, and Firebase App Check
+    // rejects the headless test browser. Force the local engine for the
+    // Playwright-managed dev server only; production builds still use .env.
+    env: { VITE_STORAGE_ENGINE: 'localStorage' },
     url: 'http://localhost:8080',
     reuseExistingServer: !isCI,
     stdout: 'ignore',
