@@ -43,6 +43,8 @@ const OPTIONAL_COMMON_PROPS = [
   'responsePrompt',
   'answer',
   'correctAnswer',
+  'incorrectAnswers',
+  'attemptsUsed',
   'duration',
   'cleanedDuration',
   'meta',
@@ -209,6 +211,13 @@ function participantDataToRows(
           const answerCorrectAnswer = trialAnswer.correctAnswer.find((ans) => ans.id === key)?.answer;
           const correctAnswer = answerCorrectAnswer ?? configCorrectAnswer;
           tidyRow.correctAnswer = typeof correctAnswer === 'object' ? JSON.stringify(correctAnswer) : correctAnswer;
+        }
+        if (properties.includes('incorrectAnswers')) {
+          const incorrect = trialAnswer.incorrectAnswers?.[key]?.value;
+          tidyRow.incorrectAnswers = incorrect ? JSON.stringify(incorrect) : undefined;
+        }
+        if (properties.includes('attemptsUsed')) {
+          tidyRow.attemptsUsed = trialAnswer.checkAnswer?.attemptsUsed;
         }
         if (properties.includes('startTime')) {
           tidyRow.startTime = new Date(trialAnswer.startTime).toISOString();

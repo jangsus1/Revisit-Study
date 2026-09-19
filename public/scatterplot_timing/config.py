@@ -177,33 +177,36 @@ def create_default_components(fail_link):
             "path": "scatterplot/assets/phase3_intro.md",
             "response": []
         },
-        "attentionCheckFailed": {
-            "type": "react-component",
-            "path": "scatterplot/assets/attentionCheck.jsx",
-            "parameters": {
-                "link": fail_link
-            },
+        "attentionCheck": {
+            # Reading text + both comprehension questions on one page. reVISit training mode:
+            # Next becomes "Check Answer"; wrong answers show "Please try again." and Next stays
+            # locked until both are correct (trainingAttempts -1 = unlimited). No fail page;
+            # wrong attempts are logged in incorrectAnswers / checkAnswer.attemptsUsed.
+            "type": "markdown",
+            "path": "scatterplot_timing/assets/attention_check.md",
+            "provideFeedback": True,
+            "trainingAttempts": -1,
+            "allowFailedTraining": False,
             "response": [
                 {
-                    "id": "attention_check_failed_1",
-                    "prompt": "",
+                    "id": "attention_q1",
+                    "prompt": "What is the range of the correlation coefficient (r) that we will use in the experiment?",
                     "required": True,
                     "location": "belowStimulus",
-                    "type": "reactive",
-                    "hidden": True
-                }
-            ],
-            "instructionLocation": "belowStimulus",
-            "nextButtonLocation": "belowStimulus",
-        },
-        "attentionCheck2": {
-            "type": "questionnaire",
-            "response": [
+                    "type": "radio",
+                    "options": [
+                        "-1 to +1",
+                        "1 to 7",
+                        "0 to 1",
+                        "0 to 10"
+                    ],
+                    "withDivider": True
+                },
                 {
                     "id": "attention_q2",
                     "prompt": "What makes a correlation stronger?",
                     "required": True,
-                    "location": "aboveStimulus",
+                    "location": "belowStimulus",
                     "type": "radio",
                     "options": [
                         "The steeper the line",
@@ -215,36 +218,11 @@ def create_default_components(fail_link):
                 }
             ],
             "correctAnswer": [
-                {
-                    "id": "attention_q2",
-                    "answer": "The closer r is to 1"
-                }
+                {"id": "attention_q1", "answer": "0 to 1"},
+                {"id": "attention_q2", "answer": "The closer r is to 1"}
             ],
-        },
-        "attentionCheck1": {
-            "type": "questionnaire",
-            "response": [
-                {
-                    "id": "attention_q1",
-                    "prompt": "What is the range of the correlation coefficient (r) that we will use in the experiment?",
-                    "required": True,
-                    "location": "aboveStimulus",
-                    "type": "radio",
-                    "options": [
-                        "-1 to +1",
-                        "1 to 7",
-                        "0 to 1",
-                        "0 to 10"
-                    ],
-                    "withDivider": True
-                },
-            ],
-            "correctAnswer": [
-                {
-                    "id": "attention_q1",
-                    "answer": "0 to 1"
-                }
-            ],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus",
         },
         "demographics": {
             "type": "markdown",
@@ -634,37 +612,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
         "order": "fixed",
         "components": [
             "consent",
-            "introduction",
-            {
-                "id": "attentionCheck1",
-                "order": "fixed",
-                "components": ["attentionCheck1", "attentionCheckFailed"],
-                "skip": [
-                    {
-                        "name": "attentionCheck1",
-                        "check": "response",
-                        "comparison": "equal",
-                        "responseId": "attention_q1",
-                        "value": "0 to 1",
-                        "to": "attentionCheck2"
-                    }
-                ]
-            },
-            {
-                "id": "attentionCheck2",
-                "order": "fixed",
-                "components": ["attentionCheck2", "attentionCheckFailed"],
-                "skip": [
-                    {
-                        "name": "attentionCheck2",
-                        "check": "response",
-                        "comparison": "equal",
-                        "responseId": "attention_q2",
-                        "value": "The closer r is to 1",
-                        "to": "phase3_intro"
-                    }
-                ]
-            },
+            "attentionCheck",
             "phase3_intro",
             {
                 "id": "phase3",

@@ -62,8 +62,17 @@ the tidy export turns each into a `parameters_<name>` column.
 - **Guaranteed separation** of two trials that share a plot: reVISit's `random` order cannot
   enforce a minimum distance, so pre-shuffle in `config.py` with a per-scheme `RandomState` and
   emit the scheme as `order: "fixed"` (`scatterplot_timing`, `MIN_GAP = 4`).
-- Attention checks use `skip` conditions on a questionnaire response; a failure lands on
-  `attentionCheckFailed` (react component with the Prolific rejection link).
+- **Comprehension check with retry** (`scatterplot_timing`, preferred): one markdown component
+  (`attention_check.md` = the correlation reading text) with both radio questions
+  `belowStimulus`, `correctAnswer` for each, `provideFeedback: true`, `trainingAttempts: -1`.
+  Next becomes "Check Answer"; a wrong question shows "Please try again." (a correct one a green
+  alert) and Next stays locked until both are right. No fail page, no Prolific messages. Wrong
+  attempts are stored per participant (`incorrectAnswers`, `checkAnswer.attemptsUsed`) and can be
+  exported as the optional tidy columns `incorrectAnswers` / `attemptsUsed` (fork addition in
+  `src/components/downloader/DownloadTidy.tsx`); exclude in analysis if desired.
+- Older studies (extend / interval / duration / gaze) use `skip` conditions on a questionnaire
+  response; a failure lands on `attentionCheckFailed` (react component with the Prolific
+  rejection link).
 - Jump to a trial in the dev server: index N is encrypted with `src/utils/encryptDecryptIndex.ts`
   (AES-ECB + base64); `node -e` with `crypto-js` reproduces it. First phase-2 trial ≈ index 37.
 
