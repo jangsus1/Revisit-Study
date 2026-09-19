@@ -741,7 +741,6 @@ export function ResponseBlock({
                       response={response}
                       correctAnswer={correctAnswer}
                       alertConfig={alertConfig}
-                      identifier={identifier}
                       attemptsUsed={attemptsUsed}
                       trainingAttempts={trainingAttempts}
                     />

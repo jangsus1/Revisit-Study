@@ -1056,7 +1056,6 @@ describe('FeedbackAlert', () => {
         response={baseResponse}
         correctAnswer={undefined}
         alertConfig={{ q1: { ...baseAlertConfig.q1, visible: false } }}
-        identifier="trial1_0"
         attemptsUsed={0}
         trainingAttempts={2}
       />,
@@ -1070,7 +1069,6 @@ describe('FeedbackAlert', () => {
         response={baseResponse}
         correctAnswer={undefined}
         alertConfig={baseAlertConfig}
-        identifier="trial1_0"
         attemptsUsed={0}
         trainingAttempts={2}
       />,
@@ -1079,27 +1077,12 @@ describe('FeedbackAlert', () => {
     expect(html).toContain('Please try again');
   });
 
-  test('shows "review the help text" link when message contains "Please try again"', () => {
-    const html = renderToStaticMarkup(
-      <FeedbackAlert
-        response={baseResponse}
-        correctAnswer={undefined}
-        alertConfig={baseAlertConfig}
-        identifier="trial1_0"
-        attemptsUsed={0}
-        trainingAttempts={2}
-      />,
-    );
-    expect(html).toContain('review the help text');
-  });
-
   test('does not show "review the help text" for other messages', () => {
     const html = renderToStaticMarkup(
       <FeedbackAlert
         response={baseResponse}
         correctAnswer={undefined}
         alertConfig={{ q1: { ...baseAlertConfig.q1, message: 'You answered correctly.' } }}
-        identifier="trial1_0"
         attemptsUsed={0}
         trainingAttempts={2}
       />,
@@ -1113,7 +1096,6 @@ describe('FeedbackAlert', () => {
         response={baseResponse}
         correctAnswer="42"
         alertConfig={baseAlertConfig}
-        identifier="trial1_0"
         attemptsUsed={2}
         trainingAttempts={2}
       />,
@@ -1127,7 +1109,6 @@ describe('FeedbackAlert', () => {
         response={baseResponse}
         correctAnswer="42"
         alertConfig={baseAlertConfig}
-        identifier="trial1_0"
         attemptsUsed={5}
         trainingAttempts={-1}
       />,
@@ -1141,7 +1122,6 @@ describe('FeedbackAlert', () => {
         response={baseResponse}
         correctAnswer={undefined}
         alertConfig={baseAlertConfig}
-        identifier="trial1_0"
         attemptsUsed={2}
         trainingAttempts={2}
       />,
