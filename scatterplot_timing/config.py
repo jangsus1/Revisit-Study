@@ -215,11 +215,41 @@ def create_default_components(fail_link):
                         "The closer r is to 1"
                     ],
                     "withDivider": True
+                },
+                {
+                    "id": "attention_q3",
+                    "prompt": "Two scatterplots have points that cluster equally tightly around a line, but one line is steep and the other is flat. Which is true?",
+                    "required": True,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "The steep one has the higher correlation",
+                        "The flat one has the higher correlation",
+                        "They have the same correlation",
+                        "Correlation cannot be judged without more points"
+                    ],
+                    "withDivider": True
+                },
+                {
+                    "id": "attention_q4",
+                    "prompt": "What does r = 0 mean?",
+                    "required": True,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "The points form a perfect straight line",
+                        "The points are randomly scattered with no relationship",
+                        "One variable decreases as the other increases",
+                        "The plot contains no data points"
+                    ],
+                    "withDivider": True
                 }
             ],
             "correctAnswer": [
                 {"id": "attention_q1", "answer": "0 to 1"},
-                {"id": "attention_q2", "answer": "The closer r is to 1"}
+                {"id": "attention_q2", "answer": "The closer r is to 1"},
+                {"id": "attention_q3", "answer": "They have the same correlation"},
+                {"id": "attention_q4", "answer": "The points are randomly scattered with no relationship"}
             ],
             "instructionLocation": "belowStimulus",
             "nextButtonLocation": "belowStimulus",

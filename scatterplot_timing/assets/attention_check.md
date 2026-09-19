@@ -1,5 +1,5 @@
 # About Correlation
-> **Note:** Read this page, then answer the two questions below. You can re-read the text and try again as many times as you need; both answers must be correct to continue.
+> **Note:** Read this page, then answer the four questions below. You can re-read the text and try again as many times as you need; both answers must be correct to continue.
 
 ## 1. What Is Correlation?
 Correlation measures the relationship between two variables. In this experiment, the **correlation coefficient (r)** will range from **0 to +1**.
