@@ -30,22 +30,56 @@ def cond_name(c):
     return f"{before}_{after}_{display}"
 
 
+# Batch 2 (2026-09-20, participants 50-96): weighted deal. Batch 1 (49 participants) sampled every
+# condition ~12x, which leaves the marginal levels uneven (before=0 s appears in only 3 conditions,
+# before=5 s in 12). CYCLE_COUNTS gives, for one cycle of 47 schemes (564 revealed trials), how many
+# schemes contain each condition; it is the LP solution that makes the union of batch 1 + this cycle
+# as even as possible across the 6 blur_before levels, the 6 label_display levels and the 2 blur_after
+# levels, with every condition kept at >= 6 (computed in ScatterplotMitigation, see CLAUDE.md).
+# Batch 1 counts (for reference): 10-16 per condition.
+CYCLE_COUNTS = {
+    (5, 0, 0): 37, (4, 1, 0): 47, (4, 0, 1): 6, (3, 1, 1): 34, (3, 0, 2): 47, (2, 1, 2): 6, (2, 0, 3): 6,
+    (1, 1, 3): 30, (1, 0, 4): 24, (0, 1, 4): 46, (0, 0, 5): 34, (5, 1, 0): 6, (5, 0, 1): 6, (4, 1, 1): 22,
+    (4, 0, 2): 6, (3, 1, 2): 6, (3, 0, 3): 11, (2, 1, 3): 16, (2, 0, 4): 6, (1, 1, 4): 6, (1, 0, 5): 6,
+    (0, 1, 5): 6, (5, 1, 1): 6, (5, 0, 2): 6, (4, 1, 2): 6, (4, 0, 3): 6, (3, 1, 3): 6, (3, 0, 4): 6,
+    (2, 1, 4): 6, (2, 0, 5): 6, (1, 1, 5): 6, (5, 1, 2): 6, (5, 0, 3): 6, (4, 1, 3): 6, (4, 0, 4): 6,
+    (3, 1, 4): 6, (3, 0, 5): 6, (2, 1, 5): 6, (5, 1, 3): 6, (5, 0, 4): 6, (4, 1, 4): 6, (4, 0, 5): 6,
+    (3, 1, 5): 6, (5, 1, 4): 6, (5, 0, 5): 6, (4, 1, 5): 6, (5, 1, 5): 6,
+}
+assert set(CYCLE_COUNTS) == set(CONDITIONS)
+assert sum(CYCLE_COUNTS.values()) == N_SCHEMES * CONDITIONS_PER_PARTICIPANT, sum(CYCLE_COUNTS.values())
+assert max(CYCLE_COUNTS.values()) <= N_SCHEMES
+
+
 def build_schemes():
-    """47 schemes. Scheme s holds 12 conditions, all 12 labels, a corr rotation and an exp
-    pattern. Condition j of scheme s is CONDITIONS[(s + 5*j) % 47] (47 is prime, so across the 47
-    schemes every condition sits in every slot exactly once -> each condition is seen by 12 of every
-    47 participants). reVISit's `latinSquare` + `numSamples: 1` over the scheme blocks hands the
-    schemes out evenly across participants."""
+    """47 schemes. Scheme s holds 12 distinct conditions, all 12 labels, a corr rotation and an exp
+    pattern. Conditions are dealt to schemes according to CYCLE_COUNTS (weighted; batch 1 used the
+    uniform rule CONDITIONS[(s + 5*j) % 47]): conditions are placed in descending count order, each
+    into the schemes that currently have the fewest trials (seeded random tie-break), so no scheme
+    repeats a condition and every scheme ends with exactly 12. reVISit's `latinSquare` +
+    `numSamples: 1` over the scheme blocks hands the schemes out evenly across participants, so one
+    pass of 47 participants realises CYCLE_COUNTS exactly."""
+    rng = np.random.RandomState(7)
+    slots = [[] for _ in range(N_SCHEMES)]
+    for cond, n in sorted(CYCLE_COUNTS.items(), key=lambda kv: (-kv[1], kv[0])):
+        order = rng.permutation(N_SCHEMES)                       # random tie-break
+        candidates = sorted(order, key=lambda i: len(slots[i]))  # fewest-filled first (stable)
+        chosen = [i for i in candidates if cond not in slots[i]][:n]
+        assert len(chosen) == n, cond
+        for i in chosen:
+            slots[i].append(cond)
+    assert all(len(sl) == CONDITIONS_PER_PARTICIPANT and len(set(sl)) == CONDITIONS_PER_PARTICIPANT for sl in slots)
+
     corrs = [2, 4, 6, 8]
     schemes = []
     for s in range(N_SCHEMES):
+        conds = [slots[s][k] for k in rng.permutation(CONDITIONS_PER_PARTICIPANT)]  # decouple cond from label slot
         trials = []
         for j in range(CONDITIONS_PER_PARTICIPANT):
-            cond = CONDITIONS[(s + 5 * j) % N_SCHEMES]
             label_idx = (s + j) % len(labels)                 # 12 distinct labels, rotating start
             corr = corrs[(j + s) % 4]                          # 3 labels per corr level, rotating
             exp = (j + s // 4) % 2
-            trials.append(dict(label_idx=label_idx, corr=corr, exp=exp, cond=cond))
+            trials.append(dict(label_idx=label_idx, corr=corr, exp=exp, cond=conds[j]))
         schemes.append(trials)
     return schemes
 
