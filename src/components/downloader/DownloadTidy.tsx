@@ -391,6 +391,8 @@ export function DownloadTidy({
     'responsePrompt',
     'answer',
     'correctAnswer',
+    'incorrectAnswers',
+    'attemptsUsed',
     'duration',
     'cleanedDuration',
   ]);
