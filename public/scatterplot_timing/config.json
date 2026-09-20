@@ -22,7 +22,10 @@
         "urlParticipantIdParam": "PROLIFIC_PID",
         "studyEndMsg": "**Thank you for completing the study. You may click this link and return to Prolific**: [https://app.prolific.com/submissions/complete?cc=C1OCRYTV](https://app.prolific.com/submissions/complete?cc=C1OCRYTV)",
         "showTitle": false,
-        "nextButtonDisabledUntilValid": true
+        "nextButtonDisabledUntilValid": true,
+        "trainingFailedMsg": "**Thank you for participating.** Unfortunately you did not answer the comprehension questions correctly within 3 attempts, so you are not eligible to continue this study. You will be returned to Prolific in a few seconds, or click this link: [https://app.prolific.com/submissions/complete?cc=C1N03H9S](https://app.prolific.com/submissions/complete?cc=C1N03H9S)",
+        "trainingFailedRedirectURL": "https://app.prolific.com/submissions/complete?cc=C1N03H9S",
+        "trainingFailedRedirectDelay": 8000
     },
     "components": {
         "consent": {
@@ -65,7 +68,7 @@
             "type": "markdown",
             "path": "scatterplot_timing/assets/attention_check.md",
             "provideFeedback": true,
-            "trainingAttempts": -1,
+            "trainingAttempts": 3,
             "allowFailedTraining": false,
             "response": [
                 {

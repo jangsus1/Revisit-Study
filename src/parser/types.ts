@@ -315,6 +315,12 @@ export interface UIConfig {
   studyEndAutoRedirectURL?: string;
   /** The duration after which participants will be auto-redirected to the URL specified in studyEndAutoRedirectURL. Defaults to 10000 milliseconds (10 seconds). */
   studyEndAutoRedirectDelay?: number;
+  /** Message (markdown) shown to a participant who used up `trainingAttempts` on a component with `allowFailedTraining: false`. Replaces the default text. */
+  trainingFailedMsg?: string;
+  /** URL to auto-redirect a participant who failed training to (e.g. a Prolific screen-out link). The default delay is 10 seconds; see trainingFailedRedirectDelay. */
+  trainingFailedRedirectURL?: string;
+  /** Delay in milliseconds before redirecting to trainingFailedRedirectURL. Defaults to 10000. */
+  trainingFailedRedirectDelay?: number;
   /** Controls whether the study data is automatically downloaded at the end of the study. */
   autoDownloadStudy?: boolean;
   /** The time in milliseconds to wait before automatically downloading the study data. */

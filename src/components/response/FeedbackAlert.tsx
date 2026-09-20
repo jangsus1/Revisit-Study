@@ -17,7 +17,7 @@ export function FeedbackAlert({
   return alertConfig[response.id]?.visible ? (
     <Alert mb="md" title={alertConfig[response.id].title} color={alertConfig[response.id].color}>
       {alertConfig[response.id].message}
-      {attemptsUsed >= trainingAttempts && trainingAttempts >= 0 && correctAnswer && (
+      {attemptsUsed >= trainingAttempts && trainingAttempts >= 0 && correctAnswer && alertConfig[response.id].color !== 'green' && (
         <>
           <br />
           <br />

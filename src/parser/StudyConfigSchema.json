@@ -3893,6 +3893,18 @@
           "description": "The number of training attempts allowed for the component. The next button will be disabled until either the correct answer is given or the number of attempts is reached. When the number of attempts is reached, if the answer is incorrect still, the correct value will be shown to the participant. The default value is 2. Providing a value of -1 will allow infinite attempts and the participant must enter the correct answer to continue, and reVISit will not show the correct answer to the user.",
           "type": "number"
         },
+        "trainingFailedMsg": {
+          "description": "Message (markdown) shown to a participant who used up `trainingAttempts` on a component with `allowFailedTraining: false`. Replaces the default text.",
+          "type": "string"
+        },
+        "trainingFailedRedirectDelay": {
+          "description": "Delay in milliseconds before redirecting to trainingFailedRedirectURL. Defaults to 10000.",
+          "type": "number"
+        },
+        "trainingFailedRedirectURL": {
+          "description": "URL to auto-redirect a participant who failed training to (e.g. a Prolific screen-out link). The default delay is 10 seconds; see trainingFailedRedirectDelay.",
+          "type": "string"
+        },
         "urlParticipantIdParam": {
           "description": "If the participant ID is passed in the URL, this is the name of the querystring parameter that is used to capture the participant ID (e.g. PROLIFIC_ID). This will allow a user to continue a study on different devices and browsers.",
           "type": "string"
