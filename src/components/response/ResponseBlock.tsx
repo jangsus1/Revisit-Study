@@ -700,6 +700,13 @@ export function ResponseBlock({
               {isInCurrentLocation ? (
                 response.hidden ? '' : (
                   <div data-question-id={response.id}>
+                    <FeedbackAlert
+                      response={response}
+                      correctAnswer={correctAnswer}
+                      alertConfig={alertConfig}
+                      attemptsUsed={attemptsUsed}
+                      trainingAttempts={trainingAttempts}
+                    />
                     <ResponseSwitcher
                       storedAnswer={storedAnswer}
                       answerFinalized={!!status && status.endTime !== -1}
@@ -736,13 +743,6 @@ export function ResponseBlock({
                       config={config}
                       disabled={disabledAttempts}
                       errors={errors}
-                    />
-                    <FeedbackAlert
-                      response={response}
-                      correctAnswer={correctAnswer}
-                      alertConfig={alertConfig}
-                      attemptsUsed={attemptsUsed}
-                      trainingAttempts={trainingAttempts}
                     />
                   </div>
                 )
