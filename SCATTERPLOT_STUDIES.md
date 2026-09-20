@@ -62,14 +62,18 @@ the tidy export turns each into a `parameters_<name>` column.
 - **Guaranteed separation** of two trials that share a plot: reVISit's `random` order cannot
   enforce a minimum distance, so pre-shuffle in `config.py` with a per-scheme `RandomState` and
   emit the scheme as `order: "fixed"` (`scatterplot_timing`, `MIN_GAP = 4`).
-- **Comprehension check with retry** (`scatterplot_timing`, preferred): one markdown component
-  (`attention_check.md` = the correlation reading text) with four radio questions
-  `belowStimulus`, `correctAnswer` for each, `provideFeedback: true`, `trainingAttempts: -1`.
-  Next becomes "Check Answer"; a wrong question shows "Please try again." (a correct one a green
-  alert) and Next stays locked until all are right. No fail page, no Prolific messages. Wrong
-  attempts are stored per participant (`incorrectAnswers`, `checkAnswer.attemptsUsed`) and can be
-  exported as the optional tidy columns `incorrectAnswers` / `attemptsUsed` (fork addition in
-  `src/components/downloader/DownloadTidy.tsx`); exclude in analysis if desired.
+- **Comprehension check with retry, three strikes** (`scatterplot_timing`, preferred): one markdown
+  component (`attention_check.md` = the correlation reading text) with four radio questions
+  `belowStimulus`, `correctAnswer` for each, `provideFeedback: true`, `trainingAttempts: 3`,
+  `allowFailedTraining: false`. Next becomes "Check Answer"; a wrong question shows "Please try
+  again. You have N attempts left." (a correct one a green alert) and Next stays locked until all
+  are right. After the 3rd wrong check reVISit marks the participant rejected ("Failed training")
+  and routes to `__trainingFailed`, which shows `uiConfig.trainingFailedMsg` (markdown) and
+  auto-redirects to `uiConfig.trainingFailedRedirectURL` after `trainingFailedRedirectDelay` ms
+  (fork-only fields; timing study uses the Prolific screen-out code C1N03H9S). Wrong attempts are
+  stored per participant (`incorrectAnswers`, `checkAnswer.attemptsUsed`) and exported as the tidy
+  columns `incorrectAnswers` / `attemptsUsed` (selected by default; fork addition in
+  `src/components/downloader/DownloadTidy.tsx`).
 - Older studies (extend / interval / duration / gaze) use `skip` conditions on a questionnaire
   response; a failure lands on `attentionCheckFailed` (react component with the Prolific
   rejection link).

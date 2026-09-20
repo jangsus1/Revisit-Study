@@ -178,14 +178,16 @@ def create_default_components(fail_link):
             "response": []
         },
         "attentionCheck": {
-            # Reading text + both comprehension questions on one page. reVISit training mode:
+            # Reading text + four comprehension questions on one page. reVISit training mode:
             # Next becomes "Check Answer"; wrong answers show "Please try again." and Next stays
-            # locked until both are correct (trainingAttempts -1 = unlimited). No fail page;
-            # wrong attempts are logged in incorrectAnswers / checkAnswer.attemptsUsed.
+            # locked until all are correct. 3 checks max (three strikes): after the 3rd wrong
+            # check reVISit rejects the participant and shows the __trainingFailed page, which
+            # uses uiConfig.trainingFailedMsg / trainingFailedRedirectURL (Prolific screen-out).
+            # Wrong attempts are logged in incorrectAnswers / checkAnswer.attemptsUsed.
             "type": "markdown",
             "path": "scatterplot_timing/assets/attention_check.md",
             "provideFeedback": True,
-            "trainingAttempts": -1,
+            "trainingAttempts": 3,
             "allowFailedTraining": False,
             "response": [
                 {
