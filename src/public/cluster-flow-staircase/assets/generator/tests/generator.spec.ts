@@ -1,8 +1,21 @@
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
-import { generateDisplay, hashSeed } from '../generator';
+import {
+  generateDisplay, generateTrialPair, hashSeed, nodeBounds,
+} from '../generator';
 import { checkInvariants } from '../invariants';
-import { CUES, DENSITIES } from '../types';
+import { measureDisplay } from '../metrics';
+import { makePalette } from '../palette';
+import {
+  CUES, DENSITIES, Display, layoutModeFor,
+} from '../types';
+
+const mean = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length;
+const median = (values: number[]) => {
+  const sorted = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(sorted.length / 2);
+  return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+};
 
 describe('hashSeed', () => {
   test('is a deterministic 32-bit unsigned integer', () => {
@@ -20,9 +33,17 @@ describe('hashSeed', () => {
   });
 });
 
+describe('layoutModeFor', () => {
+  test('only proximity keeps the gapped layout', () => {
+    expect(CUES.map(layoutModeFor)).toEqual(['grouped', 'even', 'even', 'even', 'even']);
+  });
+});
+
 describe('generateDisplay', () => {
   test('is deterministic: the same arguments give a deep-equal display', () => {
-    const opts = { kind: 'A' as const, cue: 'hull' as const, density: 'dense' as const };
+    const opts = {
+      kind: 'A' as const, cue: 'color' as const, density: 'dense' as const, hueOffset: 13,
+    };
     expect(generateDisplay(7, opts)).toEqual(generateDisplay(7, opts));
     const bOpts = {
       kind: 'B' as const, cue: 'color' as const, density: 'sparse' as const, nB: 30,
@@ -31,7 +52,7 @@ describe('generateDisplay', () => {
   });
 
   test('reports the requested seed and the attempt count', () => {
-    const d = generateDisplay(123, { kind: 'A', cue: 'none', density: 'sparse' });
+    const d = generateDisplay(123, { kind: 'A', cue: 'proximity', density: 'sparse' });
     expect(d.seed).toBe(123);
     expect(d.attempts).toBeGreaterThanOrEqual(1);
     expect(d.attempts).toBeLessThanOrEqual(C.MAX_SEED_ATTEMPTS);
@@ -44,37 +65,131 @@ describe('generateDisplay', () => {
         for (const density of DENSITIES) {
           const d = generateDisplay(seed, { kind: 'A', cue, density });
           expect(d.n).toBe(C.NTOTAL);
+          expect(d.width).toBe(C.CANVAS.width);
+          expect(d.height).toBe(C.CANVAS.height);
           expect(d.clusters).toHaveLength(C.NCLUST);
           expect(checkInvariants(d)).toEqual([]);
           expect(d.meta.clusterSizes?.reduce((a, b) => a + b, 0)).toBe(C.NTOTAL);
           expect(d.meta.gapX).toHaveLength(4);
           expect(d.meta.gapY).toHaveLength(3);
           expect(d.meta.order).toHaveLength(C.NCLUST);
+          expect(d.meta.layout).toBe(layoutModeFor(cue));
           attempts.push(d.attempts);
         }
       }
     }
-    const maxAttempts = Math.max(...attempts);
-    expect(maxAttempts).toBeLessThan(C.MAX_SEED_ATTEMPTS);
-  }, 120000);
-
-  test('stimulus B: 50 seeds x every nB satisfy the invariants', () => {
-    [8, 14, 24, 34, 48].forEach((nB) => {
-      for (let seed = 1; seed <= 50; seed += 1) {
-        const d = generateDisplay(seed, {
-          kind: 'B', cue: 'none', density: 'sparse', nB,
-        });
-        expect(d.n).toBe(nB);
-        expect(d.nodes).toHaveLength(nB);
-        expect(d.clusters).toEqual([]);
-        expect(checkInvariants(d)).toEqual([]);
-      }
-    });
+    expect(Math.max(...attempts)).toBeLessThan(C.MAX_SEED_ATTEMPTS);
   }, 120000);
 
   test('rejects a nonsensical nB for stimulus B', () => {
     expect(() => generateDisplay(1, {
-      kind: 'B', cue: 'none', density: 'sparse', nB: 0,
+      kind: 'B', cue: 'proximity', density: 'sparse', nB: 0,
     })).toThrow(/positive integer/);
+  });
+});
+
+describe('nodeBounds', () => {
+  test('is the bounding box of the dot centres', () => {
+    const d = generateDisplay(3, { kind: 'A', cue: 'rect', density: 'sparse' });
+    const box = nodeBounds(d);
+    expect(box.x).toBe(Math.min(...d.nodes.map((n) => n.x)));
+    expect(box.y + box.h).toBeCloseTo(Math.max(...d.nodes.map((n) => n.y)), 9);
+  });
+});
+
+describe('generateTrialPair', () => {
+  test('builds A exactly as generateDisplay does, and B inside A\'s field', () => {
+    const { displayA, displayB } = generateTrialPair(11, 22, {
+      cue: 'color', density: 'dense', nB: 30, hueOffset: 25,
+    });
+    expect(displayA).toEqual(generateDisplay(11, {
+      kind: 'A', cue: 'color', density: 'dense', hueOffset: 25,
+    }));
+    expect(displayB.n).toBe(30);
+    expect(displayB.meta.field).toEqual(nodeBounds(displayA));
+    const palette = makePalette(25);
+    displayB.nodes.forEach((n) => expect(palette).toContain(n.fill));
+    expect(generateTrialPair(11, 22, {
+      cue: 'color', density: 'dense', nB: 30, hueOffset: 25,
+    })).toEqual({ displayA, displayB });
+  });
+
+  test('B for every nB from 8 to 48 satisfies the invariants in every cue\'s field', () => {
+    for (const cue of CUES) {
+      for (const density of DENSITIES) {
+        for (let nB = 8; nB <= 48; nB += 4) {
+          const { displayB } = generateTrialPair(nB, 1000 + nB, { cue, density, nB });
+          expect(displayB.nodes).toHaveLength(nB);
+          expect(displayB.clusters).toEqual([]);
+          expect(checkInvariants(displayB)).toEqual([]);
+        }
+      }
+    }
+  }, 120000);
+
+  test('feasibility: no B from 8 to 48 dots needs more than 50 attempts', () => {
+    const attempts: number[] = [];
+    for (const cue of CUES) {
+      for (const density of DENSITIES) {
+        for (let seed = 1; seed <= 3; seed += 1) {
+          const displayA = generateDisplay(seed, { kind: 'A', cue, density });
+          const metricsA = measureDisplay(displayA);
+          for (let nB = 8; nB <= 48; nB += 1) {
+            const displayB = generateDisplay(hashSeed(seed, nB, 'B'), {
+              kind: 'B',
+              cue,
+              density,
+              nB,
+              field: nodeBounds(displayA),
+              inkTarget: { linkLength: metricsA.linkLength, outlineInk: metricsA.outlineInk, edges: displayA.edges.length },
+            });
+            attempts.push(displayB.attempts);
+          }
+        }
+      }
+    }
+    expect(Math.max(...attempts)).toBeLessThanOrEqual(50);
+    expect(mean(attempts)).toBeLessThan(5);
+  }, 120000);
+
+  describe('equating B to A at N_B = 24', () => {
+    const SEEDS = 50;
+    const pairs = (cue: Display['cue'], density: Display['density'] = 'sparse') => Array.from(
+      { length: SEEDS },
+      (_, i) => {
+        const { displayA, displayB } = generateTrialPair(i + 1, hashSeed(i + 1, 'B'), { cue, density, nB: 24 });
+        return {
+          a: measureDisplay(displayA), b: measureDisplay(displayB), displayB,
+        };
+      },
+    );
+
+    test.each(CUES)('%s: B\'s spacing matches A\'s', (cue) => {
+      const measured = pairs(cue);
+      // mean nearest-neighbour distance within 15 % of A's
+      const ratio = mean(measured.map(({ b }) => b.meanNN)) / mean(measured.map(({ a }) => a.meanNN));
+      expect(ratio).toBeGreaterThan(0.85);
+      expect(ratio).toBeLessThan(1.15);
+      // and B's closest pair never much tighter than A's typical closest pair
+      const typicalMinA = median(measured.map(({ a }) => a.minNN));
+      measured.forEach(({ b }) => expect(b.minNN).toBeGreaterThanOrEqual(0.8 * typicalMinA));
+    }, 60000);
+
+    test.each(['proximity', 'rect'] as const)('%s: B\'s link length is within 25 %% of its target', (cue) => {
+      DENSITIES.forEach((density) => {
+        pairs(cue, density).forEach(({ b, displayB }) => {
+          const target = displayB.meta.linkTarget as number;
+          expect(b.linkLength / target).toBeGreaterThan(0.75);
+          expect(b.linkLength / target).toBeLessThan(1.25);
+        });
+      });
+    }, 60000);
+
+    test('the rect budget lengthens B\'s links to make up for A\'s outline ink', () => {
+      // colour shares the even layout with rect but has no outlines
+      const plain = pairs('color').map(({ b }) => b.linkLength);
+      const rect = pairs('rect').map(({ b }) => b.linkLength);
+      expect(mean(rect)).toBeGreaterThan(1.5 * mean(plain));
+    }, 60000);
   });
 });

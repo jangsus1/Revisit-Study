@@ -1,50 +1,40 @@
-import { polygonContains } from 'd3';
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
-import { CUE_PADDING } from '../cues';
+import { CUE_PADDING, applyCue } from '../cues';
 import { generateDisplay } from '../generator';
+import { makePalette } from '../palette';
+import { mulberry32 } from '../prng';
 import { Display } from '../types';
 
 const seeds = [1, 2, 3, 4, 5, 6, 7, 8];
 
-function displays(cue: Display['cue']) {
-  return seeds.map((seed) => generateDisplay(seed, { kind: 'A', cue, density: 'sparse' }));
+function displays(cue: Display['cue'], hueOffset = 0) {
+  return seeds.map((seed) => generateDisplay(seed, {
+    kind: 'A', cue, density: 'sparse', hueOffset,
+  }));
 }
 
-describe('cue: none', () => {
-  test('leaves grey circles and solid links', () => {
-    displays('none').forEach((d) => {
+describe('cue: proximity', () => {
+  test('leaves grey circles, solid links and no outlines', () => {
+    displays('proximity').forEach((d) => {
       expect(d.nodes.every((n) => n.fill === C.DOT_FILL)).toBe(true);
       expect(d.nodes.every((n) => n.shape === 'circle')).toBe(true);
       expect(d.edges.every((e) => !e.dashed)).toBe(true);
-      expect(d.clusters.every((c) => !c.hull && !c.rect)).toBe(true);
+      expect(d.clusters.every((c) => !c.rect)).toBe(true);
+      expect(d.meta.layout).toBe('grouped');
     });
+  });
+
+  test('applyCue itself changes nothing', () => {
+    const d = generateDisplay(4, { kind: 'A', cue: 'proximity', density: 'dense' });
+    const copy = JSON.parse(JSON.stringify(d)) as Display;
+    expect(applyCue(copy, 'proximity', mulberry32(1), makePalette(0))).toEqual(d);
   });
 });
 
-describe('cue: hull', () => {
-  test('every cluster gets a padded hull that contains all of its dots', () => {
-    displays('hull').forEach((d) => {
-      expect(d.clusters.every((c) => (c.hull?.length ?? 0) >= 3)).toBe(true);
-      d.clusters.forEach((cluster) => {
-        const hull = cluster.hull as [number, number][];
-        cluster.nodeIds.forEach((id) => {
-          const node = d.nodes.find((n) => n.id === id) as Display['nodes'][number];
-          expect(polygonContains(hull, [node.x, node.y])).toBe(true);
-        });
-      });
-      expect(d.clusters.every((c) => !c.rect)).toBe(true);
-    });
-  });
-
-  test('the hull keeps at least the cue padding away from the outermost dots', () => {
-    const d = generateDisplay(3, { kind: 'A', cue: 'hull', density: 'sparse' });
-    d.clusters.forEach((cluster) => {
-      const pts = d.nodes.filter((n) => cluster.nodeIds.includes(n.id));
-      const hull = cluster.hull as [number, number][];
-      const minX = Math.min(...pts.map((p) => p.x));
-      expect(Math.min(...hull.map(([x]) => x))).toBeLessThanOrEqual(minX - CUE_PADDING + 1e-6);
-    });
+describe('every other cue uses the even layout', () => {
+  test.each(['rect', 'color', 'shape', 'edge'] as const)('%s', (cue) => {
+    displays(cue).forEach((d) => expect(d.meta.layout).toBe('even'));
   });
 });
 
@@ -59,13 +49,27 @@ describe('cue: rect', () => {
         expect(rect.x + rect.w).toBeCloseTo(Math.max(...pts.map((p) => p.x)) + CUE_PADDING, 6);
         expect(rect.y + rect.h).toBeCloseTo(Math.max(...pts.map((p) => p.y)) + CUE_PADDING, 6);
       });
-      expect(d.clusters.every((c) => !c.hull)).toBe(true);
+    });
+  });
+
+  test('rectangles of neighbouring clusters do not overlap on the even layout', () => {
+    displays('rect').forEach((d) => {
+      const rects = d.clusters.map((c) => c.rect as { x: number, y: number, w: number, h: number });
+      for (let i = 0; i < rects.length; i += 1) {
+        for (let j = i + 1; j < rects.length; j += 1) {
+          const a = rects[i];
+          const b = rects[j];
+          const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+          expect(overlap).toBe(false);
+        }
+      }
     });
   });
 });
 
 describe('cue: color', () => {
-  test('assigns a permutation of the palette, one colour per cluster', () => {
+  test('assigns a permutation of the participant palette, one colour per cluster', () => {
+    const palette = makePalette(0);
     const seen = new Set<string>();
     displays('color').forEach((d) => {
       const byCluster = new Map<number, string>();
@@ -73,13 +77,22 @@ describe('cue: color', () => {
         const previous = byCluster.get(n.cluster);
         if (previous) expect(n.fill).toBe(previous);
         byCluster.set(n.cluster, n.fill);
-        expect(C.COLOR_PALETTE).toContain(n.fill);
+        expect(palette).toContain(n.fill);
       });
       expect(new Set(byCluster.values()).size).toBe(C.NCLUST);
       byCluster.forEach((fill) => seen.add(fill));
     });
-    // over several seeds the permutation moves colours around
-    expect(seen.size).toBe(C.COLOR_PALETTE.length);
+    expect(seen.size).toBe(palette.length);
+  });
+
+  test('uses the rotated palette when a hue offset is given', () => {
+    const rotated = makePalette(37);
+    displays('color', 37).forEach((d) => {
+      d.nodes.forEach((n) => expect(rotated).toContain(n.fill));
+    });
+    // the rotation does not move a single dot
+    expect(displays('color', 37).map((d) => d.nodes.map((n) => [n.x, n.y])))
+      .toEqual(displays('color', 0).map((d) => d.nodes.map((n) => [n.x, n.y])));
   });
 });
 
@@ -96,14 +109,14 @@ describe('cue: edge', () => {
 });
 
 describe('cue: shape', () => {
-  test('uses three shapes, two clusters each, and never repeats along the traversal order', () => {
+  test('uses circle, hollow square and cross, two clusters each, never repeating along the order', () => {
     displays('shape').forEach((d) => {
       const byCluster = new Map<number, string>();
       d.nodes.forEach((n) => byCluster.set(n.cluster, n.shape));
       const counts = new Map<string, number>();
       byCluster.forEach((shape) => counts.set(shape, (counts.get(shape) ?? 0) + 1));
       expect([...counts.values()].sort()).toEqual([2, 2, 2]);
-      expect([...counts.keys()].sort()).toEqual([...C.SHAPES].sort());
+      expect([...counts.keys()].sort()).toEqual(['circle', 'cross', 'hollowSquare']);
 
       const inOrder = [...d.clusters]
         .sort((a, b) => a.orderPos - b.orderPos)

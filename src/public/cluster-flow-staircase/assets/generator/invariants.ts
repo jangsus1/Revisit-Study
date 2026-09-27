@@ -3,6 +3,7 @@
  * next derived seed is tried, so the participant never sees an ambiguous count.
  */
 import { GENERATOR_CONFIG as C } from './config';
+import { DOT_R, TRIM } from './geometry';
 import { Display } from './types';
 
 /** Minimum allowed distance between two dot centres, in canvas px. */
@@ -10,9 +11,9 @@ export const MIN_CENTRE_DISTANCE = C.MIN_CENTRE_DISTANCE_FACTOR * C.RDOT * C.SCA
 /** Minimum allowed distance from a link to a dot that is not one of its endpoints, in canvas px. */
 export const ARROW_CLEARANCE = (C.RDOT + C.ARROW_CLEARANCE) * C.SCALE;
 /** How far each end of a link is trimmed back from the dot centre, in canvas px. */
-export const LINK_TRIM = (C.RDOT + C.LINK_TRIM) * C.SCALE;
+export const LINK_TRIM = TRIM;
 /** Dot radius in canvas px. */
-export const DOT_RADIUS = C.RDOT * C.SCALE;
+export const DOT_RADIUS = DOT_R;
 
 const EPS = 1e-9;
 

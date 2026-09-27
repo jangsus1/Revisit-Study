@@ -15,7 +15,7 @@ function display(nodes: DisplayNode[], edges: Display['edges'] = []): Display {
   return {
     kind: 'B',
     seed: 1,
-    cue: 'none',
+    cue: 'proximity',
     density: 'sparse',
     n: nodes.length,
     width: C.CANVAS.width,

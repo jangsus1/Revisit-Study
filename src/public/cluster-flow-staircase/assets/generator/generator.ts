@@ -6,6 +6,11 @@
  * sequence (`hashSeed(seed, attempt)`) is tried and `display.attempts` records how many seeds
  * were consumed. `display.seed` is always the *requested* seed, so a trial can be reproduced
  * from the stored record alone.
+ *
+ * Stimulus A depends on the cue as well as the seed: `proximity` uses the gapped layout and every
+ * other cue the even one (`layoutModeFor`), so one seed gives different geometry for `proximity`
+ * than for the other cues (the templates and jitter are the same). Stimulus B depends on its paired
+ * A (field and link budget), so it must always be regenerated through `generateTrialPair`.
  */
 import { buildBaseline } from './baseline';
 import { GENERATOR_CONFIG as C } from './config';
@@ -14,9 +19,11 @@ import { applyCue } from './cues';
 import { GraphCluster, buildGraph } from './graph';
 import { checkInvariants } from './invariants';
 import { buildLayout, drawJitter } from './layout';
+import { measureDisplay } from './metrics';
+import { makePalette } from './palette';
 import { jitterRng, mulberry32 } from './prng';
 import {
-  Display, DisplayCluster, DisplayNode, GenerateOptions,
+  Cue, Density, Display, DisplayCluster, DisplayNode, GenerateOptions, Rect, layoutModeFor,
 } from './types';
 
 /**
@@ -40,7 +47,7 @@ function buildStimulusA(seed: number, opts: GenerateOptions): Display {
   const rng = mulberry32(seed);
   const jitter = drawJitter(jitterRng(seed));
   const sizes = numDistributer(rng, C.NCLUST, C.NTOTAL);
-  const layout = buildLayout(rng, sizes, jitter);
+  const layout = buildLayout(rng, sizes, jitter, layoutModeFor(opts.cue));
 
   let nextId = 0;
   const graphClusters: GraphCluster[] = layout.clusters.map((cluster) => {
@@ -97,10 +104,11 @@ function buildStimulusA(seed: number, opts: GenerateOptions): Display {
       gapX: layout.gapX,
       gapY: layout.gapY,
       order: graph.order,
+      layout: layout.mode,
     },
   };
 
-  return applyCue(display, opts.cue, rng);
+  return applyCue(display, opts.cue, rng, makePalette(opts.hueOffset ?? 0));
 }
 
 /**
@@ -118,7 +126,11 @@ export function generateDisplay(seed: number, opts: GenerateOptions): Display {
     const derived = attempt === 0 ? seed >>> 0 : hashSeed(seed, attempt);
     const display = opts.kind === 'A'
       ? buildStimulusA(derived, opts)
-      : buildBaseline(derived, nB, opts.cue, opts.density);
+      : buildBaseline(derived, nB, opts.cue, opts.density, {
+        field: opts.field,
+        palette: makePalette(opts.hueOffset ?? 0),
+        target: opts.inkTarget,
+      });
     if (display) {
       const violations = checkInvariants(display);
       if (violations.length === 0) {
@@ -135,4 +147,55 @@ export function generateDisplay(seed: number, opts: GenerateOptions): Display {
     `generateDisplay: no valid ${opts.kind} display for seed ${seed} (cue ${opts.cue}, ${opts.density}, nB ${nB}) `
     + `after ${C.MAX_SEED_ATTEMPTS} attempts; last violations: ${lastViolations.join('; ')}`,
   );
+}
+
+/** The bounding box of a display's dot centres, canvas px. */
+export function nodeBounds(display: Display): Rect {
+  const xs = display.nodes.map((n) => n.x);
+  const ys = display.nodes.map((n) => n.y);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return {
+    x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y,
+  };
+}
+
+export interface TrialPairOptions {
+  cue: Cue;
+  density: Density;
+  nB: number;
+  /** colour-wheel rotation in degrees; default 0 */
+  hueOffset?: number;
+}
+
+/**
+ * The two displays of one trial. A is built first; B is then sampled inside A's dot-centre
+ * bounding box and aims its links at A's link length plus A's outline ink (`measureDisplay`).
+ * This is the only way B is ever built for a trial, so the runner, the gallery and the analysis
+ * regenerate identical pairs from `seedA`, `seedB`, cue, density, `nB` and `hueOffset`.
+ */
+export function generateTrialPair(
+  seedA: number,
+  seedB: number,
+  opts: TrialPairOptions,
+): { displayA: Display; displayB: Display } {
+  const hueOffset = opts.hueOffset ?? 0;
+  const displayA = generateDisplay(seedA, {
+    kind: 'A', cue: opts.cue, density: opts.density, hueOffset,
+  });
+  const metricsA = measureDisplay(displayA);
+  const displayB = generateDisplay(seedB, {
+    kind: 'B',
+    cue: opts.cue,
+    density: opts.density,
+    nB: opts.nB,
+    hueOffset,
+    field: nodeBounds(displayA),
+    inkTarget: {
+      linkLength: metricsA.linkLength,
+      outlineInk: metricsA.outlineInk,
+      edges: displayA.edges.length,
+    },
+  });
+  return { displayA, displayB };
 }

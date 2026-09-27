@@ -96,7 +96,7 @@ describe('the graph of a generated display', () => {
   test('every cluster tree is connected and acyclic, and every arrow runs low rank -> high rank', () => {
     (['sparse', 'dense'] as const).forEach((density) => {
       seeds.forEach((seed) => {
-        const display = generateDisplay(seed, { kind: 'A', cue: 'none', density });
+        const display = generateDisplay(seed, { kind: 'A', cue: 'proximity', density });
         const rank = ranksOf(display);
         display.edges.forEach((edge) => {
           const s = display.nodes.find((n) => n.id === edge.source);
@@ -118,7 +118,7 @@ describe('the graph of a generated display', () => {
 
   test('the whole display is acyclic', () => {
     seeds.forEach((seed) => {
-      const display = generateDisplay(seed, { kind: 'A', cue: 'none', density: 'dense' });
+      const display = generateDisplay(seed, { kind: 'A', cue: 'proximity', density: 'dense' });
       const indegree = new Map(display.nodes.map((n) => [n.id, 0]));
       display.edges.forEach((e) => indegree.set(e.target, (indegree.get(e.target) ?? 0) + 1));
       const queue = display.nodes.filter((n) => indegree.get(n.id) === 0).map((n) => n.id);
@@ -138,7 +138,7 @@ describe('the graph of a generated display', () => {
 
   test('sparse: each backbone link leaves a sink of its cluster and enters a source of the next', () => {
     seeds.forEach((seed) => {
-      const display = generateDisplay(seed, { kind: 'A', cue: 'none', density: 'sparse' });
+      const display = generateDisplay(seed, { kind: 'A', cue: 'proximity', density: 'sparse' });
       const within = display.edges.filter((e) => e.kind === 'within');
       const between = display.edges.filter((e) => e.kind === 'between');
       expect(between).toHaveLength(5);

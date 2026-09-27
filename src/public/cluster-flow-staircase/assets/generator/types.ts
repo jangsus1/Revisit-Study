@@ -3,14 +3,34 @@
  * All coordinates in a Display are final canvas pixels (already scaled), origin top-left.
  */
 
-export type Cue = 'none' | 'hull' | 'rect' | 'color' | 'edge' | 'shape';
+/** `proximity` is the control: grey circles and solid links, grouped by the gapped layout only. */
+export type Cue = 'proximity' | 'rect' | 'color' | 'shape' | 'edge';
 export type Density = 'sparse' | 'dense';
 export type StimulusKind = 'A' | 'B';
-export type NodeShape = 'circle' | 'square' | 'diamond';
+export type NodeShape = 'circle' | 'hollowSquare' | 'cross';
 export type StaircaseId = 'above' | 'below' | 'catch' | 'practice';
+/**
+ * How stimulus A places its clusters. `grouped` is the gapped MATLAB layout (proximity grouping);
+ * `even` closes the gaps so every edge-to-edge distance between neighbouring clusters equals the
+ * within-cluster pitch, and only the cue groups.
+ */
+export type LayoutMode = 'grouped' | 'even';
 
-export const CUES: Cue[] = ['none', 'hull', 'rect', 'color', 'edge', 'shape'];
+export const CUES: Cue[] = ['proximity', 'rect', 'color', 'shape', 'edge'];
 export const DENSITIES: Density[] = ['sparse', 'dense'];
+
+/** Only the `proximity` control keeps the gapped layout; every other cue is shown on the even one. */
+export function layoutModeFor(cue: Cue): LayoutMode {
+  return cue === 'proximity' ? 'grouped' : 'even';
+}
+
+/** An axis-aligned rectangle in canvas px. */
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
 
 export interface DisplayNode {
   id: number;
@@ -45,10 +65,8 @@ export interface DisplayCluster {
   cy: number;
   /** position of this cluster in the greedy traversal order (0 = first) */
   orderPos: number;
-  /** padded hull polygon in canvas px, present only for the hull cue */
-  hull?: [number, number][];
   /** padded bounding rectangle in canvas px, present only for the rect cue */
-  rect?: { x: number; y: number; w: number; h: number };
+  rect?: Rect;
 }
 
 export interface Display {
@@ -76,7 +94,42 @@ export interface Display {
     gapY?: number[];
     /** cluster indices in traversal order */
     order?: number[];
+    /** A only: which layout placed the clusters */
+    layout?: LayoutMode;
+    /** B only: the field the dots were sampled in, in canvas px */
+    field?: Rect;
+    /** B only: the minimum centre spacing used for this N_B, in canvas px */
+    spacing?: number;
+    /** B only: the total visible link length the tree builder aimed for, in canvas px */
+    linkTarget?: number;
   };
+}
+
+/** What stimulus B's link builder aims for, taken from the paired stimulus A (`generateTrialPair`). */
+export interface InkTarget {
+  /** A's total visible link length, canvas px */
+  linkLength: number;
+  /** A's rectangle-outline ink, canvas px^2 (0 unless the cue is rect) */
+  outlineInk: number;
+  /** A's number of links */
+  edges: number;
+}
+
+/** Ink and spacing statistics of a display, all in canvas px (areas in px^2). */
+export interface DisplayMetrics {
+  /** nodeInk + linkInk + outlineInk */
+  ink: number;
+  nodeInk: number;
+  /** visible line ink (dash duty cycle included) plus arrowheads */
+  linkInk: number;
+  outlineInk: number;
+  /** summed visible length of the link lines (trimmed at both ends, arrowhead excluded) */
+  linkLength: number;
+  meanNN: number;
+  minNN: number;
+  meanPairwise: number;
+  /** area of the convex hull of the node centres */
+  hullArea: number;
 }
 
 export interface GenerateOptions {
@@ -85,6 +138,12 @@ export interface GenerateOptions {
   density: Density;
   /** node count for stimulus B; ignored for A (always 24) */
   nB?: number;
+  /** rotation of the colour-cue hue circle in degrees; default 0 */
+  hueOffset?: number;
+  /** B only: sample the dots inside this rectangle (A's dot-centre bounding box); default the canvas */
+  field?: Rect;
+  /** B only: the link-length budget taken from the paired A; default: plain nearest-neighbour links */
+  inkTarget?: InkTarget;
 }
 
 export interface TrialParams {
@@ -96,17 +155,28 @@ export interface TrialParams {
   cellId: string;
   trialIndex: number;
   staircaseId: StaircaseId;
-  /** true when stimulus A flashes in the left slot and B in the right; drawn per trial from the seed */
-  aOnLeft: boolean;
+  /** true when stimulus A is shown in the first interval and B in the second; drawn per trial */
+  aFirst: boolean;
+  /** the participant's colour-wheel rotation in degrees, drawn once per session */
+  hueOffset: number;
+  /** the participant's staircase starting levels for this cell; null for practice trials */
+  starts: { above: number; below: number } | null;
   /** measured frame period in ms from the setup component; defaults to 1000/60 */
   refreshMs: number;
 }
 
+/** Paint-to-paint durations of the timed phases, in ms. */
 export interface MeasuredDurations {
   fixation: number;
-  a: number;
-  blank1: number;
-  b: number;
+  /** first stimulus */
+  s1: number;
+  /** noise mask between the two stimuli */
+  mask: number;
+  /** blank after the mask */
+  blank: number;
+  /** second stimulus */
+  s2: number;
+  /** blank before the prompt */
   blank2: number;
 }
 
@@ -116,10 +186,12 @@ export interface MeasuredDurations {
  * dynamic block derives `correct` from those two when it replays the staircase.
  */
 export interface TrialAnswer {
-  /** the side the participant judged to hold more items */
-  response: 'left' | 'right';
-  /** which slot held stimulus A on this trial */
-  aOnLeft: boolean;
+  /** the interval the participant judged to hold more items */
+  response: 'first' | 'second';
+  /** whether stimulus A was shown first; the participant chose A when (response === 'first') === aFirst */
+  aFirst: boolean;
+  hueOffset: number;
+  starts: { above: number; below: number } | null;
   rtMs: number;
   nA: number;
   nB: number;
@@ -135,6 +207,8 @@ export interface TrialAnswer {
   measured: MeasuredDurations;
   refreshMs: number;
   fullscreen: boolean;
+  metricsA: DisplayMetrics;
+  metricsB: DisplayMetrics;
   displayA: Display;
   displayB: Display;
 }

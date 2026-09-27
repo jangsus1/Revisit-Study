@@ -99,3 +99,71 @@ describe('buildLayout', () => {
     expect(jittered).not.toEqual(noJitter);
   });
 });
+
+describe('buildLayout: even mode', () => {
+  const sizesList = [[4, 4, 4, 4, 4, 4], [3, 5, 4, 6, 3, 3], [6, 3, 4, 3, 5, 3], [6, 6, 3, 3, 3, 3]];
+  const pitch = C.INTER * C.SCALE;
+  const xs = (pts: { x: number }[]) => pts.map((p) => p.x);
+  const ys = (pts: { y: number }[]) => pts.map((p) => p.y);
+
+  test('defaults to grouped and records the mode', () => {
+    expect(buildLayout(mulberry32(1), sizesList[0], 5).mode).toBe('grouped');
+    expect(buildLayout(mulberry32(1), sizesList[0], 5, 'even').mode).toBe('even');
+  });
+
+  test('uses the same templates and jitter as the grouped layout of the same seed', () => {
+    sizesList.forEach((sizes, k) => {
+      const grouped = buildLayout(mulberry32(40 + k), sizes, 12, 'grouped');
+      const even = buildLayout(mulberry32(40 + k), sizes, 12, 'even');
+      grouped.clusters.forEach((cluster, i) => {
+        const other = even.clusters[i];
+        cluster.points.forEach((p, j) => {
+          expect(p.x - cluster.cx).toBeCloseTo(other.points[j].x - other.cx, 6);
+          expect(p.y - cluster.cy).toBeCloseTo(other.points[j].y - other.cy, 6);
+        });
+      });
+    });
+  });
+
+  test('every horizontal edge-to-edge gap between neighbouring clusters equals the pitch', () => {
+    sizesList.forEach((sizes, k) => {
+      const { clusters } = buildLayout(mulberry32(7 + k), sizes, 15, 'even');
+      [[0, 1], [1, 2], [3, 4], [4, 5]].forEach(([a, b]) => {
+        expect(Math.min(...xs(clusters[b].points)) - Math.max(...xs(clusters[a].points))).toBeCloseTo(pitch, 6);
+      });
+    });
+  });
+
+  test('every vertical edge-to-edge gap between the two rows equals the pitch, column by column', () => {
+    sizesList.forEach((sizes, k) => {
+      const { clusters } = buildLayout(mulberry32(70 + k), sizes, 15, 'even');
+      [0, 1, 2].forEach((c) => {
+        expect(Math.min(...ys(clusters[c + 3].points)) - Math.max(...ys(clusters[c].points))).toBeCloseTo(pitch, 6);
+      });
+    });
+  });
+
+  test('gapX and gapY record the centroid distances in source px', () => {
+    const layout = buildLayout(mulberry32(9), sizesList[1], 10, 'even');
+    const cx = layout.clusters.map((c) => c.cx);
+    const cy = layout.clusters.map((c) => c.cy);
+    expect(cx[1] - cx[0]).toBeCloseTo(layout.gapX[0] * C.SCALE, 6);
+    expect(cx[5] - cx[4]).toBeCloseTo(layout.gapX[3] * C.SCALE, 6);
+    [0, 1, 2].forEach((c) => expect(cy[c + 3] - cy[c]).toBeCloseTo(layout.gapY[c] * C.SCALE, 6));
+  });
+
+  test('is more compact than the grouped layout and centred in the canvas', () => {
+    sizesList.forEach((sizes, k) => {
+      const grouped = buildLayout(mulberry32(90 + k), sizes, 8, 'grouped');
+      const even = buildLayout(mulberry32(90 + k), sizes, 8, 'even');
+      const width = (l: typeof even) => {
+        const all = xs(l.clusters.flatMap((c) => c.points));
+        return Math.max(...all) - Math.min(...all);
+      };
+      expect(width(even)).toBeLessThan(width(grouped));
+      const pts = even.clusters.flatMap((c) => c.points);
+      expect((Math.min(...xs(pts)) + Math.max(...xs(pts))) / 2).toBeCloseTo(C.CANVAS.width / 2, 6);
+      expect((Math.min(...ys(pts)) + Math.max(...ys(pts))) / 2).toBeCloseTo(C.CANVAS.height / 2, 6);
+    });
+  });
+});
