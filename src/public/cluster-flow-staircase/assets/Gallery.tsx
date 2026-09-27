@@ -1,64 +1,173 @@
 /**
- * Reviewer-only gallery for the cluster-flow stimuli: every cue, stimulus A next to its
- * ungrouped baseline B, at 1:1 canvas size. Used for visual sign-off and screenshots.
+ * Reviewer-only gallery for the cluster-flow stimuli: every cue, stimulus A next to its paired
+ * baseline B (built exactly as a trial builds it, with `generateTrialPair`) at 1:1 canvas size,
+ * with ink and spacing metrics, the participant palette, the noise mask, and a "Play trial"
+ * preview that runs the real timeline. Used for visual sign-off and screenshots.
  */
 import {
   Button, Group, NumberInput, SegmentedControl, Stack, Text, Title,
 } from '@mantine/core';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { GENERATOR_CONFIG } from './generator/config';
-import { generateDisplay, hashSeed } from './generator/generator';
+import { generateTrialPair, hashSeed } from './generator/generator';
+import { measureDisplay } from './generator/metrics';
 import {
-  CUES, Cue, Density, Display,
+  PALETTE_CHROMA, hexToLab, makePalette, paletteHues,
+} from './generator/palette';
+import {
+  CUES, Cue, Density, Display, DisplayMetrics,
 } from './generator/types';
+import { NoiseMask } from './render/NoiseMask';
 import { StimulusFrame } from './render/StimulusSVG';
+import { TrialStage } from './render/TrialStage';
+import { DEFAULT_REFRESH_MS, useTrialTimeline } from './useTrialTimeline';
 
-interface Panel {
+interface Row {
   cue: Cue;
-  label: string;
-  display: Display | null;
+  displayA: Display | null;
+  displayB: Display | null;
+  metricsA: DisplayMetrics | null;
+  metricsB: DisplayMetrics | null;
   error: string | null;
 }
 
-function build(seed: number, opts: Parameters<typeof generateDisplay>[1]): { display: Display | null, error: string | null } {
+const fmt = (v: number, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '–');
+const ratio = (b: number, a: number) => (a > 0 ? (b / a).toFixed(2) : '–');
+
+function buildRow(cue: Cue, seed: number, density: Density, nB: number, hueOffset: number): Row {
   try {
-    return { display: generateDisplay(seed, opts), error: null };
+    const { displayA, displayB } = generateTrialPair(seed, hashSeed(seed, 'B'), {
+      cue, density, nB, hueOffset,
+    });
+    return {
+      cue, displayA, displayB, metricsA: measureDisplay(displayA), metricsB: measureDisplay(displayB), error: null,
+    };
   } catch (e) {
-    return { display: null, error: e instanceof Error ? e.message : String(e) };
+    return {
+      cue, displayA: null, displayB: null, metricsA: null, metricsB: null, error: e instanceof Error ? e.message : String(e),
+    };
   }
 }
 
-function footer(panel: Panel) {
-  const { display } = panel;
-  if (!display) return panel.error ?? '';
+/** Generator diagnostics: seed, attempts, counts, and A's layout or B's sampling parameters. */
+function diagnostics(display: Display): string {
   const base = `seed ${display.seed} · attempts ${display.attempts} · n ${display.n} · edges ${display.edges.length}`;
-  if (display.kind === 'B') return base;
   const { meta } = display;
-  return `${base} · sizes [${meta.clusterSizes?.join(' ')}] · jitter ${meta.jitter} · gapX [${meta.gapX?.join(' ')}] · gapY [${meta.gapY?.join(' ')}] · order [${meta.order?.join(' ')}]`;
+  if (display.kind === 'B') {
+    const field = meta.field ? `${fmt(meta.field.w)}×${fmt(meta.field.h)}` : '–';
+    return `${base} · field ${field} · spacing ${fmt(meta.spacing ?? NaN, 1)} · link target ${fmt(meta.linkTarget ?? NaN)}`;
+  }
+  const list = (values?: number[]) => (values ?? []).map((v) => fmt(v)).join(' ');
+  return `${base} · ${meta.layout} layout · sizes [${meta.clusterSizes?.join(' ')}] · jitter ${meta.jitter} · gapX [${list(meta.gapX)}] · gapY [${list(meta.gapY)}] · order [${meta.order?.join(' ')}]`;
+}
+
+/** Ink and spacing statistics of one panel. */
+function metricsLine(m: DisplayMetrics): string {
+  return `ink ${fmt(m.ink)} px² (nodes ${fmt(m.nodeInk)} · links ${fmt(m.linkInk)} · outlines ${fmt(m.outlineInk)}) · link length ${fmt(m.linkLength)} · `
+    + `NN mean ${fmt(m.meanNN, 1)} / min ${fmt(m.minNN, 1)} · pairwise ${fmt(m.meanPairwise, 1)} · hull area ${fmt(m.hullArea)}`;
+}
+
+/** B relative to A, the numbers the equating aims at. */
+function ratiosLine(a: DisplayMetrics, b: DisplayMetrics, displayB: Display): string {
+  const target = displayB.meta.linkTarget;
+  const ofTarget = target ? ` (${ratio(b.linkLength, target)} of B's target)` : '';
+  return `B / A: ink ${ratio(b.ink, a.ink)} · mean NN ${ratio(b.meanNN, a.meanNN)} · min NN ${ratio(b.minNN, a.minNN)} · `
+    + `link length ${ratio(b.linkLength, a.linkLength)}${ofTarget} · hull area ${ratio(b.hullArea, a.hullArea)}`;
+}
+
+/** Median frame period from a short run of animation frames; 60 Hz until measured. */
+function useRefreshEstimate(): number {
+  const [refreshMs, setRefreshMs] = useState(DEFAULT_REFRESH_MS);
+  useEffect(() => {
+    if (typeof requestAnimationFrame !== 'function') return undefined;
+    const stamps: number[] = [];
+    let rafId = 0;
+    const step = (now: number) => {
+      stamps.push(now);
+      if (stamps.length < 31) {
+        rafId = requestAnimationFrame(step);
+        return;
+      }
+      const deltas = stamps.slice(1).map((t, i) => t - stamps[i]).sort((x, y) => x - y);
+      const median = deltas[Math.floor(deltas.length / 2)];
+      if (median > 2 && median < 100) setRefreshMs(median);
+    };
+    rafId = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+  return refreshMs;
+}
+
+/** One trial played in place with the real timeline, mask and interval order. */
+function TrialPreview({
+  displayA, displayB, aFirst, runKey, refreshMs,
+}: { displayA: Display; displayB: Display; aFirst: boolean; runKey: number; refreshMs: number }) {
+  const { phase } = useTrialTimeline(true, refreshMs, runKey);
+  return (
+    <Stack gap={4} data-testid="trial-preview">
+      <Text size="xs" c="dimmed">{`phase: ${phase} · ${aFirst ? 'A first' : 'B first'} · frame period ${refreshMs.toFixed(2)} ms`}</Text>
+      <TrialStage
+        first={aFirst ? displayA : displayB}
+        second={aFirst ? displayB : displayA}
+        maskSeed={hashSeed(displayA.seed, displayB.seed, 'mask')}
+        phase={phase}
+      />
+    </Stack>
+  );
+}
+
+function PaletteStrip({ hueOffset }: { hueOffset: number }) {
+  const palette = makePalette(hueOffset);
+  const hues = paletteHues(hueOffset);
+  const grey = hexToLab(GENERATOR_CONFIG.DOT_FILL);
+  return (
+    <Stack gap={4}>
+      <Text size="sm" fw={600}>
+        {`Colour cue palette: CIELAB L* ${GENERATOR_CONFIG.LAB_L}, chroma ${PALETTE_CHROMA}, hues ${hues.map((h) => `${fmt(h)}°`).join(' ')}`}
+      </Text>
+      <Group gap="xs" data-testid="palette-strip">
+        {palette.map((hex, k) => {
+          const lab = hexToLab(hex);
+          return (
+            <Stack key={hex} gap={2} align="center">
+              <div style={{
+                width: 56, height: 32, background: hex, borderRadius: 4,
+              }}
+              />
+              <Text size="xs">{hex}</Text>
+              <Text size="xs" c="dimmed">{`L* ${fmt(lab.L, 1)} · C ${fmt(Math.hypot(lab.a, lab.b), 1)} · ${fmt(hues[k])}°`}</Text>
+            </Stack>
+          );
+        })}
+        <Stack gap={2} align="center">
+          <div style={{
+            width: 56, height: 32, background: GENERATOR_CONFIG.DOT_FILL, borderRadius: 4,
+          }}
+          />
+          <Text size="xs">{`${GENERATOR_CONFIG.DOT_FILL} (grey)`}</Text>
+          <Text size="xs" c="dimmed">{`L* ${fmt(grey.L, 1)} · C 0`}</Text>
+        </Stack>
+      </Group>
+    </Stack>
+  );
 }
 
 export default function Gallery() {
   const [seed, setSeed] = useState(1);
-  const [nB, setNB] = useState(30);
+  const [nB, setNB] = useState(24);
   const [density, setDensity] = useState<Density>('sparse');
+  const [hueOffset, setHueOffset] = useState(0);
+  const [aFirstByCue, setAFirstByCue] = useState<Record<string, boolean>>({});
+  // the frame period is frozen when Play is clicked, so a late refresh estimate cannot restart a run
+  const [playing, setPlaying] = useState<{ cue: Cue; runKey: number; refreshMs: number } | null>(null);
+  const refreshMs = useRefreshEstimate();
 
-  const rows = useMemo(() => CUES.map((cue) => {
-    const a = build(seed, { kind: 'A', cue, density });
-    const b = build(hashSeed(seed, 'B'), {
-      kind: 'B', cue, density, nB,
-    });
-    return {
-      cue,
-      panels: [
-        {
-          cue, label: 'A — 24 items, 6 clusters', ...a,
-        },
-        {
-          cue, label: `B — ${nB} items, no grouping`, ...b,
-        },
-      ] as Panel[],
-    };
-  }), [seed, nB, density]);
+  const rows = useMemo(
+    () => CUES.map((cue) => buildRow(cue, seed, density, nB, hueOffset)),
+    [seed, nB, density, hueOffset],
+  );
+  const { width, height } = GENERATOR_CONFIG.CANVAS;
+  const previewScale = 1 / 3;
 
   return (
     <Stack gap="lg" p="md">
@@ -76,11 +185,23 @@ export default function Gallery() {
         <NumberInput
           label="N_B"
           value={nB}
-          min={2}
-          max={80}
-          step={2}
+          min={8}
+          max={48}
+          step={1}
           allowDecimal={false}
-          onChange={(value) => setNB(typeof value === 'number' ? value : Number(value) || 2)}
+          clampBehavior="strict"
+          onChange={(value) => setNB(Math.min(48, Math.max(8, typeof value === 'number' ? value : Number(value) || 8)))}
+          w={120}
+        />
+        <NumberInput
+          label="Hue rotation (°)"
+          value={hueOffset}
+          min={0}
+          max={59}
+          step={1}
+          allowDecimal={false}
+          clampBehavior="strict"
+          onChange={(value) => setHueOffset(Math.min(59, Math.max(0, typeof value === 'number' ? value : Number(value) || 0)))}
           w={140}
         />
         <SegmentedControl
@@ -91,20 +212,66 @@ export default function Gallery() {
         <Button onClick={() => setSeed(Math.floor(Math.random() * 1000000))}>Random seed</Button>
       </Group>
 
-      {rows.map((row) => (
-        <Stack key={row.cue} gap="xs">
-          <Title order={5}>{`cue: ${row.cue}`}</Title>
-          <Group align="flex-start" gap="md" wrap="nowrap" style={{ overflowX: 'auto' }}>
-            {row.panels.map((panel) => (
-              <Stack key={panel.label} gap={4} style={{ width: GENERATOR_CONFIG.CANVAS.width }}>
-                <Text size="xs" fw={600}>{panel.label}</Text>
-                <StimulusFrame display={panel.display ?? undefined} />
-                <Text size="xs" c="dimmed">{footer(panel)}</Text>
-              </Stack>
-            ))}
-          </Group>
+      <Group align="flex-start" gap="xl">
+        <PaletteStrip hueOffset={hueOffset} />
+        <Stack gap={4}>
+          <Text size="sm" fw={600}>Noise mask (150 ms between the two stimuli; shown at 1:3)</Text>
+          <div style={{ width: width * previewScale, height: height * previewScale, overflow: 'hidden' }}>
+            <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
+              <NoiseMask width={width} height={height} seed={hashSeed(seed, hashSeed(seed, 'B'), 'mask')} />
+            </div>
+          </div>
         </Stack>
-      ))}
+      </Group>
+
+      {rows.map((row) => {
+        const aFirst = aFirstByCue[row.cue] ?? true;
+        return (
+          <Stack key={row.cue} gap="xs" data-testid={`gallery-row-${row.cue}`}>
+            <Group gap="md" align="center">
+              <Title order={5}>{`cue: ${row.cue}`}</Title>
+              <SegmentedControl
+                size="xs"
+                data={[{ label: 'A first', value: 'A' }, { label: 'B first', value: 'B' }]}
+                value={aFirst ? 'A' : 'B'}
+                onChange={(value) => setAFirstByCue((prev) => ({ ...prev, [row.cue]: value === 'A' }))}
+              />
+              <Button
+                size="xs"
+                disabled={!row.displayA || !row.displayB}
+                onClick={() => setPlaying((prev) => ({ cue: row.cue, runKey: (prev?.runKey ?? 0) + 1, refreshMs }))}
+              >
+                Play trial
+              </Button>
+            </Group>
+            {row.error && <Text size="xs" c="red">{row.error}</Text>}
+            <Group align="flex-start" gap="md" wrap="nowrap" style={{ overflowX: 'auto' }}>
+              {([['A — 24 items, 6 clusters', row.displayA, row.metricsA], [`B — ${nB} items, no grouping`, row.displayB, row.metricsB]] as const)
+                .map(([label, display, metrics]) => (
+                  <Stack key={label} gap={4} style={{ width, flexShrink: 0 }}>
+                    <Text size="xs" fw={600}>{label}</Text>
+                    <StimulusFrame display={display ?? undefined} />
+                    {display && <Text size="xs" c="dimmed">{diagnostics(display)}</Text>}
+                    {metrics && <Text size="xs" c="dimmed" data-testid="metrics-footer">{metricsLine(metrics)}</Text>}
+                  </Stack>
+                ))}
+            </Group>
+            {row.metricsA && row.metricsB && row.displayB && (
+              <Text size="xs" fw={600} data-testid="ratios-line">{ratiosLine(row.metricsA, row.metricsB, row.displayB)}</Text>
+            )}
+            {playing?.cue === row.cue && row.displayA && row.displayB && (
+              <TrialPreview
+                key={`${row.cue}-${aFirst}`}
+                displayA={row.displayA}
+                displayB={row.displayB}
+                aFirst={aFirst}
+                runKey={playing.runKey}
+                refreshMs={playing.refreshMs}
+              />
+            )}
+          </Stack>
+        );
+      })}
     </Stack>
   );
 }
