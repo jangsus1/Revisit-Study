@@ -4,7 +4,7 @@ The next eight trials are practice. The difference between the two diagrams is l
 should be easy. After each answer, press **Enter** to see whether you were right, then **Enter**
 again to continue.
 
-Remember: **F** or **left arrow** for the diagram on the left, **J** or **right arrow** for the
-diagram on the right.
+Remember: **F** or **left arrow** if the **first** diagram had more items, **J** or **right arrow**
+if the **second** one did.
 
 Press **Enter** when you are ready.

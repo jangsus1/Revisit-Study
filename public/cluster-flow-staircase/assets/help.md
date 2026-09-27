@@ -1,10 +1,10 @@
 # Help
 
-- A cross between two white panels means the next pair of diagrams is about to appear. One diagram
-  flashes on one side, then the other diagram on the other side.
-- Press **F** (or the **left arrow**) if the diagram on the **left** had more items, **J** (or the
-  **right arrow**) if the one on the **right** did.
-- Judge the number of dots, not the arrows.
+- A cross on a white panel means the next pair of diagrams is about to appear. The first diagram
+  flashes, then a brief patch of grey noise, then the second diagram at the same place.
+- Press **F** (or the **left arrow**) if the **first** diagram had more items, **J** (or the
+  **right arrow**) if the **second** one did.
+- Judge the number of items (dots or small marks), not the arrows or any outlines.
 - The two diagrams never have the same number of items, so always answer, even if you are guessing.
 - If you leave fullscreen, a button appears asking you to return to it. Click it and the trial
   continues.

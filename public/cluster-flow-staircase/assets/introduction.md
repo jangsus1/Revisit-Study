@@ -2,16 +2,16 @@
 
 Thank you for your interest in this study.
 
-In this experiment you will see pairs of diagrams flash on the screen, one after the other, and
-decide which of the two contained **more items**. Each diagram is only shown for a fifth of a
-second, so the task is about your first impression rather than careful counting.
+In this experiment you will see two diagrams flash on the screen, one after the other at the same
+place, and decide which of the two contained **more items**. Each diagram is only shown for a fifth
+of a second, so the task is about your first impression rather than careful counting.
 
-The study takes about 60 to 90 minutes and runs in fullscreen. It has four parts:
+The study takes about 15 to 20 minutes and runs in fullscreen. It has five parts:
 
 1. a consent form,
 2. a short check of your display's timing,
 3. instructions and eight practice trials with feedback,
-4. the main task: twelve short blocks of trials, with a break between blocks,
+4. the main task: one block of trials, with short breaks offered along the way,
 5. a few demographic questions.
 
 Please take the study on a laptop or desktop computer, in a quiet room, and stay in fullscreen for

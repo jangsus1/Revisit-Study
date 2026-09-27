@@ -2,16 +2,18 @@
 
 **Study title.** Counting items in flow diagrams.
 
-**What you will do.** You will view pairs of briefly presented diagrams (each shown for about
-0.2 seconds, one on the left and one on the right of the screen) and press one of two keys to
-indicate which side contained more items.
-The session includes practice trials, twelve blocks of the main task, and a short demographic
-questionnaire. It takes approximately 60 to 90 minutes.
+**What you will do.** You will view pairs of briefly presented diagrams. The two diagrams of a pair
+appear one after the other at the same place in the middle of the screen, each for about 0.2
+seconds, separated by a brief flash of grey noise. You then press one of two keys to indicate
+whether the first or the second diagram contained more items. The session includes practice
+trials, one block of the main task, and a short demographic questionnaire. It takes approximately
+15 to 20 minutes.
 
 **Risks and benefits.** There are no risks beyond those of ordinary computer use. The displays
-flash briefly but do not flicker rapidly. You may find the task tiring; you can rest between
-blocks for as long as you like. There is no direct benefit to you; the research helps us
-understand how visual grouping changes the way people estimate quantities in diagrams.
+flash briefly but do not flicker rapidly. You may find the task tiring; short breaks are offered
+during the main block and you can rest for as long as you like. There is no direct benefit to
+you; the research helps us understand how visual grouping changes the way people estimate
+quantities in diagrams.
 
 **Voluntary participation.** Taking part is entirely voluntary. You may stop at any time, for any
 reason, by closing the browser window, and you do not have to give a reason.

@@ -7,7 +7,7 @@
       "The reVISit Team"
     ],
     "date": "2026-09-04",
-    "description": "A staircased two-interval forced-choice study measuring how Gestalt grouping cues in flow diagrams change the perceived number of items.",
+    "description": "A staircased two-interval forced-choice study measuring how Gestalt grouping cues in flow diagrams change the perceived number of items. Each participant runs one cue x density cell.",
     "organizations": [
       "University of Utah",
       "WPI"
@@ -124,6 +124,11 @@
       "path": "cluster-flow-staircase/assets/block-intro.md",
       "response": []
     },
+    "rest": {
+      "type": "markdown",
+      "path": "cluster-flow-staircase/assets/rest.md",
+      "response": []
+    },
     "trial": {
       "baseComponent": "trial-base"
     },
@@ -141,26 +146,31 @@
       "consent",
       "setup",
       "instructions",
-      "practice-intro",
-      {
-        "id": "practice",
-        "order": "dynamic",
-        "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx"
-      },
       {
         "order": "latinSquare",
+        "numSamples": 1,
         "components": [
           {
             "order": "fixed",
             "components": [
+              "practice-intro",
+              {
+                "id": "practice-proximity-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "proximity",
+                  "density": "sparse"
+                }
+              },
               "block-intro",
               {
-                "id": "cell-none-sparse",
+                "id": "cell-proximity-sparse",
                 "order": "dynamic",
                 "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
                 "parameters": {
-                  "cellId": "cell-none-sparse",
-                  "cue": "none",
+                  "cellId": "cell-proximity-sparse",
+                  "cue": "proximity",
                   "density": "sparse"
                 }
               }
@@ -169,14 +179,24 @@
           {
             "order": "fixed",
             "components": [
+              "practice-intro",
+              {
+                "id": "practice-proximity-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "proximity",
+                  "density": "dense"
+                }
+              },
               "block-intro",
               {
-                "id": "cell-none-dense",
+                "id": "cell-proximity-dense",
                 "order": "dynamic",
                 "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
                 "parameters": {
-                  "cellId": "cell-none-dense",
-                  "cue": "none",
+                  "cellId": "cell-proximity-dense",
+                  "cue": "proximity",
                   "density": "dense"
                 }
               }
@@ -185,38 +205,16 @@
           {
             "order": "fixed",
             "components": [
-              "block-intro",
+              "practice-intro",
               {
-                "id": "cell-hull-sparse",
+                "id": "practice-rect-sparse",
                 "order": "dynamic",
-                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
-                  "cellId": "cell-hull-sparse",
-                  "cue": "hull",
+                  "cue": "rect",
                   "density": "sparse"
                 }
-              }
-            ]
-          },
-          {
-            "order": "fixed",
-            "components": [
-              "block-intro",
-              {
-                "id": "cell-hull-dense",
-                "order": "dynamic",
-                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
-                "parameters": {
-                  "cellId": "cell-hull-dense",
-                  "cue": "hull",
-                  "density": "dense"
-                }
-              }
-            ]
-          },
-          {
-            "order": "fixed",
-            "components": [
+              },
               "block-intro",
               {
                 "id": "cell-rect-sparse",
@@ -233,6 +231,16 @@
           {
             "order": "fixed",
             "components": [
+              "practice-intro",
+              {
+                "id": "practice-rect-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "rect",
+                  "density": "dense"
+                }
+              },
               "block-intro",
               {
                 "id": "cell-rect-dense",
@@ -249,6 +257,16 @@
           {
             "order": "fixed",
             "components": [
+              "practice-intro",
+              {
+                "id": "practice-color-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "color",
+                  "density": "sparse"
+                }
+              },
               "block-intro",
               {
                 "id": "cell-color-sparse",
@@ -265,6 +283,16 @@
           {
             "order": "fixed",
             "components": [
+              "practice-intro",
+              {
+                "id": "practice-color-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "color",
+                  "density": "dense"
+                }
+              },
               "block-intro",
               {
                 "id": "cell-color-dense",
@@ -281,38 +309,16 @@
           {
             "order": "fixed",
             "components": [
-              "block-intro",
+              "practice-intro",
               {
-                "id": "cell-edge-sparse",
+                "id": "practice-shape-sparse",
                 "order": "dynamic",
-                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
-                  "cellId": "cell-edge-sparse",
-                  "cue": "edge",
+                  "cue": "shape",
                   "density": "sparse"
                 }
-              }
-            ]
-          },
-          {
-            "order": "fixed",
-            "components": [
-              "block-intro",
-              {
-                "id": "cell-edge-dense",
-                "order": "dynamic",
-                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
-                "parameters": {
-                  "cellId": "cell-edge-dense",
-                  "cue": "edge",
-                  "density": "dense"
-                }
-              }
-            ]
-          },
-          {
-            "order": "fixed",
-            "components": [
+              },
               "block-intro",
               {
                 "id": "cell-shape-sparse",
@@ -329,6 +335,16 @@
           {
             "order": "fixed",
             "components": [
+              "practice-intro",
+              {
+                "id": "practice-shape-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "shape",
+                  "density": "dense"
+                }
+              },
               "block-intro",
               {
                 "id": "cell-shape-dense",
@@ -337,6 +353,58 @@
                 "parameters": {
                   "cellId": "cell-shape-dense",
                   "cue": "shape",
+                  "density": "dense"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "practice-intro",
+              {
+                "id": "practice-edge-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "edge",
+                  "density": "sparse"
+                }
+              },
+              "block-intro",
+              {
+                "id": "cell-edge-sparse",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-edge-sparse",
+                  "cue": "edge",
+                  "density": "sparse"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "practice-intro",
+              {
+                "id": "practice-edge-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "edge",
+                  "density": "dense"
+                }
+              },
+              "block-intro",
+              {
+                "id": "cell-edge-dense",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-edge-dense",
+                  "cue": "edge",
                   "density": "dense"
                 }
               }

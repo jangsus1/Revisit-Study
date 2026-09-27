@@ -16,7 +16,15 @@ interface StoredTrialData {
   nB: number;
   refreshMs: number;
   staircaseId: string;
-  measured: { fixation: number, a: number, blank1: number, b: number, blank2: number };
+  response: string;
+  aFirst: boolean;
+  hueOffset: number;
+  starts: { above: number, below: number } | null;
+  metricsA: { ink: number, meanNN: number };
+  metricsB: { ink: number, meanNN: number };
+  measured: {
+    fixation: number, s1: number, mask: number, blank: number, s2: number, blank2: number,
+  };
 }
 
 /** One stored trial: the platform record around the hidden telemetry. */
@@ -73,15 +81,29 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   const practiceDone = page.getByTestId('practice-done');
   const feedback = page.getByText(/Correct Answer|Incorrect Answer/);
   const completed = page.getByText(COMPLETED_MESSAGE, { exact: true });
+  // markdown pages inside the cell: practice intro, main-task intro and the rest page
+  const practiceIntro = page.getByRole('heading', { name: 'Practice', exact: true });
+  const blockIntro = page.getByRole('heading', { name: 'Main task', exact: true });
+  const rest = page.getByRole('heading', { name: 'Short break', exact: true });
 
   let trials = 0;
   let practiceTrials = 0;
-  const deadline = Date.now() + 45000;
+  let rests = 0;
+  let intros = 0;
+  const deadline = Date.now() + 60000;
   while (Date.now() < deadline) {
     if (await completed.isVisible()) {
       break;
     }
-    if (await gateButton.isVisible()) {
+    if (await practiceIntro.isVisible() || await blockIntro.isVisible() || await rest.isVisible()) {
+      if (await rest.isVisible()) {
+        rests += 1;
+      } else {
+        intros += 1;
+      }
+      await nextClick(page);
+      await expect(page.getByRole('heading', { name: /^(Practice|Main task|Short break)$/ })).toBeHidden({ timeout: 10000 });
+    } else if (await gateButton.isVisible()) {
       await gateButton.click();
     } else if (await practiceDone.isVisible()) {
       practiceTrials += 1;
@@ -99,9 +121,11 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   }
 
   await waitForStudyEndMessage(page);
-  // two practice trials plus the shortened cell
+  // two practice trials plus the shortened cell, with its two intro pages and at least one rest
   expect(practiceTrials).toBe(2);
   expect(trials).toBeGreaterThanOrEqual(3);
+  expect(intros).toBe(2);
+  expect(rests).toBeGreaterThanOrEqual(1);
 
   const stored = await readStoredTrials(page);
   expect(stored.length).toBe(trials);
@@ -112,13 +136,31 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   expect(typeof first.trialData.nB).toBe('number');
   expect(['practice', 'above', 'below', 'catch']).toContain(first.trialData.staircaseId);
 
-  // Stimulus A is shown for 200 ms; allow two frames of slack for the animation-frame scheduler.
+  // The stimuli are shown for 200 ms and the mask for 150 ms; allow two frames of slack for the
+  // animation-frame scheduler.
   const tolerance = 2 * first.trialData.refreshMs + 5;
+  const hueOffsets = new Set(stored.map((trial) => trial.trialData.hueOffset));
+  expect(hueOffsets.size).toBe(1);
   stored.forEach((trial) => {
     // the graded answer and the block's expected answer live on the platform record
-    expect(['left', 'right']).toContain(trial.trial);
+    expect(['first', 'second']).toContain(trial.trial);
+    expect(trial.trialData.response).toBe(trial.trial);
+    expect(typeof trial.trialData.aFirst).toBe('boolean');
     expect(trial.correctAnswer).toHaveLength(1);
-    expect(['left', 'right']).toContain(trial.correctAnswer[0].answer);
+    expect(['first', 'second']).toContain(trial.correctAnswer[0].answer);
+    // the larger display's interval: B's when N_B > 24, else A's
+    const bInterval = trial.trialData.aFirst ? 'second' : 'first';
+    const aInterval = trial.trialData.aFirst ? 'first' : 'second';
+    expect(trial.correctAnswer[0].answer).toBe(trial.trialData.nB > 24 ? bInterval : aInterval);
+    expect(trial.trialData.metricsA.ink).toBeGreaterThan(0);
+    expect(trial.trialData.metricsB.meanNN).toBeGreaterThan(0);
+
+    if (trial.trialData.staircaseId === 'practice') {
+      expect(trial.trialData.starts).toBeNull();
+    } else {
+      expect(trial.trialData.starts?.above).toBeGreaterThanOrEqual(30);
+      expect(trial.trialData.starts?.below).toBeLessThanOrEqual(18);
+    }
 
     if (trial.trialData.staircaseId === 'practice') {
       // practice answers were graded by reVISit's Check Answer
@@ -126,7 +168,8 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
       expect(trial.checkAnswer?.correct).toBe(trial.trial === trial.correctAnswer[0].answer);
     }
 
-    expect(Math.abs(trial.trialData.measured.a - 200)).toBeLessThanOrEqual(tolerance);
-    expect(Math.abs(trial.trialData.measured.b - 200)).toBeLessThanOrEqual(tolerance);
+    expect(Math.abs(trial.trialData.measured.s1 - 200)).toBeLessThanOrEqual(tolerance);
+    expect(Math.abs(trial.trialData.measured.mask - 150)).toBeLessThanOrEqual(tolerance);
+    expect(Math.abs(trial.trialData.measured.s2 - 200)).toBeLessThanOrEqual(tolerance);
   });
 });
