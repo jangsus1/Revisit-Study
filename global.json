@@ -3,6 +3,7 @@
   "configsList": [
     "scatterplot_timing",
     "scatterplot_gaze",
+    "gaze_playground",
     "scatterplot_duration",
     "scatterplot_extend",
     "scatterplot_interval",
