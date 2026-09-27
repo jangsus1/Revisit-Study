@@ -4,14 +4,14 @@ import {
 import type { ParticipantData } from '../../../../parser/types';
 import type { TrialAnswer, TrialParams } from '../generator/types';
 import practiceBlock from '../practiceBlock';
-import { correctSide } from '../staircaseBlock';
+import { correctInterval, drawHueOffset } from '../staircaseBlock';
 
 vi.mock('../generator', () => ({
   hashSeed: (...parts: (string | number)[]) => parts.reduce<number>(
     (acc, part) => String(part).split('').reduce((inner, char) => (inner * 31 + char.charCodeAt(0)) % 2147483647, acc),
     7,
   ),
-  CUES: ['none', 'hull', 'rect', 'color', 'edge', 'shape'],
+  CUES: ['proximity', 'rect', 'color', 'shape', 'edge'],
   DENSITIES: ['sparse', 'dense'],
 }));
 
@@ -24,15 +24,17 @@ function storedTrials(count: number): ParticipantData['answers'] {
     {
       componentName: 'practice-trial',
       endTime: index + 1,
-      answer: { trial: 'left', trialData: { staircaseId: 'practice', trialIndex: index } as unknown as TrialAnswer },
-      correctAnswer: [{ id: 'trial', answer: 'left' }],
+      answer: { trial: 'first', trialData: { staircaseId: 'practice', trialIndex: index } as unknown as TrialAnswer },
+      correctAnswer: [{ id: 'trial', answer: 'first' }],
     },
   ])) as unknown as ParticipantData['answers'];
 }
 
-function runPractice(count: number, customParameters?: { trials?: number }) {
+const CELL = { cue: 'shape' as const, density: 'dense' as const };
+
+function runPractice(count: number, overrides: { trials?: number } = {}) {
   return practiceBlock({
-    answers: storedTrials(count), customParameters, currentStep: STEP, currentBlock: BLOCK,
+    answers: storedTrials(count), customParameters: { ...CELL, ...overrides }, currentStep: STEP, currentBlock: BLOCK,
   });
 }
 
@@ -45,28 +47,28 @@ describe('practiceBlock', () => {
     expect(parameters.cellId).toBe('practice');
     expect(parameters.trialIndex).toBe(0);
     expect(parameters.refreshMs).toBeCloseTo(1000 / 60, 5);
+    expect(parameters.starts).toBeNull();
+    expect(parameters.hueOffset).toBe(drawHueOffset(1));
   });
 
-  test('alternates the easy item counts and cycles the cues', () => {
+  test('alternates the easy item counts, always in the participant\'s own cell', () => {
     const seen = new Array(8).fill(null).map((_, index) => runPractice(index).parameters as unknown as TrialParams);
     expect(seen.map((parameters) => parameters.nB)).toEqual([12, 40, 12, 40, 12, 40, 12, 40]);
-    expect(seen.map((parameters) => parameters.cue)).toEqual(['none', 'hull', 'rect', 'color', 'edge', 'shape', 'none', 'hull']);
-    expect(seen.map((parameters) => parameters.density)).toEqual([
-      'sparse', 'sparse', 'dense', 'dense', 'sparse', 'sparse', 'dense', 'dense',
-    ]);
+    expect(seen.every((parameters) => parameters.cue === 'shape' && parameters.density === 'dense')).toBe(true);
     expect(new Set(seen.map((parameters) => parameters.seedA)).size).toBe(8);
+    expect(new Set(seen.map((parameters) => parameters.aFirst)).size).toBe(2);
   });
 
-  test('marks the side of the larger display as the correct answer', () => {
+  test('marks the interval of the larger display as the correct answer', () => {
     const easyA = runPractice(0);
     const easyB = runPractice(1);
-    const aOnLeft0 = (easyA.parameters as unknown as TrialParams).aOnLeft;
-    const aOnLeft1 = (easyB.parameters as unknown as TrialParams).aOnLeft;
+    const aFirst0 = (easyA.parameters as unknown as TrialParams).aFirst;
+    const aFirst1 = (easyB.parameters as unknown as TrialParams).aFirst;
     // trial 0 has nB = 12 (A larger), trial 1 has nB = 40 (B larger)
-    expect(easyA.correctAnswer).toEqual([{ id: 'trial', answer: correctSide(12, aOnLeft0, 24) }]);
-    expect(easyB.correctAnswer).toEqual([{ id: 'trial', answer: correctSide(40, aOnLeft1, 24) }]);
-    expect(easyA.correctAnswer?.[0].answer).toBe(aOnLeft0 ? 'left' : 'right');
-    expect(easyB.correctAnswer?.[0].answer).toBe(aOnLeft1 ? 'right' : 'left');
+    expect(easyA.correctAnswer).toEqual([{ id: 'trial', answer: correctInterval(12, aFirst0, 24) }]);
+    expect(easyB.correctAnswer).toEqual([{ id: 'trial', answer: correctInterval(40, aFirst1, 24) }]);
+    expect(easyA.correctAnswer?.[0].answer).toBe(aFirst0 ? 'first' : 'second');
+    expect(easyB.correctAnswer?.[0].answer).toBe(aFirst1 ? 'second' : 'first');
   });
 
   test('ends after eight trials by default', () => {
@@ -87,7 +89,7 @@ describe('practiceBlock', () => {
           componentName: 'setup', endTime: 1, answer: { setup: { sessionSalt: 555, refreshMs: 10 } },
         },
       } as unknown as ParticipantData['answers'],
-      customParameters: undefined,
+      customParameters: CELL,
       currentStep: STEP,
       currentBlock: BLOCK,
     });

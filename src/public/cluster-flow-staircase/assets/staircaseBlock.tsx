@@ -1,10 +1,12 @@
 /**
- * Dynamic block driving one cell (cue x density) of the cluster-flow experiment.
+ * Dynamic block driving the participant's one cell (cue x density) of the cluster-flow experiment.
  *
  * The block is stateless: every call re-derives the staircase state from the trials already
  * stored for this block, asks `nextTrial` what to show, and returns the fully specified trial
- * parameters. Seeds are derived from the session salt created in `SetupCheck`, so the whole
- * session can be regenerated from the stored data.
+ * parameters. Seeds, the interval order, the staircase starting levels and the colour-wheel
+ * rotation are all derived from the session salt created in `SetupCheck`, so the whole session can
+ * be regenerated from the stored data. Every `restEvery` main trials the block inserts the `rest`
+ * page before the next trial.
  */
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
 import type {
@@ -23,22 +25,42 @@ export interface StaircaseBlockParameters {
   maxTrials?: number;
   maxReversals?: number;
   catchEvery?: number;
+  /** offer the `rest` page after every this many main (non-catch) trials; default 60, 0 = never */
+  restEvery?: number;
 }
 
 const DEFAULT_REFRESH_MS = 1000 / 60;
 const DEFAULT_SALT = 1;
 
-/** The side that holds the display with more items: B when N_B exceeds the reference, else A. */
-export function correctSide(nB: number, aOnLeft: boolean, target: number): 'left' | 'right' {
+const DEFAULT_REST_EVERY = 60;
+
+/** The interval that holds the display with more items: B's when N_B exceeds the reference, else A's. */
+export function correctInterval(nB: number, aFirst: boolean, target: number): 'first' | 'second' {
   const bIsLarger = nB > target;
-  const bSide = aOnLeft ? 'right' : 'left';
-  const aSide = aOnLeft ? 'left' : 'right';
-  return bIsLarger ? bSide : aSide;
+  const bInterval = aFirst ? 'second' : 'first';
+  const aInterval = aFirst ? 'first' : 'second';
+  return bIsLarger ? bInterval : aInterval;
 }
 
-/** Draws which slot shows stimulus A, from its own seed so the arm-choice draw sequence is unchanged. */
-export function drawAOnLeft(sessionSalt: number, cellId: string, trialIndex: number): boolean {
-  return mulberry32(hashSeed(sessionSalt, cellId, trialIndex, 'side'))() < 0.5;
+/** Draws whether stimulus A is shown first, from its own seed so the arm-choice draws are unchanged. */
+export function drawAFirst(sessionSalt: number, cellId: string, trialIndex: number): boolean {
+  return mulberry32(hashSeed(sessionSalt, cellId, trialIndex, 'order'))() < 0.5;
+}
+
+/**
+ * The participant's staircase starting levels for a cell: the ascending arm starts at 16, 17 or 18
+ * and the descending arm at 30, 31 or 32, each uniformly and independently.
+ */
+export function drawStarts(sessionSalt: number, cellId: string): { above: number; below: number } {
+  const rng = mulberry32(hashSeed(sessionSalt, cellId, 'starts'));
+  const below = 16 + Math.floor(rng() * 3);
+  const above = 30 + Math.floor(rng() * 3);
+  return { above, below };
+}
+
+/** The participant's colour-wheel rotation: a whole number of degrees in [0, 60), one per session. */
+export function drawHueOffset(sessionSalt: number): number {
+  return Math.floor(mulberry32(hashSeed(sessionSalt, 'hue'))() * 60);
 }
 
 /** Reads the session salt and measured refresh rate written by the `setup` component. */
@@ -55,6 +77,19 @@ export function readSetupAnswer(answers: JumpFunctionParameters<unknown>['answer
 
 /** A stored trial with its correctness derived from the platform record. */
 export type BlockTrial = TrialAnswer & { correct: boolean };
+
+/** How many `rest` pages this block has already shown (finished records only). */
+export function countRests(
+  answers: JumpFunctionParameters<unknown>['answers'],
+  currentBlock: string,
+  currentStep: number,
+): number {
+  return Object.entries(answers)
+    .filter(([key, value]) => key.startsWith(`${currentBlock}_${currentStep}_`)
+      && value.componentName === 'rest'
+      && value.endTime > -1)
+    .length;
+}
 
 /**
  * Collects the completed trials of this block, in the order they were run. Correctness comes from
@@ -84,17 +119,21 @@ export default function staircaseBlock({
   answers, customParameters, currentStep, currentBlock,
 }: JumpFunctionParameters<StaircaseBlockParameters>): JumpFunctionReturnVal {
   const {
-    cellId, cue, density, maxTrials, maxReversals, catchEvery,
+    cellId, cue, density, maxTrials, maxReversals, catchEvery, restEvery,
   } = customParameters;
+
+  const { sessionSalt, refreshMs } = readSetupAnswer(answers);
+  const starts = drawStarts(sessionSalt, cellId);
 
   const cfg: StaircaseConfig = {
     ...DEFAULT_STAIRCASE_CONFIG,
+    startAbove: starts.above,
+    startBelow: starts.below,
     ...(maxTrials === undefined ? {} : { maxTrials }),
     ...(maxReversals === undefined ? {} : { maxReversals }),
     ...(catchEvery === undefined ? {} : { catchEvery }),
   };
 
-  const { sessionSalt, refreshMs } = readSetupAnswer(answers);
   const trials = collectBlockTrials(answers, currentBlock, currentStep);
   const state = deriveState(trials, cfg);
 
@@ -106,7 +145,16 @@ export default function staircaseBlock({
     return { component: null };
   }
 
-  const aOnLeft = drawAOnLeft(sessionSalt, cellId, trialIndex);
+  // A rest is due once another `restEvery` main trials have run since the last one.
+  const every = restEvery ?? DEFAULT_REST_EVERY;
+  if (every > 0) {
+    const mainTrials = trials.filter((t) => t.staircaseId === 'above' || t.staircaseId === 'below').length;
+    if (Math.floor(mainTrials / every) > countRests(answers, currentBlock, currentStep)) {
+      return { component: 'rest' };
+    }
+  }
+
+  const aFirst = drawAFirst(sessionSalt, cellId, trialIndex);
   const parameters: TrialParams = {
     seedA: hashSeed(sessionSalt, cellId, trialIndex, 'A'),
     seedB: hashSeed(sessionSalt, cellId, trialIndex, 'B'),
@@ -116,13 +164,15 @@ export default function staircaseBlock({
     cellId,
     trialIndex,
     staircaseId: next.staircaseId,
-    aOnLeft,
+    aFirst,
+    hueOffset: drawHueOffset(sessionSalt),
+    starts,
     refreshMs,
   };
 
   return {
     component: 'trial',
     parameters: { ...parameters },
-    correctAnswer: [{ id: 'trial', answer: correctSide(next.nB, aOnLeft, cfg.target) }],
+    correctAnswer: [{ id: 'trial', answer: correctInterval(next.nB, aFirst, cfg.target) }],
   };
 }

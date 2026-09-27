@@ -2,7 +2,8 @@
  * Pure staircase bookkeeping for the cluster-flow experiment.
  *
  * Two interleaved 2-down-1-up staircases run per cell, one starting above the reference count
- * (N_A = 24) and one below it. The whole state is *derived* from the stored trial history on
+ * (N_A = 24) and one below it, with a step of one item and 20 reversals each. The starting levels
+ * are drawn per participant by `staircaseBlock` (`drawStarts`) and passed in through the config. The whole state is *derived* from the stored trial history on
  * every call so the dynamic block stays stateless and a reload cannot desynchronise it.
  *
  * No React, no generator imports at runtime (the StaircaseId type import is erased at compile
@@ -35,17 +36,20 @@ export interface StaircaseConfig {
 }
 
 export const DEFAULT_STAIRCASE_CONFIG: StaircaseConfig = {
-  startAbove: 34,
-  startBelow: 14,
-  step: 2,
+  startAbove: 31,
+  startBelow: 17,
+  step: 1,
   target: 24,
   min: 8,
   max: 48,
-  maxReversals: 5,
-  maxTrials: 30,
+  maxReversals: 20,
+  maxTrials: 100,
   catchEvery: 15,
   catchValues: [12, 40],
 };
+
+/** Reversals discarded from the front of each arm before averaging (the approach phase). */
+export const DISCARD_REVERSALS = 4;
 
 /** The minimal shape of a stored trial that the staircase needs. `TrialAnswer` satisfies it. */
 export interface StaircaseTrial {
@@ -84,7 +88,10 @@ export interface StaircaseState {
 export interface StaircaseSummary {
   thresholdAbove: number | null;
   thresholdBelow: number | null;
+  /** mean of the two arm thresholds (or the one that exists) */
   threshold: number | null;
+  reversalsAbove: number;
+  reversalsBelow: number;
   catchCorrect: number;
   catchTotal: number;
 }
@@ -213,12 +220,30 @@ export function nextTrial(
   return { staircaseId: pick, nB: state[pick].current };
 }
 
-/** Threshold estimates for a finished (or partial) block. */
+/**
+ * The reversal levels an arm's threshold is averaged over: the first `DISCARD_REVERSALS` are
+ * dropped, then one more from the front when the remainder is odd, so the average always spans
+ * whole down-up cycles.
+ */
+export function usableReversals(reversals: number[]): number[] {
+  const rest = reversals.slice(DISCARD_REVERSALS);
+  return rest.length % 2 === 1 ? rest.slice(1) : rest;
+}
+
+/**
+ * Threshold estimates for a finished (or partial) block. A convenience for monitoring; the planned
+ * analysis fits a psychometric function to the stored trials.
+ */
 export function summarise(state: StaircaseState): StaircaseSummary {
+  const thresholdAbove = mean(usableReversals(state.above.reversals));
+  const thresholdBelow = mean(usableReversals(state.below.reversals));
+  const arms = [thresholdAbove, thresholdBelow].filter((t): t is number => t !== null);
   return {
-    thresholdAbove: mean(state.above.reversals),
-    thresholdBelow: mean(state.below.reversals),
-    threshold: mean([...state.above.reversals, ...state.below.reversals]),
+    thresholdAbove,
+    thresholdBelow,
+    threshold: mean(arms),
+    reversalsAbove: state.above.reversals.length,
+    reversalsBelow: state.below.reversals.length,
     catchCorrect: state.catchCorrect,
     catchTotal: state.catchTotal,
   };

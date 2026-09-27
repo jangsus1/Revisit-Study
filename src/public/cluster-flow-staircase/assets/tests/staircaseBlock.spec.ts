@@ -4,7 +4,7 @@ import {
 import type { ParticipantData } from '../../../../parser/types';
 import type { TrialAnswer, TrialParams } from '../generator/types';
 import staircaseBlock, {
-  collectBlockTrials, correctSide, drawAOnLeft, readSetupAnswer,
+  collectBlockTrials, correctInterval, countRests, drawAFirst, drawHueOffset, drawStarts, readSetupAnswer,
 } from '../staircaseBlock';
 
 // The generator is mocked everywhere in these component tests: the block only needs `hashSeed`
@@ -14,7 +14,7 @@ vi.mock('../generator', () => ({
     (acc, part) => String(part).split('').reduce((inner, char) => (inner * 31 + char.charCodeAt(0)) % 2147483647, acc),
     7,
   ),
-  CUES: ['none', 'hull', 'rect', 'color', 'edge', 'shape'],
+  CUES: ['proximity', 'rect', 'color', 'shape', 'edge'],
   DENSITIES: ['sparse', 'dense'],
 }));
 
@@ -26,8 +26,10 @@ type FixtureTrial = TrialAnswer & { correct: boolean };
 
 function trialAnswer(overrides: Partial<FixtureTrial>): FixtureTrial {
   return {
-    response: 'left',
-    aOnLeft: true,
+    response: 'first',
+    aFirst: true,
+    hueOffset: 0,
+    starts: { above: 31, below: 17 },
     correct: true,
     rtMs: 500,
     nA: 24,
@@ -42,7 +44,7 @@ function trialAnswer(overrides: Partial<FixtureTrial>): FixtureTrial {
     attemptsA: 1,
     attemptsB: 1,
     measured: {
-      fixation: 500, a: 200, blank1: 400, b: 200, blank2: 400,
+      fixation: 500, s1: 200, mask: 150, blank: 250, s2: 200, blank2: 400,
     },
     refreshMs: 16.67,
     fullscreen: true,
@@ -60,7 +62,7 @@ function answers(entries: Record<string, unknown>): ParticipantData['answers'] {
  */
 function blockAnswers(trials: FixtureTrial[]) {
   return Object.fromEntries(trials.map(({ correct, ...trial }, index) => {
-    const other = trial.response === 'left' ? 'right' : 'left';
+    const other = trial.response === 'first' ? 'second' : 'first';
     return [
       `${BLOCK}_${STEP}_trial_${index}`,
       {
@@ -113,61 +115,110 @@ describe('collectBlockTrials', () => {
 
   test('derives correctness from the stored answer and the platform correctAnswer', () => {
     const collected = collectBlockTrials(answers(blockAnswers([
-      trialAnswer({ trialIndex: 0, response: 'left', correct: true }),
-      trialAnswer({ trialIndex: 1, response: 'right', correct: false }),
+      trialAnswer({ trialIndex: 0, response: 'first', correct: true }),
+      trialAnswer({ trialIndex: 1, response: 'second', correct: false }),
     ])), BLOCK, STEP);
 
     expect(collected.map((trial) => trial.correct)).toEqual([true, false]);
-    expect(collected.map((trial) => trial.response)).toEqual(['left', 'right']);
+    expect(collected.map((trial) => trial.response)).toEqual(['first', 'second']);
   });
 
   test('skips records that carry no correctAnswer', () => {
     const { correct: _ignored, ...trial } = trialAnswer({ trialIndex: 0 });
     const collected = collectBlockTrials(answers({
-      [`${BLOCK}_${STEP}_trial_0`]: { componentName: 'trial', endTime: 1, answer: { trial: 'left', trialData: trial } },
+      [`${BLOCK}_${STEP}_trial_0`]: { componentName: 'trial', endTime: 1, answer: { trial: 'first', trialData: trial } },
     }), BLOCK, STEP);
     expect(collected).toEqual([]);
   });
 });
 
-describe('correctSide', () => {
-  test('names the side holding the larger display', () => {
-    // B larger, A on the left -> B is on the right
-    expect(correctSide(34, true, 24)).toBe('right');
-    // B larger, A on the right -> B is on the left
-    expect(correctSide(34, false, 24)).toBe('left');
-    // A larger, A on the left
-    expect(correctSide(14, true, 24)).toBe('left');
-    // A larger, A on the right
-    expect(correctSide(14, false, 24)).toBe('right');
+describe('correctInterval', () => {
+  test('names the interval holding the larger display', () => {
+    // B larger, A first -> B is second
+    expect(correctInterval(34, true, 24)).toBe('second');
+    // B larger, A second -> B is first
+    expect(correctInterval(34, false, 24)).toBe('first');
+    // A larger, A first
+    expect(correctInterval(14, true, 24)).toBe('first');
+    // A larger, A second
+    expect(correctInterval(14, false, 24)).toBe('second');
+    // just either side of the reference
+    expect(correctInterval(25, true, 24)).toBe('second');
+    expect(correctInterval(23, true, 24)).toBe('first');
   });
 });
 
-describe('drawAOnLeft', () => {
+describe('drawAFirst', () => {
   test('is deterministic and varies across trials', () => {
-    expect(drawAOnLeft(7, 'cell-x', 3)).toBe(drawAOnLeft(7, 'cell-x', 3));
-    const sides = new Array(40).fill(null).map((_, index) => drawAOnLeft(7, 'cell-x', index));
-    expect(sides).toContain(true);
-    expect(sides).toContain(false);
+    expect(drawAFirst(7, 'cell-x', 3)).toBe(drawAFirst(7, 'cell-x', 3));
+    const orders = new Array(40).fill(null).map((_, index) => drawAFirst(7, 'cell-x', index));
+    expect(orders).toContain(true);
+    expect(orders).toContain(false);
+  });
+});
+
+describe('drawStarts', () => {
+  test('draws the ascending start from 16 to 18 and the descending one from 30 to 32', () => {
+    const seenBelow = new Set<number>();
+    const seenAbove = new Set<number>();
+    for (let salt = 0; salt < 200; salt += 1) {
+      const { above, below } = drawStarts(salt, 'cell-x');
+      seenBelow.add(below);
+      seenAbove.add(above);
+    }
+    expect([...seenBelow].sort()).toEqual([16, 17, 18]);
+    expect([...seenAbove].sort()).toEqual([30, 31, 32]);
+    expect(drawStarts(5, 'cell-x')).toEqual(drawStarts(5, 'cell-x'));
+  });
+});
+
+describe('drawHueOffset', () => {
+  test('is a whole number of degrees in [0, 60), fixed per session', () => {
+    const seen = new Set<number>();
+    for (let salt = 0; salt < 300; salt += 1) {
+      const h = drawHueOffset(salt);
+      expect(Number.isInteger(h)).toBe(true);
+      expect(h).toBeGreaterThanOrEqual(0);
+      expect(h).toBeLessThan(60);
+      seen.add(h);
+    }
+    expect(seen.size).toBeGreaterThan(30);
+    expect(drawHueOffset(9)).toBe(drawHueOffset(9));
+  });
+});
+
+describe('countRests', () => {
+  test('counts the finished rest pages of this block only', () => {
+    expect(countRests(answers({
+      [`${BLOCK}_${STEP}_rest_4`]: { componentName: 'rest', endTime: 5, answer: {} },
+      [`${BLOCK}_${STEP}_rest_9`]: { componentName: 'rest', endTime: -1, answer: {} },
+      [`${BLOCK}_${STEP}_trial_0`]: { componentName: 'trial', endTime: 5, answer: {} },
+      other_3_rest_1: { componentName: 'rest', endTime: 5, answer: {} },
+    }), BLOCK, STEP)).toBe(1);
   });
 });
 
 describe('staircaseBlock', () => {
-  test('starts with a trial from one of the two staircases', () => {
+  test('starts with a trial from one of the two staircases at the participant\'s drawn starts', () => {
     const result = staircaseBlock({
       answers: answers({}), customParameters: params, currentStep: STEP, currentBlock: BLOCK,
     });
 
     const parameters = result.parameters as unknown as TrialParams;
+    const starts = drawStarts(1, 'cell-color-sparse');
     expect(result.component).toBe('trial');
-    expect([34, 14]).toContain(parameters.nB);
+    expect(parameters.starts).toEqual(starts);
+    expect([starts.above, starts.below]).toContain(parameters.nB);
     expect(['above', 'below']).toContain(parameters.staircaseId);
+    expect(parameters.nB).toBe(parameters.staircaseId === 'above' ? starts.above : starts.below);
     expect(parameters.trialIndex).toBe(0);
     expect(parameters.cue).toBe('color');
     expect(parameters.density).toBe('sparse');
     expect(parameters.cellId).toBe('cell-color-sparse');
     expect(parameters.refreshMs).toBeCloseTo(1000 / 60, 5);
     expect(parameters.seedA).not.toBe(parameters.seedB);
+    expect(parameters.hueOffset).toBe(drawHueOffset(1));
+    expect(typeof parameters.aFirst).toBe('boolean');
   });
 
   test('is deterministic for the same history', () => {
@@ -192,9 +243,11 @@ describe('staircaseBlock', () => {
     const b = withoutSetup.parameters as unknown as TrialParams;
     expect(a.refreshMs).toBeCloseTo(8.33, 5);
     expect(a.seedA).not.toBe(b.seedA);
+    expect(a.hueOffset).toBe(drawHueOffset(424242));
+    expect(a.starts).toEqual(drawStarts(424242, 'cell-color-sparse'));
   });
 
-  test('marks the larger display as the correct answer', () => {
+  test('marks the interval of the larger display as the correct answer', () => {
     for (let i = 0; i < 6; i += 1) {
       const result = staircaseBlock({
         answers: answers(blockAnswers(new Array(i).fill(null).map((_, index) => trialAnswer({ trialIndex: index, staircaseId: index % 2 === 0 ? 'above' : 'below' })))),
@@ -203,8 +256,8 @@ describe('staircaseBlock', () => {
         currentBlock: BLOCK,
       });
       const parameters = result.parameters as unknown as TrialParams;
-      expect(typeof parameters.aOnLeft).toBe('boolean');
-      expect(result.correctAnswer).toEqual([{ id: 'trial', answer: correctSide(parameters.nB, parameters.aOnLeft, 24) }]);
+      expect(parameters.aFirst).toBe(drawAFirst(1, 'cell-color-sparse', i));
+      expect(result.correctAnswer).toEqual([{ id: 'trial', answer: correctInterval(parameters.nB, parameters.aFirst, 24) }]);
     }
   });
 
@@ -212,7 +265,7 @@ describe('staircaseBlock', () => {
     const result = staircaseBlock({
       answers: answers(blockAnswers([
         trialAnswer({ trialIndex: 0, staircaseId: 'above' }),
-        trialAnswer({ trialIndex: 1, staircaseId: 'below', nB: 14 }),
+        trialAnswer({ trialIndex: 1, staircaseId: 'below', nB: 17 }),
       ])),
       customParameters: params,
       currentStep: STEP,
@@ -225,7 +278,7 @@ describe('staircaseBlock', () => {
     const result = staircaseBlock({
       answers: answers(blockAnswers([
         trialAnswer({ trialIndex: 0, staircaseId: 'above' }),
-        trialAnswer({ trialIndex: 1, staircaseId: 'below', nB: 14 }),
+        trialAnswer({ trialIndex: 1, staircaseId: 'below', nB: 17 }),
       ])),
       customParameters: { ...params, catchEvery: 2 },
       currentStep: STEP,
@@ -240,7 +293,7 @@ describe('staircaseBlock', () => {
     const result = staircaseBlock({
       answers: answers(blockAnswers([
         trialAnswer({ trialIndex: 0, staircaseId: 'above' }),
-        trialAnswer({ trialIndex: 1, staircaseId: 'below', nB: 14 }),
+        trialAnswer({ trialIndex: 1, staircaseId: 'below', nB: 17 }),
       ])),
       customParameters: { ...params, maxTrials: 1 },
       currentStep: STEP,
@@ -265,5 +318,55 @@ describe('staircaseBlock', () => {
       currentBlock: BLOCK,
     });
     expect(result).toEqual({ component: null });
+  });
+
+  describe('rest breaks', () => {
+    const mainTrials = (count: number) => new Array(count).fill(null).map((_, index) => trialAnswer({
+      trialIndex: index, staircaseId: index % 2 === 0 ? 'above' : 'below', nB: index % 2 === 0 ? 31 : 17,
+    }));
+    const call = (entries: Record<string, unknown>, restEvery?: number) => staircaseBlock({
+      answers: answers(entries),
+      customParameters: {
+        ...params, catchEvery: 999, ...(restEvery === undefined ? {} : { restEvery }),
+      },
+      currentStep: STEP,
+      currentBlock: BLOCK,
+    });
+
+    test('offers the rest page after every 60 main trials by default', () => {
+      expect(call(blockAnswers(mainTrials(59))).component).toBe('trial');
+      expect(call(blockAnswers(mainTrials(60)))).toEqual({ component: 'rest' });
+    });
+
+    test('shows each rest once, then carries on with the next trial', () => {
+      const afterRest = call({
+        ...blockAnswers(mainTrials(60)),
+        [`${BLOCK}_${STEP}_rest_60`]: { componentName: 'rest', endTime: 61, answer: {} },
+      });
+      expect(afterRest.component).toBe('trial');
+      expect((afterRest.parameters as unknown as TrialParams).trialIndex).toBe(60);
+    });
+
+    test('honours the restEvery override and 0 turns rests off', () => {
+      expect(call(blockAnswers(mainTrials(2)), 2)).toEqual({ component: 'rest' });
+      expect(call(blockAnswers(mainTrials(2)), 0).component).toBe('trial');
+    });
+
+    test('catch trials do not count toward a rest', () => {
+      const trials = [...mainTrials(1), trialAnswer({ trialIndex: 1, staircaseId: 'catch', nB: 12 })];
+      expect(call(blockAnswers(trials), 2).component).toBe('trial');
+    });
+
+    test('no rest is offered once the block is finished', () => {
+      const result = staircaseBlock({
+        answers: answers(blockAnswers(mainTrials(2))),
+        customParameters: {
+          ...params, maxTrials: 1, restEvery: 2,
+        },
+        currentStep: STEP,
+        currentBlock: BLOCK,
+      });
+      expect(result).toEqual({ component: null });
+    });
   });
 });

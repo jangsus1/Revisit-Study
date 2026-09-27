@@ -4,36 +4,35 @@
  */
 import { ReactNode } from 'react';
 import { GENERATOR_CONFIG as C } from '../generator/config';
+import {
+  CROSS_ARM, CROSS_STROKE, DASH_ARRAY, DOT_R, HEAD_LEN, HEAD_W, HOLLOW_SIDE, HOLLOW_STROKE, LINK_W, TRIM,
+} from '../generator/geometry';
 import { Display, DisplayNode } from '../generator/types';
 
-const DOT_R = C.RDOT * C.SCALE;
-const TRIM = (C.RDOT + C.LINK_TRIM) * C.SCALE;
-const LINK_W = C.LINK_WIDTH * C.SCALE;
-const HEAD_LEN = C.ARROWHEAD.length * C.SCALE;
-const HEAD_W = C.ARROWHEAD.width * C.SCALE;
-const DASH = C.DASH.map((d) => d * C.SCALE).join(' ');
-/** Side of the square / diamond marks, area-matched to a circle of radius DOT_R. */
-const SIDE = DOT_R * Math.sqrt(Math.PI);
-
 function nodeMark(node: DisplayNode) {
-  if (node.shape === 'square') {
+  if (node.shape === 'hollowSquare') {
+    // the outline sits inside the outer side, so the mark's footprint is HOLLOW_SIDE square
+    const inner = HOLLOW_SIDE - HOLLOW_STROKE;
     return (
       <rect
         key={node.id}
-        x={node.x - SIDE / 2}
-        y={node.y - SIDE / 2}
-        width={SIDE}
-        height={SIDE}
-        fill={node.fill}
+        x={node.x - inner / 2}
+        y={node.y - inner / 2}
+        width={inner}
+        height={inner}
+        fill="none"
+        stroke={node.fill}
+        strokeWidth={HOLLOW_STROKE}
       />
     );
   }
-  if (node.shape === 'diamond') {
-    const h = SIDE / Math.SQRT2;
-    const points = [
-      [node.x, node.y - h], [node.x + h, node.y], [node.x, node.y + h], [node.x - h, node.y],
-    ].map(([x, y]) => `${x},${y}`).join(' ');
-    return <polygon key={node.id} points={points} fill={node.fill} />;
+  if (node.shape === 'cross') {
+    return (
+      <g key={node.id} stroke={node.fill} strokeWidth={CROSS_STROKE} strokeLinecap="butt">
+        <line x1={node.x - CROSS_ARM} y1={node.y} x2={node.x + CROSS_ARM} y2={node.y} />
+        <line x1={node.x} y1={node.y - CROSS_ARM} x2={node.x} y2={node.y + CROSS_ARM} />
+      </g>
+    );
   }
   return <circle key={node.id} cx={node.x} cy={node.y} r={DOT_R} fill={node.fill} />;
 }
@@ -52,17 +51,7 @@ export function StimulusSVG({ display }: { display: Display }) {
     >
       <rect x={0} y={0} width={display.width} height={display.height} fill={display.background} />
 
-      {/* cue layers sit under the dots */}
-      {display.clusters.map((cluster) => (cluster.hull ? (
-        <polygon
-          key={`hull-${cluster.index}`}
-          points={cluster.hull.map(([x, y]) => `${x},${y}`).join(' ')}
-          fill="none"
-          stroke={C.HULL_STROKE}
-          strokeWidth={C.HULL_STROKE_WIDTH}
-          strokeLinejoin="round"
-        />
-      ) : null))}
+      {/* the rect cue sits under the links and dots */}
       {display.clusters.map((cluster) => (cluster.rect ? (
         <rect
           key={`rect-${cluster.index}`}
@@ -106,7 +95,8 @@ export function StimulusSVG({ display }: { display: Display }) {
               y2={by}
               stroke={C.LINK_STROKE}
               strokeWidth={LINK_W}
-              strokeDasharray={edge.dashed ? DASH : undefined}
+              strokeDasharray={edge.dashed ? DASH_ARRAY : undefined}
+              strokeLinecap={edge.dashed ? 'round' : 'butt'}
             />
             <polygon points={head} fill={C.LINK_STROKE} />
           </g>

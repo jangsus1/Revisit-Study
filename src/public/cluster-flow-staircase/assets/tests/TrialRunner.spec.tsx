@@ -6,7 +6,7 @@ import {
   afterEach, beforeEach, describe, expect, test, vi,
 } from 'vitest';
 import type { Display, GenerateOptions, TrialParams } from '../generator/types';
-import TrialRunner from '../TrialRunner';
+import TrialRunner, { PROMPT_TEXT } from '../TrialRunner';
 
 // The generator and the renderer are mocked: this suite is about the trial's timing, key
 // handling and answer shape, all of which are independent of what the stimulus looks like.
@@ -17,8 +17,8 @@ function fakeDisplay(seed: number, opts: GenerateOptions): Display {
     cue: opts.cue,
     density: opts.density,
     n: opts.kind === 'A' ? 24 : opts.nB ?? 0,
-    width: 480,
-    height: 360,
+    width: 720,
+    height: 540,
     background: '#FFFFFF',
     nodes: [],
     edges: [],
@@ -29,7 +29,12 @@ function fakeDisplay(seed: number, opts: GenerateOptions): Display {
 }
 
 vi.mock('../generator', () => ({
-  generateDisplay: (seed: number, opts: GenerateOptions) => fakeDisplay(seed, opts),
+  generateTrialPair: (seedA: number, seedB: number, opts: Omit<GenerateOptions, 'kind'> & { nB: number }) => ({
+    displayA: fakeDisplay(seedA, { ...opts, kind: 'A' }),
+    displayB: fakeDisplay(seedB, { ...opts, kind: 'B' }),
+  }),
+  measureDisplay: (display: Display) => ({ ink: display.n, meanNN: 1 }),
+  hashSeed: (...parts: (string | number)[]) => parts.join('|').length,
 }));
 
 vi.mock('../render/StimulusSVG', () => ({
@@ -50,7 +55,9 @@ const params: TrialParams = {
   cellId: 'cell-color-sparse',
   trialIndex: 3,
   staircaseId: 'above',
-  aOnLeft: true,
+  aFirst: true,
+  hueOffset: 17,
+  starts: { above: 31, below: 17 },
   refreshMs: FRAME_MS,
 };
 
@@ -96,6 +103,8 @@ beforeEach(() => {
     return frameCallbacks.length;
   });
   vi.stubGlobal('cancelAnimationFrame', () => undefined);
+  // jsdom has no 2D canvas; the mask then stays blank, which is all this suite needs
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null);
   vi.stubGlobal('performance', { now: () => clock });
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,
@@ -125,20 +134,26 @@ describe('TrialRunner', () => {
     expect(screen.getByTestId('trial-runner')).toBeTruthy();
 
     runFrames(200);
-    expect(screen.getByTestId('trial-prompt').textContent).toContain('Which side had more items?');
+    expect(screen.getByTestId('trial-prompt').textContent).toBe(PROMPT_TEXT);
+    expect(PROMPT_TEXT).toContain('Which one had more items?');
+    expect(PROMPT_TEXT).toContain('first');
+    expect(PROMPT_TEXT).toContain('second');
 
     fireEvent.keyDown(window, { key: 'f' });
 
     expect(setAnswer).toHaveBeenCalledTimes(1);
     const { status, answers } = setAnswer.mock.calls[0][0];
     expect(status).toBe(true);
-    expect(answers.trial).toBe('left');
+    expect(answers.trial).toBe('first');
 
     const { trialData } = answers;
-    expect(trialData.response).toBe('left');
-    expect(trialData.aOnLeft).toBe(true);
+    expect(trialData.response).toBe('first');
+    expect(trialData.aFirst).toBe(true);
+    expect(trialData.hueOffset).toBe(17);
+    expect(trialData.starts).toEqual({ above: 31, below: 17 });
     // correctness is not stored here: reVISit keeps the block's correctAnswer on the same record
     expect(trialData.correct).toBeUndefined();
+    expect(trialData.aOnLeft).toBeUndefined();
     expect(trialData.nA).toBe(24);
     expect(trialData.nB).toBe(34);
     expect(trialData.seedA).toBe(11);
@@ -150,6 +165,8 @@ describe('TrialRunner', () => {
     expect(trialData.trialIndex).toBe(3);
     expect(trialData.displayA.kind).toBe('A');
     expect(trialData.displayB.kind).toBe('B');
+    expect(trialData.metricsA).toEqual({ ink: 24, meanNN: 1 });
+    expect(trialData.metricsB).toEqual({ ink: 34, meanNN: 1 });
     expect(trialData.fullscreen).toBe(false);
   });
 
@@ -159,63 +176,101 @@ describe('TrialRunner', () => {
     fireEvent.keyDown(window, { key: 'j' });
 
     const { measured } = setAnswer.mock.calls[0][0].answers.trialData;
+    expect(Object.keys(measured).sort()).toEqual(['blank', 'blank2', 'fixation', 'mask', 's1', 's2']);
     expect(measured.fixation).toBeCloseTo(500, 0);
-    expect(measured.a).toBeCloseTo(200, 0);
-    expect(measured.blank1).toBeCloseTo(400, 0);
-    expect(measured.b).toBeCloseTo(200, 0);
+    expect(measured.s1).toBeCloseTo(200, 0);
+    expect(measured.mask).toBeCloseTo(150, 0);
+    expect(measured.blank).toBeCloseTo(250, 0);
+    expect(measured.s2).toBeCloseTo(200, 0);
     expect(measured.blank2).toBeCloseTo(400, 0);
   });
 
-  test('writes the right side to the graded trial response', () => {
+  test('writes the chosen interval to the graded trial response', () => {
     const { setAnswer } = renderTrial();
     runFrames(200);
     fireEvent.keyDown(window, { key: 'j' });
 
     const { trial, trialData } = setAnswer.mock.calls[0][0].answers;
-    expect(trial).toBe('right');
-    expect(trialData.response).toBe('right');
+    expect(trial).toBe('second');
+    expect(trialData.response).toBe('second');
   });
 
-  test('the arrow keys answer by side as well', () => {
-    const { setAnswer } = renderTrial();
+  test('the arrow keys answer by interval as well', () => {
+    const first = renderTrial();
+    runFrames(200);
+    fireEvent.keyDown(window, { key: 'ArrowLeft' });
+    expect(first.setAnswer.mock.calls[0][0].answers.trial).toBe('first');
+    cleanup();
+
+    const second = renderTrial();
     runFrames(200);
     fireEvent.keyDown(window, { key: 'ArrowRight' });
-    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('right');
+    expect(second.setAnswer.mock.calls[0][0].answers.trial).toBe('second');
   });
 
-  test('places A in the left slot and B in the right when aOnLeft is true', () => {
-    renderTrial({ aOnLeft: true });
-    expect(screen.getByTestId('slot-left').getAttribute('data-stimulus')).toBe('A');
-    expect(screen.getByTestId('slot-right').getAttribute('data-stimulus')).toBe('B');
-    expect(screen.getByTestId('slot-left').contains(screen.getByTestId('frame-A'))).toBe(true);
-    expect(screen.getByTestId('slot-right').contains(screen.getByTestId('frame-B'))).toBe(true);
+  test('shows everything at one location: a single stage with blank, s1, mask, s2 and fixation layers', () => {
+    renderTrial();
+    expect(screen.getAllByTestId('trial-stage')).toHaveLength(1);
+    ['layer-s1', 'layer-mask', 'layer-s2', 'layer-fixation'].forEach((id) => {
+      expect(screen.getByTestId('trial-stage').contains(screen.getByTestId(id))).toBe(true);
+    });
+    expect(screen.getByTestId('layer-mask').contains(screen.getByTestId('noise-mask'))).toBe(true);
+    expect(screen.queryByTestId('slot-left')).toBeNull();
+    expect(screen.queryByTestId('slot-right')).toBeNull();
   });
 
-  test('swaps the slots when aOnLeft is false and records it', () => {
-    const { setAnswer } = renderTrial({ aOnLeft: false });
-    expect(screen.getByTestId('slot-left').getAttribute('data-stimulus')).toBe('B');
-    expect(screen.getByTestId('slot-right').getAttribute('data-stimulus')).toBe('A');
+  test('shows A first and B second when aFirst is true', () => {
+    renderTrial({ aFirst: true });
+    expect(screen.getByTestId('layer-s1').getAttribute('data-stimulus')).toBe('A');
+    expect(screen.getByTestId('layer-s2').getAttribute('data-stimulus')).toBe('B');
+    expect(screen.getByTestId('layer-s1').contains(screen.getByTestId('frame-A'))).toBe(true);
+    expect(screen.getByTestId('layer-s2').contains(screen.getByTestId('frame-B'))).toBe(true);
+  });
+
+  test('shows B first when aFirst is false and records it', () => {
+    const { setAnswer } = renderTrial({ aFirst: false });
+    expect(screen.getByTestId('layer-s1').getAttribute('data-stimulus')).toBe('B');
+    expect(screen.getByTestId('layer-s2').getAttribute('data-stimulus')).toBe('A');
 
     runFrames(200);
     fireEvent.keyDown(window, { key: 'f' });
-    expect(setAnswer.mock.calls[0][0].answers.trialData.aOnLeft).toBe(false);
+    expect(setAnswer.mock.calls[0][0].answers.trialData.aFirst).toBe(false);
   });
 
-  test('shows the stimuli only during their own phases', () => {
+  test('shows each layer only during its own phase', () => {
     renderTrial();
-    const visibility = (testId: string) => (screen.getByTestId(testId).parentElement as HTMLElement).style.visibility;
+    const visibility = (testId: string) => screen.getByTestId(testId).style.visibility;
+    const visibleLayers = () => ['layer-fixation', 'layer-s1', 'layer-mask', 'layer-s2']
+      .filter((id) => visibility(id) === 'visible');
 
     runFrames(2);
-    expect(visibility('frame-A')).toBe('hidden');
-    expect(visibility('frame-B')).toBe('hidden');
+    expect(visibleLayers()).toEqual(['layer-fixation']);
 
     // fixation is 500 ms: one pending frame plus 30 frames
-    runFrames(32);
-    expect(visibility('frame-A')).toBe('visible');
-    expect(visibility('frame-B')).toBe('hidden');
+    runFrames(30);
+    expect(visibleLayers()).toEqual(['layer-s1']);
+
+    // s1 is 12 frames (+1 pending), then the 9-frame mask
+    runFrames(13);
+    expect(visibleLayers()).toEqual(['layer-mask']);
+
+    // mask 9 frames (+1), then the 15-frame blank shows nothing but the blank canvas
+    runFrames(10);
+    expect(visibleLayers()).toEqual([]);
+
+    runFrames(16);
+    expect(visibleLayers()).toEqual(['layer-s2']);
+
+    runFrames(13);
+    expect(visibleLayers()).toEqual([]);
+    expect(screen.queryByTestId('trial-prompt')).toBeNull();
+
+    runFrames(25);
+    expect(screen.getByTestId('trial-prompt')).toBeTruthy();
+    expect(visibleLayers()).toEqual([]);
   });
 
-  test('ignores keys other than i and j, and only responds once', () => {
+  test('ignores keys other than f, j and the arrows, and only responds once', () => {
     const { setAnswer } = renderTrial();
     runFrames(200);
 
@@ -229,7 +284,7 @@ describe('TrialRunner', () => {
     expect(setAnswer).toHaveBeenCalledTimes(1);
   });
 
-  test('ignores i and j before the prompt', () => {
+  test('ignores answer keys before the prompt', () => {
     const { setAnswer } = renderTrial();
     runFrames(10);
     fireEvent.keyDown(window, { key: 'f' });
@@ -258,17 +313,20 @@ describe('TrialRunner', () => {
   });
 
   test('practice trials hand over to the platform instead of advancing', () => {
-    const { setAnswer, advance } = renderTrial({ staircaseId: 'practice', cellId: 'practice', nB: 40 });
+    const { setAnswer, advance } = renderTrial({
+      staircaseId: 'practice', cellId: 'practice', nB: 40, starts: null,
+    });
     runFrames(200);
     fireEvent.keyDown(window, { key: 'j' });
 
     expect(setAnswer).toHaveBeenCalledTimes(1);
-    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('right');
+    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('second');
+    expect(setAnswer.mock.calls[0][0].answers.trialData.starts).toBeNull();
     expect(advance).not.toHaveBeenCalled();
 
     // the fixed overlay is gone so reVISit's feedback and Next button are visible
     expect(screen.queryByTestId('trial-runner')).toBeNull();
-    expect(screen.getByTestId('practice-done').textContent).toContain('right');
+    expect(screen.getByTestId('practice-done').textContent).toContain('second');
     expect(screen.getByTestId('practice-done').textContent).toContain('Enter');
   });
 
