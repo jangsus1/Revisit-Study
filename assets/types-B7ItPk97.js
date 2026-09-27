@@ -1,0 +1,1 @@
+import{r as e}from"./rolldown-runtime-C0FnF6B9.js";var t=e({CUES:()=>n,DENSITIES:()=>r,layoutModeFor:()=>i}),n=[`proximity`,`rect`,`color`,`shape`,`edge`],r=[`sparse`,`dense`];function i(e){return e===`proximity`?`grouped`:`even`}export{t as i,r as n,i as r,n as t};
