@@ -6,16 +6,34 @@
 import {
   useCallback, useEffect, useRef, useState,
 } from 'react';
-import { gazeTracker, normToPx } from './gazeTracker';
-import type { GazeSample } from './gazeTracker';
+import { gazeTracker, meanHeadPose, normToPx } from './gazeTracker';
+import type { GazeSample, HeadPose } from './gazeTracker';
 import type { CalibResult } from '../../../gazeEngine/webeyetrack/types';
 
 export type NormPoint = { nx: number; ny: number };
+
+/**
+ * Pilot diagnostics recorded at every dot, from dot onset to dot removal:
+ * [t_ms_since_dot_onset, raw_x_px, raw_y_px, smooth_x_px, smooth_y_px, open01, face_z_mm]
+ * (raw = affine-only estimate, smooth = Kalman output, both incl. the drift offset).
+ */
+export type DotTrace = number[][];
 
 export type ValidationPoint = NormPoint & {
   n: number;
   errorPx: number | null;
   offsetPx: [number, number] | null;   // median (gaze - target) in viewport px
+  dwellMs: number;
+  collectMs: number;
+  trace: DotTrace;
+  pose: HeadPose | null;               // mean head pose over the collection window
+};
+
+export type CalibPointLog = CalibResult & NormPoint & {
+  dwellMs: number;
+  collectMs: number;
+  trace: DotTrace;                     // predictions before this dot was added to the calibration
+  pose: HeadPose | null;
 };
 export type ValidationResult = {
   points: ValidationPoint[];
@@ -55,15 +73,28 @@ export function useDotSequence() {
     return () => { cancelled.current = true; };
   }, []);
 
+  /** Show one dot and record every sample from its onset until it is removed. */
   const showDot = useCallback(async (pt: NormPoint, dwellMs: number, collectMs: number, during: () => Promise<unknown>) => {
+    const onset = performance.now();
+    const trace: DotTrace = [];
+    const poseSamples: GazeSample[] = [];
+    const collectFrom = onset + Math.max(0, dwellMs - collectMs);
+    const unsub = gazeTracker.onSample((s: GazeSample) => {
+      const [rx, ry] = normToPx(s.rx, s.ry);
+      const [x, y] = normToPx(s.nx, s.ny);
+      trace.push([Math.round(s.t - onset), Math.round(rx), Math.round(ry), Math.round(x), Math.round(y),
+        s.open && s.face ? 1 : 0, s.origin ? Math.round(s.origin[2] * 10) : -1]);
+      if (s.t >= collectFrom) poseSamples.push(s);
+    });
     setDot(pt);
     setCollecting(false);
     await sleep(Math.max(0, dwellMs - collectMs));
-    if (cancelled.current) return null;
+    if (cancelled.current) { unsub(); return null; }
     setCollecting(true);
     const result = await during();
     setCollecting(false);
-    return result;
+    unsub();
+    return { result, trace, pose: meanHeadPose(poseSamples) };
   }, []);
 
   /** Show each point; during the last `collectMs` the tracker adapts to it. */
@@ -72,14 +103,18 @@ export function useDotSequence() {
     ptType: 'calib' | 'click',
     dwellMs = 1800,
     collectMs = 1000,
-  ): Promise<CalibResult[]> => {
-    const results: CalibResult[] = [];
+  ): Promise<CalibPointLog[]> => {
+    const results: CalibPointLog[] = [];
     for (let i = 0; i < points.length; i += 1) {
       if (cancelled.current) break;
       setMessage(`Look at the dot (${i + 1} / ${points.length})`);
       // eslint-disable-next-line no-await-in-loop
       const r = await showDot(points[i], dwellMs, collectMs, () => gazeTracker.calibrate(points[i].nx, points[i].ny, collectMs, ptType));
-      if (r) results.push(r as CalibResult);
+      if (r) {
+        results.push({
+          ...(r.result as CalibResult), ...points[i], dwellMs, collectMs, trace: r.trace, pose: r.pose,
+        });
+      }
     }
     setDot(null);
     return results;
@@ -123,11 +158,18 @@ export function useDotSequence() {
           const mdx = med(dxs);
           const mdy = med(dys);
           resolve({
-            ...points[i], n: errors.length, errorPx: median, offsetPx: mdx === null || mdy === null ? null : [mdx, mdy],
+            ...points[i],
+            n: errors.length,
+            errorPx: median,
+            offsetPx: mdx === null || mdy === null ? null : [mdx, mdy],
+            dwellMs,
+            collectMs,
+            trace: [],
+            pose: null,
           });
         }, collectMs);
       }));
-      if (r) out.push(r as ValidationPoint);
+      if (r) out.push({ ...(r.result as ValidationPoint), trace: r.trace, pose: r.pose });
     }
     setDot(null);
     const valid = out.filter((p) => p.errorPx !== null) as (ValidationPoint & { errorPx: number })[];

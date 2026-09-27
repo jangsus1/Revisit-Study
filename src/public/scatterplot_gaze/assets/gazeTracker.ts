@@ -14,7 +14,29 @@ export type GazeSample = {
   ry: number;
   open: boolean;    // eyes open (blink detection)
   face: boolean;    // a face was detected in the frame
+  head: number[] | null;    // unit head-direction vector (null without a face)
+  origin: number[] | null;  // 3D face origin in cm, camera frame; [2] = distance to camera
 };
+
+/** Mean face origin / head direction over a set of samples (null when no face was seen). */
+export type HeadPose = { origin: [number, number, number]; head: [number, number, number]; n: number };
+export function meanHeadPose(samples: GazeSample[]): HeadPose | null {
+  const ok = samples.filter((s) => s.face && s.origin && s.origin.length === 3 && s.head && s.head.length === 3);
+  if (!ok.length) return null;
+  const avg = (get: (s: GazeSample) => number) => ok.reduce((a, s) => a + get(s), 0) / ok.length;
+  const r = (v: number, d = 10) => Math.round(v * d) / d;
+  return {
+    origin: [r(avg((s) => s.origin![0])), r(avg((s) => s.origin![1])), r(avg((s) => s.origin![2]))],
+    head: [r(avg((s) => s.head![0]), 1000), r(avg((s) => s.head![1]), 1000), r(avg((s) => s.head![2]), 1000)],
+    n: ok.length,
+  };
+}
+
+/** Euclidean distance between two face origins in mm (null when either is missing). */
+export function headShiftMm(a: HeadPose | null | undefined, b: HeadPose | null | undefined): number | null {
+  if (!a || !b) return null;
+  return Math.round(10 * Math.hypot(a.origin[0] - b.origin[0], a.origin[1] - b.origin[1], a.origin[2] - b.origin[2]));
+}
 
 export type CalibrationSummary = {
   attempts: number;
@@ -41,6 +63,9 @@ class GazeTracker {
   lastSample?: GazeSample;
 
   fullCalib?: CalibrationSummary;
+
+  /** Mean head pose during the validation of the last full calibration (reference for head shift). */
+  calibHead: HeadPose | null = null;
 
   /** Centre-dot error (px) measured at the start/end of the previous trial's short calibration. */
   lastTrialErrorPx: number | null = null;
@@ -113,6 +138,8 @@ class GazeTracker {
       ry: r.rawPog?.[1] ?? r.normPog[1],
       open: r.gazeState === 'open',
       face: r.faceDetected,
+      head: r.head ?? null,
+      origin: r.origin ?? null,
     };
     this.lastSample = sample;
     this.sampleCount += 1;

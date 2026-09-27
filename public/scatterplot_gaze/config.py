@@ -3,13 +3,59 @@ import os
 from collections import defaultdict
 import numpy as np
 
+# scatterplot_gaze = scatterplot_timing (same 47 timing conditions, matched baselines, Latin-square
+# schemes, comprehension check, Prolific codes) + webcam eye tracking on every phase-2 trial.
+# Differences from the timing generator: uniform condition deal (the timing study's weighted
+# CYCLE_COUNTS only compensated its own batch 1), phase2_gaze.jsx with a hidden `gaze` response,
+# camera permission / full calibration / camera-off pages, no instruction page between the examples
+# and the main trials (avoids head movement after calibration), studyRules in config.json.
+
 # fix all seeds
 np.random.seed(42)
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
 
-label_seconds = [0, 1, 2, 3, 4]
+# (blur_before, blur_after, label_display) in seconds; trial length = sum. 47 conditions.
+CONDITIONS = [
+    (5,0,0),(4,1,0),(4,0,1),(3,1,1),(3,0,2),(2,1,2),(2,0,3),(1,1,3),(1,0,4),(0,1,4),(0,0,5),
+    (5,1,0),(5,0,1),(4,1,1),(4,0,2),(3,1,2),(3,0,3),(2,1,3),(2,0,4),(1,1,4),(1,0,5),(0,1,5),
+    (5,1,1),(5,0,2),(4,1,2),(4,0,3),(3,1,3),(3,0,4),(2,1,4),(2,0,5),(1,1,5),
+    (5,1,2),(5,0,3),(4,1,3),(4,0,4),(3,1,4),(3,0,5),(2,1,5),
+    (5,1,3),(5,0,4),(4,1,4),(4,0,5),(3,1,5),
+    (5,1,4),(5,0,5),(4,1,5),
+    (5,1,5),
+]
+assert len(CONDITIONS) == 47 and len(set(CONDITIONS)) == 47
+CONDITIONS_PER_PARTICIPANT = 12
+N_SCHEMES = len(CONDITIONS)          # one scheme per Latin-square row
+BASELINE_SECONDS = 5                 # labels never shown, same coordinates as the revealed trial
+
+
+def cond_name(c):
+    before, after, display = c
+    return f"{before}_{after}_{display}"
+
+
+def build_schemes():
+    """47 schemes. Scheme s holds 12 conditions, all 12 labels, a corr rotation and an exp
+    pattern. Condition j of scheme s is CONDITIONS[(s + 5*j) % 47] (47 is prime, so across the 47
+    schemes every condition sits in every slot exactly once -> each condition is seen by 12 of every
+    47 participants). reVISit's `latinSquare` + `numSamples: 1` over the scheme blocks hands the
+    schemes out evenly across participants."""
+    corrs = [2, 4, 6, 8]
+    schemes = []
+    for s in range(N_SCHEMES):
+        trials = []
+        for j in range(CONDITIONS_PER_PARTICIPANT):
+            cond = CONDITIONS[(s + 5 * j) % N_SCHEMES]
+            label_idx = (s + j) % len(labels)                 # 12 distinct labels, rotating start
+            corr = corrs[(j + s) % 4]                          # 3 labels per corr level, rotating
+            exp = (j + s // 4) % 2
+            trials.append(dict(label_idx=label_idx, corr=corr, exp=exp, cond=cond))
+        schemes.append(trials)
+    return schemes
+
 
 labels = [
     # Neutral / Spurious
@@ -40,6 +86,9 @@ labels = [
     ['The more probiotic yogurt people buy, the more toilet paper sales go up.',
      'Probiotic yogurt sales', 'Toilet paper sales'],
 ]
+
+
+SCHEMES = build_schemes()
 
 
 def generate_base_components():
@@ -113,11 +162,6 @@ def create_default_components(fail_link):
             "nextButtonText": "I agree",
             "response": []
         },
-        "introduction": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/introduction.md",
-            "response": []
-        },
         "phase1_intro": {
             "type": "markdown",
             "path": "scatterplot_gaze/assets/phase1_intro.md",
@@ -138,58 +182,24 @@ def create_default_components(fail_link):
             "path": "scatterplot_gaze/assets/phase3_intro.md",
             "response": []
         },
-        "attentionCheckFailed": {
-            "type": "react-component",
-            "path": "scatterplot_gaze/assets/attentionCheck.jsx",
-            "parameters": {
-                "link": fail_link
-            },
-            "response": [
-                {
-                    "id": "attention_check_failed_1",
-                    "prompt": "",
-                    "required": True,
-                    "location": "belowStimulus",
-                    "type": "reactive",
-                    "hidden": True
-                }
-            ],
-            "instructionLocation": "belowStimulus",
-            "nextButtonLocation": "belowStimulus",
-        },
-        "attentionCheck2": {
-            "type": "questionnaire",
-            "response": [
-                {
-                    "id": "attention_q2",
-                    "prompt": "What makes a correlation stronger?",
-                    "required": True,
-                    "location": "aboveStimulus",
-                    "type": "radio",
-                    "options": [
-                        "The steeper the line",
-                        "The more data points there are",
-                        "The smaller the correlation coefficient is",
-                        "The closer r is to 1"
-                    ],
-                    "withDivider": True
-                }
-            ],
-            "correctAnswer": [
-                {
-                    "id": "attention_q2",
-                    "answer": "The closer r is to 1"
-                }
-            ],
-        },
-        "attentionCheck1": {
-            "type": "questionnaire",
+        "attentionCheck": {
+            # Reading text + four comprehension questions on one page. reVISit training mode:
+            # Next becomes "Check Answer"; wrong answers show "Please try again." and Next stays
+            # locked until all are correct. 3 checks max (three strikes): after the 3rd wrong
+            # check reVISit rejects the participant and shows the __trainingFailed page, which
+            # uses uiConfig.trainingFailedMsg / trainingFailedRedirectURL (Prolific screen-out).
+            # Wrong attempts are logged in incorrectAnswers / checkAnswer.attemptsUsed.
+            "type": "markdown",
+            "path": "scatterplot_gaze/assets/attention_check.md",
+            "provideFeedback": True,
+            "trainingAttempts": 3,
+            "allowFailedTraining": False,
             "response": [
                 {
                     "id": "attention_q1",
                     "prompt": "What is the range of the correlation coefficient (r) that we will use in the experiment?",
                     "required": True,
-                    "location": "aboveStimulus",
+                    "location": "belowStimulus",
                     "type": "radio",
                     "options": [
                         "-1 to +1",
@@ -199,13 +209,57 @@ def create_default_components(fail_link):
                     ],
                     "withDivider": True
                 },
-            ],
-            "correctAnswer": [
                 {
-                    "id": "attention_q1",
-                    "answer": "0 to 1"
+                    "id": "attention_q2",
+                    "prompt": "What makes a correlation stronger?",
+                    "required": True,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "The steeper the line",
+                        "The more data points there are",
+                        "The smaller the correlation coefficient is",
+                        "The closer r is to 1"
+                    ],
+                    "withDivider": True
+                },
+                {
+                    "id": "attention_q3",
+                    "prompt": "Two scatterplots have points that cluster equally tightly around a line, but one line is steep and the other is flat. Which is true?",
+                    "required": True,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "The steep one has the higher correlation",
+                        "The flat one has the higher correlation",
+                        "They have the same correlation",
+                        "Correlation cannot be judged without more points"
+                    ],
+                    "withDivider": True
+                },
+                {
+                    "id": "attention_q4",
+                    "prompt": "What does r = 0 mean?",
+                    "required": True,
+                    "location": "belowStimulus",
+                    "type": "radio",
+                    "options": [
+                        "The points form a perfect straight line",
+                        "The points are randomly scattered with no relationship",
+                        "One variable decreases as the other increases",
+                        "The plot contains no data points"
+                    ],
+                    "withDivider": True
                 }
             ],
+            "correctAnswer": [
+                {"id": "attention_q1", "answer": "0 to 1"},
+                {"id": "attention_q2", "answer": "The closer r is to 1"},
+                {"id": "attention_q3", "answer": "They have the same correlation"},
+                {"id": "attention_q4", "answer": "The points are randomly scattered with no relationship"}
+            ],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus",
         },
         "demographics": {
             "type": "markdown",
@@ -435,75 +489,58 @@ def create_phase1_components():
 
 
 def create_phase2_components():
-    """Create phase 2 components: scatterplots with labels
-    For each (corr, label, exp) combination, generates ONE scatterplot
-    that is reused for all label_second conditions to control for evaluation.
+    """Phase 2 components, generated only for (label, corr, exp, condition) tuples that some scheme
+    uses, plus one baseline (labels never shown, 5 s) per (label, corr, exp).
+    Naming: phase2_{label_idx}_{corr}_{exp}_{before}_{after}_{display} and phase2_{label_idx}_{corr}_{exp}_base.
+    Coordinates are generated once per (corr, label_idx, exp) with the same seeds as the other studies."""
+    needed = {}
+    for trials in SCHEMES:
+        for t in trials:
+            needed.setdefault((t["label_idx"], t["corr"], t["exp"]), set()).add(t["cond"])
 
-    exp=0,1 provides 2 different scatterplot variants per (corr, label) combination
-    to add variability while maintaining determinism via seeded random generation.
-
-    Component naming: phase2_{label_idx}_{corr}_{exp}_{label_second}
-    Total: 4 corrs × 12 labels × 2 exp × 5 label_seconds = 480 components
-    """
-
-    components = {}
-    num_exp_variants = 2  # Number of scatterplot variants per (corr, label)
-
+    coords = {}
     for corr in [2, 4, 6, 8]:
         base_target = corr * 0.1
-        variance_range = 0.04
-        min_target = base_target - variance_range
-        max_target = base_target + variance_range
-
-        # Clamp to valid correlation range [-1, 1]
-        min_target = max(0.01, min_target)  # Ensure positive for phase 2
-        max_target = min(0.99, max_target)
-
-        num_labels = len(labels)
-        total_scatterplots = num_labels * num_exp_variants
-
-        # Generate evenly distributed target correlations across all (label, exp) combinations
-        target_correlations = np.linspace(
-            min_target, max_target, total_scatterplots)
+        min_target = max(0.01, base_target - 0.04)
+        max_target = min(0.99, base_target + 0.04)
+        target_correlations = np.linspace(min_target, max_target, len(labels) * 2)
         target_idx = 0
-
-        for label_idx, label in enumerate(labels):
-            label_text, x, y = label
-
-            for exp in range(num_exp_variants):
-                # Set deterministic seed for each (corr, label_idx, exp) combination
-                # This ensures reproducibility even if generation order changes
-                seed = hash((corr, label_idx, exp)) % (2**32)
-                np.random.seed(seed)
-
-                # Generate scatterplot ONCE per (corr, label_idx, exp) combination
-                coordinates, actual_correlation = generate_scatterplot_data(
-                    target_correlation=target_correlations[target_idx])
+        for label_idx in range(len(labels)):
+            for exp in range(2):
+                np.random.seed(hash((corr, label_idx, exp)) % (2**32))
+                coords[(label_idx, corr, exp)] = generate_scatterplot_data(target_correlation=target_correlations[target_idx])
                 target_idx += 1
-
-                # Reuse the same scatterplot for all label_second conditions
-                for label_second in label_seconds:
-                    comp_name = f"phase2_{label_idx}_{corr}_{exp}_{label_second}"
-                    components[comp_name] = {
-                        "baseComponent": "phase2",
-                        "parameters": {
-                            "coordinates": coordinates,  # Same coordinates for all label_second
-                            "example": False,
-                            "correlation": actual_correlation,  # Same correlation for all label_second
-                            "label": label_text,
-                            "X": x,
-                            "Y": y,
-                            "corr": corr,
-                            "exp": exp,
-                            "label_idx": label_idx,
-                            "direction": "pos",
-                            "seconds": 5+label_second,
-                            "label_seconds": label_second
-                        }
-                    }
-
-    # Reset seed to global default for subsequent operations
     np.random.seed(42)
+
+    components = {}
+    for (label_idx, corr, exp), conds in needed.items():
+        label_text, x, y = labels[label_idx]
+        coordinates, actual_correlation = coords[(label_idx, corr, exp)]
+        common = {
+            "coordinates": coordinates, "example": False, "correlation": actual_correlation,
+            "label": label_text, "X": x, "Y": y, "corr": corr, "exp": exp, "label_idx": label_idx, "direction": "pos",
+        }
+        for cond in sorted(conds):
+            before, after, display = cond
+            components[f"phase2_{label_idx}_{corr}_{exp}_{cond_name(cond)}"] = {
+                "baseComponent": "phase2",
+                "parameters": {
+                    **common,
+                    "seconds": before + display + after,
+                    "label_start": before,
+                    "label_end": before + display,
+                    "blur_before": before, "label_display": display, "blur_after": after,
+                }
+            }
+        components[f"phase2_{label_idx}_{corr}_{exp}_base"] = {
+            "baseComponent": "phase2",
+            "parameters": {
+                **common,
+                "seconds": BASELINE_SECONDS,
+                "label_start": BASELINE_SECONDS, "label_end": BASELINE_SECONDS,
+                "blur_before": BASELINE_SECONDS, "label_display": 0, "blur_after": 0,
+            }
+        }
     return components
 
 
@@ -516,7 +553,7 @@ def create_phase2_example_components():
             'Hours studied per week', 'Test scores'],
     ]
 
-    example_seconds = [2.5, 5.0]
+    example_conditions = [(2, 0, 3), (1, 1, 3)]
 
     # Use correlation level 5 (0.5) for examples, evenly distribute across [0.4, 0.6]
     base_target = 5 * 0.1  # 0.5
@@ -546,8 +583,12 @@ def create_phase2_example_components():
                 "corr": 5,
                 "exp": 0,
                 "direction": "pos",
-                "seconds": 5,
-                "label_seconds": example_seconds[idx]
+                "seconds": sum(example_conditions[idx]),
+                "label_start": example_conditions[idx][0],
+                "label_end": example_conditions[idx][0] + example_conditions[idx][2],
+                "blur_before": example_conditions[idx][0],
+                "label_display": example_conditions[idx][2],
+                "blur_after": example_conditions[idx][1],
             }
         }
     return components
@@ -573,58 +614,33 @@ def create_phase3_components():
 def sequence_generator(phase1_components, phase2_components, phase2_example_components, phase3_components):
     """Generate the study sequence with scheme-based random for phase 2.
 
-    Phase 2 structure: 5 conditions (blur delay = 0, 1, 2, 3, 4 seconds).
-    After the blur delay, the label is shown for 5 seconds.
-
-    - 8 schemes (random): 4 corr rotations × 2 exp patterns
-    - Each scheme has predetermined (corr, exp) for each label
-    - All 12 trials randomized together at scheme level
-    - For each label: randomly pick one blur delay from label_seconds [0, 1, 2, 3, 4]
+    Phase 2: 47 (blur_before, blur_after, label_display) conditions, 10 per participant.
+    47 scheme blocks (see build_schemes); each holds 12 revealed trials + 12 matched baselines,
+    interleaved randomly. The phase2 block uses order=latinSquare with numSamples=1, so
+    reVISit deals the schemes out evenly (each scheme once per 47 participants).
     """
 
-    # Define correlation assignment schemes using random rotation
-    corrs = [2, 4, 6, 8]
-    num_labels = len(labels)  # 12 labels
-    labels_per_corr = num_labels // len(corrs)  # 3 labels per corr
-
-    # Create 8 schemes: 4 corr rotations × 2 exp patterns
+    # Each scheme gets ONE fixed, pre-shuffled order in which the two trials that share a
+    # scatterplot (revealed + baseline) are at least MIN_GAP positions apart, so nobody sees the
+    # same plot twice in a row. reVISit's "random" order cannot enforce that constraint, so the
+    # shuffle is done here (seeded per scheme) and the block is emitted as "fixed".
+    MIN_GAP = 4
     schemes = []
-    for corr_rotation in range(len(corrs)):
-        # Rotate correlation assignments for this scheme
-        rotated_corrs = corrs[corr_rotation:] + corrs[:corr_rotation]
-
-        for exp_pattern in range(2):
-            # Build all 24 trials for this scheme (flattened for true interleaving)
-            all_trials = []
-
-            for label_idx in range(num_labels):
-                # Determine which correlation this label gets
-                corr_group_idx = label_idx // labels_per_corr
-                assigned_corr = rotated_corrs[corr_group_idx]
-
-                # Determine exp based on pattern (alternating by label index)
-                # Pattern 0: even labels → exp0, odd labels → exp1
-                # Pattern 1: even labels → exp1, odd labels → exp0
-                if exp_pattern == 0:
-                    exp = label_idx % 2
-                else:
-                    exp = 1 - (label_idx % 2)
-
-                # Randomly pick one blur delay from label_seconds [0, 1, 2, 3, 4]
-                trial_group = {
-                    "id": f"label_{label_idx}",
-                    "order": "random",
-                    "numSamples": 1,
-                    "components": [f"phase2_{label_idx}_{assigned_corr}_{exp}_{i}" for i in label_seconds]
-                }
-                all_trials.append(trial_group)
-
-            # Scheme group: ALL 12 trials in random order
-            schemes.append({
-                "id": f"scheme_{corr_rotation}_{exp_pattern}",
-                "order": "random",
-                "components": all_trials
-            })
+    for si, trials in enumerate(SCHEMES):
+        pairs = []
+        for t in trials:
+            stem = f"phase2_{t['label_idx']}_{t['corr']}_{t['exp']}"
+            pairs.append((f"{stem}_{cond_name(t['cond'])}", f"{stem}_base"))
+        rng = np.random.RandomState(1000 + si)
+        flat = [c for pr in pairs for c in pr]
+        for _ in range(100000):
+            order = list(rng.permutation(flat))
+            pos = {c: i for i, c in enumerate(order)}
+            if all(abs(pos[a] - pos[b]) >= MIN_GAP for a, b in pairs):
+                break
+        else:
+            raise RuntimeError(f"could not separate pairs in scheme {si}")
+        schemes.append({"id": f"scheme_{si}", "order": "fixed", "components": order})
 
     # Create list of example component names
     example_component_names = list(phase2_example_components.keys())
@@ -633,37 +649,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
         "order": "fixed",
         "components": [
             "consent",
-            "introduction",
-            {
-                "id": "attentionCheck1",
-                "order": "fixed",
-                "components": ["attentionCheck1", "attentionCheckFailed"],
-                "skip": [
-                    {
-                        "name": "attentionCheck1",
-                        "check": "response",
-                        "comparison": "equal",
-                        "responseId": "attention_q1",
-                        "value": "0 to 1",
-                        "to": "attentionCheck2"
-                    }
-                ]
-            },
-            {
-                "id": "attentionCheck2",
-                "order": "fixed",
-                "components": ["attentionCheck2", "attentionCheckFailed"],
-                "skip": [
-                    {
-                        "name": "attentionCheck2",
-                        "check": "response",
-                        "comparison": "equal",
-                        "responseId": "attention_q2",
-                        "value": "The closer r is to 1",
-                        "to": "phase3_intro"
-                    }
-                ]
-            },
+            "attentionCheck",
             "phase3_intro",
             {
                 "id": "phase3",
@@ -679,20 +665,21 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
             },
 
             "phase2_intro",
-            "webcamPermission",   # camera consent + permission + face check (gates Next)
-            "gazeCalibration",    # 9-point calibration + 5-point validation, <= 3 attempts
+            "webcamPermission",
+            "gazeCalibration",
             "phase2_examples",
             *example_component_names,  # Add the 2 example tasks
-            # No instruction page between the examples and the main trials: a text page invites the
-            # participant to move/lean and breaks the calibration frame.
+            # no instruction page here: the main trials follow the examples directly so the
+            # participant does not move their head after calibrating
             {
                 "id": "phase2",
-                "order": "random",
+                "order": "latinSquare",
                 "numSamples": 1,
                 "components": schemes
             },
 
-            "gazeEnd",            # stops the webcam
+            "gazeFinalCheck",
+            "gazeEnd",
             "demographics"
         ],
     }
@@ -700,8 +687,8 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
 
 
 # Optional: Set Prolific redirection URL
-prolificRedirection = "https://app.prolific.com/submissions/complete?cc=C17DENOG"
-prolificRedirectionFailedAttentionCheck = "https://app.prolific.com/submissions/complete?cc=CASYDYPP"
+prolificRedirection = "https://app.prolific.com/submissions/complete?cc=C1OCRYTV"
+prolificRedirectionFailedAttentionCheck = "https://app.prolific.com/submissions/complete?cc=C1N03H9S"  # screen-out (training failed / no camera)
 
 
 def create_gaze_components(fail_link):
@@ -724,6 +711,14 @@ def create_gaze_components(fail_link):
             "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
             "parameters": {"maxAttempts": 3, "acceptPctW": 0.08},
             "response": hidden("calibration", "Calibration result"),
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
+        "gazeFinalCheck": {
+            # pilot diagnostics: 9-dot accuracy check after the last trial, no recalibration
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/GazeFinalCheck.tsx",
+            "response": hidden("finalCheck", "End-of-session accuracy check"),
             "instructionLocation": "belowStimulus",
             "nextButtonLocation": "belowStimulus"
         },

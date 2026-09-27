@@ -2,11 +2,13 @@ import * as d3 from "d3";
 import { useEffect, useState, useRef, useCallback } from "react";
 import React from "react";
 import { NormalSlider } from "./Slider";
-import { gazeTracker, normToPx } from "./gazeTracker";
+import { gazeTracker, normToPx, headShiftMm } from "./gazeTracker";
 import { CalibrationOverlay, shortCalibPoints, useDotSequence } from "./CalibrationOverlay";
 
-// Copy of scatterplot/assets/phase2.jsx with (1) a short 3-dot + validation-dot calibration
-// before the plot and (2) a gaze trace recorded from click-to-start until the slider appears.
+// Trial of the timing design (labels visible during [label_start, label_end) seconds after the click,
+// plot shown for `seconds`; label_start = label_end = seconds means never shown) with (1) a test-first
+// short calibration before the plot and (2) a gaze trace recorded from click-to-start until the slider.
+// Falls back to the old `label_seconds` semantics (reveal at s, keep) when label_start is absent.
 function Phase2Gaze({ parameters, setAnswer }) {
 
   // Plot margins - same as phase1 to ensure identical plot area
@@ -23,7 +25,10 @@ function Phase2Gaze({ parameters, setAnswer }) {
   const fixedSize = { width: 600 + 110, height: 600 };
 
   const ref = useRef(null);
-  const { coordinates, example, seconds, label_seconds, correlation, label, X, Y, label_idx } = parameters;
+  const { coordinates, example, seconds, label_seconds, label_start, label_end, correlation, label, X, Y, label_idx } = parameters;
+  // Label window in seconds after the click; hide time >= seconds means "until the plot disappears"
+  const showAt = label_start ?? label_seconds;
+  const hideAt = label_start !== undefined && label_start !== null ? label_end : seconds;
   const [view, setView] = useState("shortcalib"); // shortcalib, scatter, corrafter
   const [corrAfter, setCorrAfter] = useState(0);
   const [hasClicked, setHasClicked] = useState(false);
@@ -36,6 +41,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
   const samplesRef = useRef([]);
   const startAtRef = useRef(null);
   const labelRevealAtRef = useRef(null);
+  const labelHideAtRef = useRef(null);
   const unsubRef = useRef(null);
   const geometryRef = useRef(null);
   const hiddenEventsRef = useRef([]);
@@ -73,13 +79,19 @@ function Phase2Gaze({ parameters, setAnswer }) {
         preErrorPx: null, preOffsetPx: null, postErrorPx: null, fallbackErrorPx: null, errorPx: null, n: 0,
         tier: "none", dots: 0, reverted: false, thresholdPx, largePx, prevErrorPx,
         offsetBeforePx: null, offsetPx: null, calib: [], error: null,
+        // pilot diagnostics: every centre check with per-sample traces, head pose at the pre-check and
+        // its distance (mm) from the head pose during the full calibration's validation
+        checks: {}, head: null, headShiftMm: null, calibHead: gazeTracker.calibHead ?? null,
       };
       const check = (label) => runValidation([{ nx: 0, ny: 0 }], 1300, 700, label);
       try {
         await gazeTracker.init();
         const off0 = gazeTracker.offsetPx;
         result.offsetBeforePx = [Math.round(off0[0]), Math.round(off0[1])];
-        const pre = await check("Look at the centre dot");
+        const pre = await check("Look at the centre dot. Keep your head still.");
+        result.checks.pre = pre;
+        result.head = pre.points[0]?.pose ?? null;
+        result.headShiftMm = headShiftMm(result.head, gazeTracker.calibHead);
         result.preErrorPx = pre.meanErrorPx;
         result.preOffsetPx = pre.meanOffsetPx ? [Math.round(pre.meanOffsetPx[0]), Math.round(pre.meanOffsetPx[1])] : null;
         result.n = pre.points[0]?.n ?? 0;
@@ -91,7 +103,8 @@ function Phase2Gaze({ parameters, setAnswer }) {
           if (pre.meanErrorPx <= largePx && driftFixed) {
             result.tier = "offset";
             await gazeTracker.setOffsetPx(driftFixed[0], driftFixed[1]);
-            const post = await check("Look at the centre dot");
+            const post = await check("Look at the centre dot. Keep your head still.");
+            result.checks.post = post;
             result.postErrorPx = post.meanErrorPx;
             if (worse(post, pre.meanErrorPx)) {
               await gazeTracker.setOffsetPx(off0[0], off0[1]);
@@ -105,9 +118,10 @@ function Phase2Gaze({ parameters, setAnswer }) {
             // The refit maps raw predictions straight onto the targets, so the old drift offset
             // must not be applied on top of it (the snapshot keeps it for a revert).
             await gazeTracker.setOffsetPx(0, 0);
-            setMessage("Quick calibration: look at each dot");
+            setMessage("Quick calibration: look at each dot. Keep your head still.");
             result.calib = await runCalibration(shortCalibPoints(label_idx ?? 0, result.dots), "click", 1300, 800);
-            const post = await check("Look at the centre dot");
+            const post = await check("Look at the centre dot. Keep your head still.");
+            result.checks.post = post;
             result.postErrorPx = post.meanErrorPx;
             if (worse(post, pre.meanErrorPx)) {
               await gazeTracker.restoreCalibration();
@@ -115,7 +129,8 @@ function Phase2Gaze({ parameters, setAnswer }) {
               if (driftFixed) {
                 // Fallback: plain drift correction from the pre-check
                 await gazeTracker.setOffsetPx(driftFixed[0], driftFixed[1]);
-                const post2 = await check("Look at the centre dot");
+                const post2 = await check("Look at the centre dot. Keep your head still.");
+                result.checks.fallback = post2;
                 result.fallbackErrorPx = post2.meanErrorPx;
                 if (worse(post2, pre.meanErrorPx)) await gazeTracker.setOffsetPx(off0[0], off0[1]);
               }
@@ -150,27 +165,32 @@ function Phase2Gaze({ parameters, setAnswer }) {
     }
   }, [view]);
 
-  // Handle label visibility based on label_seconds
+  // Label visibility: shown during [showAt, hideAt) seconds after the click (timers are measured
+  // from the click time, not from when this effect runs)
   useEffect(() => {
     if (view !== "scatter") return;
     if (!hasClicked) return;
-    if (label_seconds === undefined || label_seconds === null) return;
-
-    if (label_seconds === 0) {
-      setLabelsVisible(true);
-      labelRevealAtRef.current = 0;
-      return;
-    }
-    if (label_seconds >= seconds) {
+    if (showAt === undefined || showAt === null) return;
+    if (showAt >= seconds || hideAt <= showAt) {
       setLabelsVisible(false);
       return;
     }
-    const timer = setTimeout(() => {
+    const since = () => performance.now() - startAtRef.current;
+    const timers = [];
+    const show = () => {
       setLabelsVisible(true);
-      labelRevealAtRef.current = Math.round(performance.now() - startAtRef.current);
-    }, label_seconds * 1000);
-    return () => clearTimeout(timer);
-  }, [view, hasClicked, label_seconds, seconds]);
+      labelRevealAtRef.current = Math.round(since());
+    };
+    if (showAt <= 0) show();
+    else timers.push(setTimeout(show, Math.max(0, showAt * 1000 - since())));
+    if (hideAt < seconds) {
+      timers.push(setTimeout(() => {
+        setLabelsVisible(false);
+        labelHideAtRef.current = Math.round(since());
+      }, Math.max(0, hideAt * 1000 - since())));
+    }
+    return () => timers.forEach(clearTimeout);
+  }, [view, hasClicked, showAt, hideAt, seconds]);
 
   // Timer to change view after seconds when in scatter view
   useEffect(() => {
@@ -229,6 +249,9 @@ function Phase2Gaze({ parameters, setAnswer }) {
         gaze: JSON.stringify({
           startAt: startAt === null ? null : Math.round(Date.now() - (performance.now() - startAt)),
           labelRevealAt: labelRevealAtRef.current,
+          labelHideAt: labelHideAtRef.current,
+          labelStart: label_start ?? null,
+          labelEnd: label_end ?? null,
           seconds,
           labelSeconds: label_seconds,
           durationMs,
@@ -237,13 +260,13 @@ function Phase2Gaze({ parameters, setAnswer }) {
           fullCalib: gazeTracker.fullCalib ?? null,
           hz: samples.length > 1 ? Math.round((samples.length - 1) * 1000 / Math.max(1, durationMs) * 10) / 10 : 0,
           hidden: hiddenEventsRef.current,
-          // [t_ms_since_click, x_px, y_px, open(1/0), raw_x_px, raw_y_px] in viewport pixels
+          // [t_ms_since_click, x_px, y_px, open(1/0), raw_x_px, raw_y_px, face_x_mm, face_y_mm, face_z_mm]
           samples,
         }),
       }
     });
     setCorrAfter(newCorrAfter);
-  }, [setAnswer, correlation, seconds, label_seconds]);
+  }, [setAnswer, correlation, seconds, label_seconds, label_start, label_end]);
 
   // Draw scatterplot with D3 - only when view changes or coordinates change
   useEffect(() => {
@@ -354,13 +377,17 @@ function Phase2Gaze({ parameters, setAnswer }) {
     startAtRef.current = startAt;
     samplesRef.current = [];
     labelRevealAtRef.current = null;
+    labelHideAtRef.current = null;
     captureGeometry();
     stopRecording();
     unsubRef.current = gazeTracker.onSample((s) => {
       const [x, y] = normToPx(s.nx, s.ny);
       const [rx, ry] = normToPx(s.rx, s.ry);
-      // [t_ms, x_px, y_px, open01, raw_x_px, raw_y_px] — x/y are Kalman-smoothed, raw is affine-only
-      samplesRef.current.push([Math.round(s.t - startAt), Math.round(x), Math.round(y), s.open && s.face ? 1 : 0, Math.round(rx), Math.round(ry)]);
+      // [t_ms, x_px, y_px, open01, raw_x_px, raw_y_px, face_x_mm, face_y_mm, face_z_mm]
+      // x/y are Kalman-smoothed, raw is affine-only; face_* = 3D face origin in the camera frame
+      // (face_z = distance to the camera), null when no face was detected
+      const o = s.origin && s.origin.length === 3 ? s.origin.map((v) => Math.round(v * 10)) : [null, null, null];
+      samplesRef.current.push([Math.round(s.t - startAt), Math.round(x), Math.round(y), s.open && s.face ? 1 : 0, Math.round(rx), Math.round(ry), ...o]);
     });
   }, [hasClicked, captureGeometry, stopRecording]);
 
@@ -412,7 +439,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
                   textAlign: 'center'
                 }}
               >
-                You have 5~10 seconds to estimate the correlation. <br />  Click to start!
+                You have 5 to 11 seconds to view the scatterplot. <br />  Click to start!
               </div>
             )}
           </div>

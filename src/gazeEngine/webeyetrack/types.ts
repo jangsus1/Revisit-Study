@@ -38,6 +38,8 @@ export interface SlimGazeResult {
   rawPog: number[];
   gazeState: 'open' | 'closed';
   faceDetected: boolean;
+  head?: number[] | null;       // unit head-direction vector
+  origin?: number[] | null;     // 3D face origin in cm (x, y, z = distance to camera)
   capturedAt: number;           // performance.now() on the main thread when the frame was grabbed
   durations: Record<string, number>;
 }

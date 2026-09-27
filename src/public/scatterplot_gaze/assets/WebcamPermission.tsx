@@ -47,6 +47,14 @@ function WebcamPermission({ parameters, setAnswer }: StimulusParams<Params>) {
           viewport: [window.innerWidth, window.innerHeight],
           dpr: window.devicePixelRatio,
           ua: navigator.userAgent,
+          screen: [window.screen.width, window.screen.height],
+          windowPos: [window.screenX, window.screenY, window.outerWidth, window.outerHeight],
+          cores: navigator.hardwareConcurrency ?? null,
+          // camera capture settings (no device name)
+          camera: (() => {
+            const tr = gazeTracker.getStream()?.getVideoTracks()[0]?.getSettings();
+            return tr ? { width: tr.width ?? null, height: tr.height ?? null, frameRate: tr.frameRate ?? null } : null;
+          })(),
         }),
       },
     });
@@ -60,13 +68,21 @@ function WebcamPermission({ parameters, setAnswer }: StimulusParams<Params>) {
       <Title order={2}>Camera Setup</Title>
       <Text mt="sm">
         The final task uses your <strong>webcam</strong> to estimate where on the screen you are looking.
-        The video is processed entirely inside your browser: it is <strong>never uploaded or stored</strong>.
-        Only estimated on-screen gaze coordinates are saved.
       </Text>
+      <Alert color="blue" mt="sm" title="Nothing is recorded">
+        <strong>Your camera video and your screen are never recorded, uploaded, or stored.</strong>
+        {' '}
+        The video is processed entirely inside your browser and discarded frame by frame. Only the
+        estimated on-screen gaze position (a pair of numbers per moment) is saved.
+      </Alert>
+      <Alert color="orange" mt="sm" title="Please keep your head still">
+        Eye tracking only works if <strong>your head stays as still as possible</strong> from the
+        calibration until the end of the task. Move only your eyes. Leaning, turning, or moving closer
+        to the screen makes the measurement inaccurate.
+      </Alert>
       <List mt="sm" spacing="xs">
-        <List.Item>Sit about an arm&apos;s length (50–70 cm) from the screen, facing it directly.</List.Item>
+        <List.Item>Sit about an arm&apos;s length (50–70 cm) from the screen, facing it directly, in a position you can hold comfortably.</List.Item>
         <List.Item>Make sure your face is well lit and avoid a bright window behind you.</List.Item>
-        <List.Item>Keep your head still during the dot calibration and the plots.</List.Item>
         <List.Item>Please do not resize or move the browser window from now on.</List.Item>
       </List>
 

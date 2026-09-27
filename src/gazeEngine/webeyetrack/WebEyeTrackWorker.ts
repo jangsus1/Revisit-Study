@@ -78,6 +78,10 @@ async function handle(e: MessageEvent) {
             rawPog: result.rawPog,
             gazeState: result.gazeState,
             faceDetected,
+            // Head pose for pilot diagnostics: unit head direction and 3D face origin (cm, camera frame;
+            // z = distance to the camera). Zeros when no face is detected.
+            head: faceDetected ? Array.from(result.headVector ?? []) : null,
+            origin: faceDetected ? Array.from(result.faceOrigin3D ?? []) : null,
             capturedAt: payload.capturedAt,
             durations: result.durations,
           },

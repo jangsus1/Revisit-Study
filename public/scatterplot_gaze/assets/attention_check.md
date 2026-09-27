@@ -1,5 +1,5 @@
 # About Correlation
-> **Note:** Please read this page carefully. There will be attention check questions based on this content.
+> **Note:** Read this page carefully, then answer the four questions below and press **Check Answer**. Any question marked wrong can be changed and checked again. **You have 3 checks in total.** If any answer is still wrong after the third check, you will not be able to take part in the study and will be returned to Prolific.
 
 ## 1. What Is Correlation?
 Correlation measures the relationship between two variables. In this experiment, the **correlation coefficient (r)** will range from **0 to +1**.
@@ -20,4 +20,4 @@ Correlation measures the relationship between two variables. In this experiment,
 * **No Correlation (r is around 0.0):** Height vs. Intelligence (Height does not predict intelligence).
 
 ## 4. Visual Examples
-![example1](scatterplot_gaze/assets/positive.png)
+![example1](scatterplot/assets/positive.png)
