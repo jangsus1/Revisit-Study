@@ -118,9 +118,14 @@ export default class WebEyeTrackProxy {
     return this.request<void>('calibStart', { x, y });
   }
 
-  /** Stop buffering and adapt the model with the collected samples. */
-  calibEnd(ptType: 'calib' | 'click', maxSamples = 8): Promise<CalibResult> {
-    return this.request<CalibResult>('calibEnd', { ptType, maxSamples });
+  /** Stop buffering and adapt the model with the collected samples (defer: keep them for calibFlush). */
+  calibEnd(ptType: 'calib' | 'click', maxSamples = 8, defer = false): Promise<CalibResult> {
+    return this.request<CalibResult>('calibEnd', { ptType, maxSamples, defer });
+  }
+
+  /** Adapt to every point closed with defer=true, in order. */
+  calibFlush(): Promise<CalibResult & { points: number; fitMs: number }> {
+    return this.request<CalibResult & { points: number; fitMs: number }>('calibFlush');
   }
 
   /** Save the current calibration state so a harmful adapt() can be undone. */

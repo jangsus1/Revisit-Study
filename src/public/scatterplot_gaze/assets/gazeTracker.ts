@@ -175,11 +175,17 @@ class GazeTracker {
   }
 
   /** Collect gaze samples for `ms` while the participant fixates normalized (nx, ny), then adapt. */
-  async calibrate(nx: number, ny: number, ms: number, ptType: 'calib' | 'click'): Promise<CalibResult> {
+  async calibrate(nx: number, ny: number, ms: number, ptType: 'calib' | 'click', defer = false): Promise<CalibResult> {
     if (!this.proxy) throw new Error('tracker not started');
     await this.proxy.calibStart(nx, ny);
     await new Promise((resolve) => { setTimeout(resolve, ms); });
-    return this.proxy.calibEnd(ptType, 10);
+    return this.proxy.calibEnd(ptType, 10, defer);
+  }
+
+  /** Adapt to all points collected with defer=true (call once the dots are gone). */
+  async flushCalibration(): Promise<CalibResult & { points: number; fitMs: number }> {
+    if (!this.proxy) throw new Error('tracker not started');
+    return this.proxy.calibFlush();
   }
 
   /** Split form of calibrate() for callers that time the fixation themselves (gaze_playground bench). */
@@ -188,9 +194,9 @@ class GazeTracker {
     return this.proxy.calibStart(nx, ny);
   }
 
-  calibEnd(ptType: 'calib' | 'click', maxSamples = 10): Promise<CalibResult> {
+  calibEnd(ptType: 'calib' | 'click', maxSamples = 10, defer = false): Promise<CalibResult> {
     if (!this.proxy) return Promise.reject(new Error('tracker not started'));
-    return this.proxy.calibEnd(ptType, maxSamples);
+    return this.proxy.calibEnd(ptType, maxSamples, defer);
   }
 
   /** Current drift correction in normalized units (mirrors the worker's value). */

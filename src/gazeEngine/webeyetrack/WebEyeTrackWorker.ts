@@ -38,6 +38,23 @@ let collecting: {
   buf: { eye: ImageData; head: number[]; origin: number[] }[];
 } | null = null;
 
+// Points whose buffers were closed with calibEnd({ defer: true }); adapted in order by calibFlush, so the
+// fixation dots never wait on adapt() (seconds on slow machines) and the result equals per-dot adaptation
+// (eye patches / head pose do not depend on the model weights).
+let pendingPoints: { x: number; y: number; buf: { eye: ImageData; head: number[]; origin: number[] }[]; ptType: string }[] = [];
+
+async function adaptPoint(c: { x: number; y: number; buf: { eye: ImageData; head: number[]; origin: number[] }[] }, ptType: string) {
+  await tracker.adapt(
+    c.buf.map((b) => b.eye),
+    c.buf.map((b) => b.head),
+    c.buf.map((b) => b.origin),
+    c.buf.map(() => [c.x, c.y]),
+    1,
+    1e-5,
+    ptType ?? 'calib',
+  );
+}
+
 function setStatus(s: typeof status) {
   status = s;
   self.postMessage({ type: 'statusUpdate', status });
@@ -101,21 +118,30 @@ async function handle(e: MessageEvent) {
       const c = collecting;
       collecting = null;
       if (!c) { respond(reqId, { n: 0, ...tracker.calibStats() }); break; }
+      const buf = c.buf.slice(-(payload?.maxSamples ?? 8));
+      if (payload?.defer) {
+        if (buf.length > 0) pendingPoints.push({ x: c.x, y: c.y, buf, ptType: payload?.ptType ?? 'calib' });
+        respond(reqId, { n: buf.length, deferred: true, ...tracker.calibStats() });
+        break;
+      }
       setStatus('calib');
       try {
-        const buf = c.buf.slice(-(payload?.maxSamples ?? 8));
-        if (buf.length > 0) {
-          await tracker.adapt(
-            buf.map((b) => b.eye),
-            buf.map((b) => b.head),
-            buf.map((b) => b.origin),
-            buf.map(() => [c.x, c.y]),
-            1,
-            1e-5,
-            payload?.ptType ?? 'calib',
-          );
-        }
+        if (buf.length > 0) await adaptPoint({ x: c.x, y: c.y, buf }, payload?.ptType ?? 'calib');
         respond(reqId, { n: buf.length, ...tracker.calibStats() });
+      } catch (err) {
+        respond(reqId, undefined, String(err?.message ?? err));
+      }
+      setStatus('idle');
+      break;
+    }
+    case 'calibFlush': {
+      const points = pendingPoints;
+      pendingPoints = [];
+      setStatus('calib');
+      const t0 = performance.now();
+      try {
+        for (const p of points) await adaptPoint(p, p.ptType);
+        respond(reqId, { points: points.length, fitMs: Math.round(performance.now() - t0), ...tracker.calibStats() });
       } catch (err) {
         respond(reqId, undefined, String(err?.message ?? err));
       }
@@ -128,6 +154,7 @@ async function handle(e: MessageEvent) {
     }
     case 'restoreCalib': {
       collecting = null;
+      pendingPoints = [];
       try { respond(reqId, { restored: tracker.restoreCalib(), ...tracker.calibStats() }); } catch (err) { respond(reqId, undefined, String(err?.message ?? err)); }
       break;
     }
@@ -138,6 +165,7 @@ async function handle(e: MessageEvent) {
     }
     case 'resetCalib': {
       collecting = null;
+      pendingPoints = [];
       setStatus('calib');
       try {
         await tracker.resetCalib(baseUrl);

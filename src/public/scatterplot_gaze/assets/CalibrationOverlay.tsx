@@ -32,6 +32,7 @@ export type ValidationPoint = NormPoint & {
 export type CalibPointLog = CalibResult & NormPoint & {
   dwellMs: number;
   collectMs: number;
+  fitMs?: number;                      // last point only: time adapting to all points after the dots
   trace: DotTrace;                     // predictions before this dot was added to the calibration
   pose: HeadPose | null;
 };
@@ -97,7 +98,10 @@ export function useDotSequence() {
     return { result, trace, pose: meanHeadPose(poseSamples) };
   }, []);
 
-  /** Show each point; during the last `collectMs` the tracker adapts to it. */
+  /**
+   * Show each point and collect eye samples during its last `collectMs`; the tracker adapts to all points
+   * only after the last dot (blank screen, "relax your eyes"), so no dot is held while the model trains.
+   */
   const runCalibration = useCallback(async (
     points: NormPoint[],
     ptType: 'calib' | 'click',
@@ -109,7 +113,7 @@ export function useDotSequence() {
       if (cancelled.current) break;
       setMessage(`Look at the dot (${i + 1} / ${points.length})`);
       // eslint-disable-next-line no-await-in-loop
-      const r = await showDot(points[i], dwellMs, collectMs, () => gazeTracker.calibrate(points[i].nx, points[i].ny, collectMs, ptType));
+      const r = await showDot(points[i], dwellMs, collectMs, () => gazeTracker.calibrate(points[i].nx, points[i].ny, collectMs, ptType, true));
       if (r) {
         results.push({
           ...(r.result as CalibResult), ...points[i], dwellMs, collectMs, trace: r.trace, pose: r.pose,
@@ -117,6 +121,15 @@ export function useDotSequence() {
       }
     }
     setDot(null);
+    setCollecting(false);
+    setMessage('Done. You can blink and relax your eyes for a moment…');
+    const fit = await gazeTracker.flushCalibration();
+    const last = results[results.length - 1];
+    if (last) {
+      Object.assign(last, {
+        entries: fit.entries, distinctTargets: fit.distinctTargets, affineFitted: fit.affineFitted, fitMs: fit.fitMs,
+      });
+    }
     return results;
   }, [showDot]);
 

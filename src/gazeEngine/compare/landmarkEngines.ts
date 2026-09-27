@@ -68,6 +68,9 @@ abstract class LandmarkEngine extends GazeEngineBase {
     if (this.target && this.framesInPoint > 0) this.targets.add(this.target.map(Math.round).join(','));
     this.target = null;
     this.calibTargets = this.targets.size;
+  }
+
+  async finishCalibration() {
     // Needs >= 3 distinct targets before the fit is meaningful
     if (this.targets.size >= 3 && this.X.length >= 10) this.model.fit(this.X, this.Y);
   }

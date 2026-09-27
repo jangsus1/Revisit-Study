@@ -12,7 +12,8 @@ export type WetTracker = {
   stop(): void;
   resetCalibration(): Promise<void>;
   calibStart(nx: number, ny: number): Promise<void>;
-  calibEnd(ptType: 'calib' | 'click', maxSamples?: number): Promise<CalibResult>;
+  calibEnd(ptType: 'calib' | 'click', maxSamples?: number, defer?: boolean): Promise<CalibResult>;
+  flushCalibration(): Promise<CalibResult>;
   onSample(fn: (s: { t: number; rx: number; ry: number; open: boolean; face: boolean }) => void): () => void;
 };
 
@@ -55,7 +56,11 @@ export class WebEyeTrackEngine extends GazeEngineBase {
 
   async endPoint() {
     await this.pending;
-    const r = await this.tracker.calibEnd('calib', 10);
+    await this.tracker.calibEnd('calib', 10, true);
+  }
+
+  async finishCalibration() {
+    const r = await this.tracker.flushCalibration();
     this.calibTargets = r.distinctTargets;
   }
 }

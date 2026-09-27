@@ -49,4 +49,5 @@ export interface CalibResult {
   entries: number;              // calibration entries currently held
   distinctTargets: number;
   affineFitted: boolean;
+  deferred?: boolean;           // samples stored; the model adapts at calibFlush
 }

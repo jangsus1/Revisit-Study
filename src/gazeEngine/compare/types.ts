@@ -4,7 +4,8 @@
  * Every webcam tracker we compare follows the same calibration mechanism: while the participant
  * fixates a known screen target, the tracker pairs its per-frame eye features with that target,
  * then fits a mapping (ridge / linear / affine / few-shot CNN) from features to screen position.
- * Each adapter exposes exactly that: beginPoint(target) -> collect -> endPoint() fits.
+ * Each adapter exposes exactly that: beginPoint(target) -> collect -> endPoint(), per dot; then
+ * finishCalibration() fits once all dots are done (so no dot waits on the fit).
  * All coordinates are viewport CSS pixels.
  */
 
@@ -79,8 +80,11 @@ export abstract class GazeEngineBase {
   /** Start pairing frames with the target (viewport px) the participant is looking at. */
   abstract beginPoint(x: number, y: number): void;
 
-  /** Stop collecting for the current target and refit the mapping. */
+  /** Stop collecting for the current target (cheap: no fitting while a dot is on screen). */
   abstract endPoint(): Promise<void>;
+
+  /** Fit the mapping to every collected point; called once after the last calibration dot. */
+  abstract finishCalibration(): Promise<void>;
 
   protected abstract startImpl(): Promise<void>;
 

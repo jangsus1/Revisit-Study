@@ -150,6 +150,9 @@ export class RealEyeEngine extends GazeEngineBase {
     if (this.target && this.frameInPoint > 0) this.targets.add(this.target.map(Math.round).join(','));
     this.target = null;
     this.calibTargets = this.targets.size;
+  }
+
+  async finishCalibration() {
     if (this.tracker && this.targets.size >= 3 && this.samples.length >= 5) {
       this.tracker.calibrate(this.samples);
       this.fitted = true;

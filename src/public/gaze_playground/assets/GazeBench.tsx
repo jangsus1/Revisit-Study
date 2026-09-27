@@ -170,6 +170,11 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
     }
     setDot(null);
     setCollecting(false);
+    if (mode === 'calib') {
+      // Fit after the dots (never while a dot is held); a blank screen while the models train
+      setMessage('Done. You can blink and relax your eyes for a moment…');
+      await Promise.all(list.map((e) => e.finishCalibration().catch((err) => console.warn(e.info.id, err))));
+    }
     return out;
   }, [active]);
 
