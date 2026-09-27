@@ -30,7 +30,7 @@ yarn), push `main` to deploy to GitHub Pages.
 | `phase2_control.jsx` | `seconds`, `label_start`, `label_end` | labels visible only in `[start, end)`; start = end = seconds → never |
 | `phase2_timing.jsx` | same as control | copy with generic "5 to 11 seconds" start text (used by `scatterplot_timing`) |
 | `phase2_post_label.jsx`, `phase2_interval.jsx` | old pilots | estimate before/after label; repeated intervals |
-| `scatterplot_gaze/assets/phase2_gaze.jsx` | as `phase2.jsx` | full-screen plot + webcam gaze recording + per-trial calibration |
+| `scatterplot_gaze/assets/phase2_gaze.jsx` | `label_start`, `label_end` (as `phase2_timing.jsx`; falls back to `label_seconds`) | full-screen plot + webcam gaze recording + per-trial test-first calibration |
 
 All variants emit `answer = {actualCorr, corrAfter}` via `setAnswer({status:true, answers:{answer: JSON}})`.
 Every reactive response must carry `"hidden": true`, otherwise reVISit renders the raw answer
@@ -104,6 +104,16 @@ completion link, `helpTextPath`.
   placeholders — replace them before collection.
 - Data export: analysis dashboard → tidy CSV → `../ScatterplotMitigation/data/<study>_all_tidy.csv`.
 - The embedded browser pane blocks the webcam; gaze studies must be tested in a real Chrome window.
+
+## Eye-tracking variant (`scatterplot_gaze`)
+
+Built from the timing generator: copy `scatterplot_timing/config.py`, point the phase-2 base at
+`phase2_gaze.jsx` with a second hidden reactive response `gaze`, add `create_gaze_components()`
+(webcamPermission, gazeCalibration, gazeFinalCheck, gazeEnd), put webcamPermission + gazeCalibration
+before the examples, no instruction page between examples and main trials, and gazeFinalCheck + gazeEnd
+after phase 2. Keep `studyRules` (desktop, mouse, ≥1024×700, Chrome/Edge/Firefox) in the seed config.
+The embedded browser pane has no camera: trials still run (tracker init fails, gaze is empty), so label
+timing and Next gating can be checked there; calibration needs a real Chrome window.
 
 ## Gaze tracker playground
 

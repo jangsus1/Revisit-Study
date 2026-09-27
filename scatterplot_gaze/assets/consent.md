@@ -6,9 +6,10 @@
 - **Voluntary participation**: You can withdraw anytime without consequences.  
 - **Purpose**: Analyze gaze patterns to understand trust in visualizations.  
 - **Eligibility**: Must be **18 or older**, using a desktop or laptop computer **with a webcam**.  
-- **Duration**: **15-25 minutes**, one-time session.  
+- **Duration**: **20-30 minutes**, one-time session.  
 - **Tasks**: Viewing visualizations, performing visual tasks (e.g., estimating relationships), and a short eye-tracking calibration in which you look at dots on the screen.  
-- **Webcam use**: During the final task your webcam is used to estimate where on the screen you are looking. The video is processed **locally in your browser only**; it is **never transmitted, recorded, or stored**. Only estimated on-screen gaze coordinates and calibration accuracy are saved.  
+- **Webcam use**: During the final task your webcam is used to estimate where on the screen you are looking. **Your camera video and your screen are never recorded, transmitted, or stored.** The video is processed locally in your browser only. Only estimated on-screen gaze coordinates, approximate head position, and calibration accuracy are saved.  
+- **Please keep your head still** during the final task; the eye tracking depends on it.  
 
 ## **Risks**  
 - Minimal risks: fatigue, boredom, or eye strain—breaks allowed.  
