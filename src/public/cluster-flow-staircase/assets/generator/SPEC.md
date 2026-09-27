@@ -157,13 +157,46 @@ for i = 0 .. 4:
 4. Displays failing occlusion invariants (dot centres < 2.4*RDOT apart, an arrow passing within
    RDOT+2 px of a non-endpoint dot, layout not fitting the canvas) are discarded and the next
    derived seed is tried; the attempt count is recorded.
-5. The whole layout is scaled by 0.6 into a 480 x 360 px canvas for single-fixation viewing.
+5. The whole layout is scaled into the canvas for single-fixation viewing. *Superseded by 16:*
+   originally 0.6 into 480 x 360 px.
 6. Dense variant: +2 extra rank-respecting within-group arrows per cluster, backbone skip links
    (order[i] -> order[i+2]) with p = 0.3.
-7. Grouping cues (hull, rect, color, edge, shape) are applied after layout.
-8. Stimulus B: N_B dots scattered uniformly in the same canvas with the same minimum spacing, one
-   random directed spanning tree (plus matched extra arrows when dense), cue features assigned
-   without spatial structure.
-9. Colour polarity is inverted: white ground, #666666 dots, #111111 links, #333333 hull strokes,
-   and the colour-cue palette is equalised to the dot's relative luminance (Y = 0.133). The trial
-   page surround is light grey (#E6E6E6) so no bright or dark flash occurs between phases.
+7. Grouping cues are applied after layout: `proximity` (control, nothing added), `rect`, `color`,
+   `shape`, `edge`. The convex-hull cue (`hull`) and the name `none` are superseded (dropped).
+8. Stimulus B: N_B dots, one random directed spanning tree (plus matched extra arrows when dense),
+   cue features assigned without spatial structure. *Placement and links revised by 13 to 15.*
+9. Colour polarity is inverted: white ground, #111111 links, #333333 rect strokes. The trial page
+   surround is light grey (#E6E6E6) so no bright or dark flash occurs between phases. *The
+   #666666 dot grey and the Okabe-Ito luminance-matched palette are superseded by 11.*
+10. **Even layout.** Every cue except `proximity` places the clusters so that the edge-to-edge gap
+    between neighbouring clusters equals the within-cluster pitch `INTER`: horizontal centroid
+    distance `(maxX - meanX)_a + INTER + (meanX - minX)_b`, and each column placed on its own with
+    `(maxY - meanY)_top + INTER + (meanY - minY)_bottom` (the planned `rowGap = max` over columns
+    left up to 1.3 INTER of extra gap in columns of short clusters, i.e. proximity grouping, so the
+    rows are aligned on their facing edges instead). Templates and jitter are those of the grouped
+    layout of the same seed. `proximity` keeps sections 5 and 5b.
+11. **Palette.** Six colours on a CIELAB circle centred on the neutral axis: L* = 50, chroma 29
+    (the largest whole chroma at which every hue is inside sRGB), hues `hueOffset + 60 k`, as in the
+    colour-wheel method of Zhang & Luck (2008). `hueOffset` is drawn once per participant in
+    [0, 60). The default node grey is #777777 (L* = 50), so colour and grey displays differ in hue
+    only.
+12. **Shapes and lines.** Shape cue marks: filled circle (r = RDOT), hollow square (outer side
+    r * sqrt(pi), outline 0.25 r inside it) and open cross (bars 2 x 1.1 r long, 0.25 r wide), one
+    of each mark class, each on two clusters. Edge cue: between-cluster links dashed with Sterzik
+    et al. (IEEE TVCG 2024, Table 4) asynchronous dashing level 3 of 13 (dash 10.9 of a 40 px
+    period), period halved to 20 px (dash 5.45, gap 14.55), round caps, lengths excluding caps.
+13. **B field and spacing.** B's dots are sampled inside A's dot-centre bounding box (clipped to
+    the canvas margin) with minimum spacing `min(B_MAX_SPACING, B_SPACING_FACTOR * sqrt(area / N_B))`,
+    never below the invariant floor (factor 0.8, cap 67.5 px). The tree grows outward from a random
+    point of the field so every joining node has placed neighbours nearby.
+14. **B ink targeting.** B's total visible link length aims at `(A_linkLength + A_outlineInk /
+    linkWidth) * E_B / E_A`: each link goes to the one of the 10 nearest usable candidates whose
+    length best meets the remaining budget per remaining link, skipping nodes that already carry 4
+    links while others are usable. Without an A (stand-alone B) links go to a random one of the 3
+    nearest usable dots. B must therefore always be regenerated with its A (`generateTrialPair`).
+15. **Metrics.** `measureDisplay` reports node, link (dash duty cycle and arrowheads included) and
+    outline ink, visible link length, nearest-neighbour and pairwise distances and convex-hull area,
+    from the same geometry the renderer draws (`geometry.ts`).
+16. **Larger single-location canvas.** SCALE 0.9 into a 720 x 540 px canvas; A and B are shown one
+    after the other at the same place, separated by a 150 ms white-noise mask (3 px grey blocks,
+    seeded by `hashSeed(seedA, seedB, 'mask')`).
