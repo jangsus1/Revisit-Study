@@ -182,6 +182,17 @@ class GazeTracker {
     return this.proxy.calibEnd(ptType, 10);
   }
 
+  /** Split form of calibrate() for callers that time the fixation themselves (gaze_playground bench). */
+  calibStart(nx: number, ny: number): Promise<void> {
+    if (!this.proxy) return Promise.reject(new Error('tracker not started'));
+    return this.proxy.calibStart(nx, ny);
+  }
+
+  calibEnd(ptType: 'calib' | 'click', maxSamples = 10): Promise<CalibResult> {
+    if (!this.proxy) return Promise.reject(new Error('tracker not started'));
+    return this.proxy.calibEnd(ptType, maxSamples);
+  }
+
   /** Current drift correction in normalized units (mirrors the worker's value). */
   offset: [number, number] = [0, 0];
 

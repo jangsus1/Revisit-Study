@@ -115,12 +115,26 @@ after phase 2. Keep `studyRules` (desktop, mouse, ≥1024×700, Chrome/Edge/Fire
 The embedded browser pane has no camera: trials still run (tracker init fails, gaze is empty), so label
 timing and Next gating can be checked there; calibration needs a real Chrome window.
 
-## Gaze tracker playground
+## Gaze tracker playground (comparison bench)
 
-`http://localhost:8080/gaze_playground` (also deployed, but not listed on the landing page) is a
-one-page test bench for the vendored WebEyeTrack engine: start camera, full 9 + 5 calibration,
-validation on 5 / 9 / 25 dots or the centre, 3 click-dot refresh, drift offset from a centre
-check, reset, and a live smoothed (red) + raw (blue ring) gaze point. Component:
-`src/public/scatterplot_gaze/assets/GazePlayground.tsx`; it reuses `gazeTracker` and
-`CalibrationOverlay`, so it exercises exactly the code the gaze study runs. Open it in a real
-Chrome window (the embedded browser has no camera).
+`/gaze_playground` (listed on the landing page; deployed at `/Revisit-Study/gaze_playground`) runs several
+webcam trackers **at the same time on the same camera** and shows them the same dots, so their accuracy is
+compared on identical eye movements. Component `src/public/gaze_playground/assets/GazeBench.tsx`; engines in
+`src/gazeEngine/compare/` (loaded lazily), all behind one interface (`GazeEngineBase`: `beginPoint(target)` →
+collect frames → `endPoint()` refits; output in viewport px, unsmoothed; constant drift `offset`):
+
+| engine | method | licence / loading |
+|---|---|---|
+| WebEyeTrack (study) | the study's `gazeTracker` (BlazeGaze CNN + affine), raw output | MIT, vendored |
+| WebGazer.js 3.5.3 | eye patches → ridge; `recordScreenPosition` every frame of the fixation; mouse training and Kalman off | GPL-3.0, jsDelivr at runtime (not bundled) |
+| RealEye Light 1.1 | landmarks + blendshapes + eye crops (1,653 features) → ridge + head-pose compensation; ≤ 8 frames per dot | AGPL-3.0 / free academic licence, jsDelivr ESM at runtime |
+| Iris + head pose | own: iris position in the eye frame, eyelid opening, yaw/pitch → 2nd-order polynomial ridge | own code + MediaPipe |
+| EyeGesturesLite method | re-implementation: 30 eye landmarks normalized to the face box + face scale/shift → linear regression | re-implemented (original licence requires their logo) |
+
+Buttons: Start, Calibrate (9 dots, 1.8 s / 1.0 s collect, then 5-dot check), checks (centre, 5, 9 calibration
+targets, 8 off-grid, 25), Fix drift (centre-dot offset for every engine, then 5-dot check), reset, export JSON
+(local download). Per check and engine: accuracy (mean over dots of the median sample error), best/worst dot,
+sample-error IQR, precision (spread SD, sample-to-sample RMS), bias and error left after removing it, data loss,
+Hz; an error-range chart and a map of median gaze per dot. Running all five costs frame rate (each engine runs
+its own face mesh); untick engines to compare at full speed. Open it in a real Chrome window (the embedded
+browser has no camera). Not tried with a real face yet (verified headless with Chrome's fake camera only).

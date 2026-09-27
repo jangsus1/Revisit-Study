@@ -1,12 +1,16 @@
 {
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.0.1/src/parser/StudyConfigSchema.json",
   "studyMetadata": {
-    "title": "Gaze tracker playground",
+    "title": "Gaze tracker comparison bench",
     "version": "dev",
-    "authors": ["Minsuk Chang"],
-    "date": "2026-09-18",
-    "description": "Local test bench for the vendored WebEyeTrack engine: calibration, validation grids, drift offset, live gaze point.",
-    "organizations": ["Georgia Institute of Technology"]
+    "authors": [
+      "Minsuk Chang"
+    ],
+    "date": "2026-09-27",
+    "description": "Webcam gaze trackers side by side (WebEyeTrack, WebGazer, RealEye Light, landmark regressions): same calibration and check dots, accuracy / precision / error range per tracker. Nothing is recorded.",
+    "organizations": [
+      "Georgia Institute of Technology"
+    ]
   },
   "uiConfig": {
     "contactEmail": "minsuk@gatech.edu",
@@ -20,12 +24,24 @@
   "components": {
     "playground": {
       "type": "react-component",
-      "path": "scatterplot_gaze/assets/GazePlayground.tsx",
+      "path": "gaze_playground/assets/GazeBench.tsx",
       "response": [
-        { "id": "playground", "prompt": "", "required": false, "location": "belowStimulus", "type": "reactive", "hidden": true }
+        {
+          "id": "playground",
+          "prompt": "",
+          "required": false,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
       ],
       "nextButtonLocation": "belowStimulus"
     }
   },
-  "sequence": { "order": "fixed", "components": ["playground"] }
+  "sequence": {
+    "order": "fixed",
+    "components": [
+      "playground"
+    ]
+  }
 }
