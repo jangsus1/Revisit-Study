@@ -44,12 +44,14 @@ class FaceLandmarkSource {
   private async doStart() {
     const { FaceLandmarker: FL, FilesetResolver } = await import('@mediapipe/tasks-vision');
     const files = await FilesetResolver.forVisionTasks(WASM);
-    this.landmarker = await FL.createFromOptions(files, {
-      baseOptions: { modelAssetPath: MODEL, delegate: 'GPU' },
+    const make = (delegate: 'GPU' | 'CPU') => FL.createFromOptions(files, {
+      baseOptions: { modelAssetPath: MODEL, delegate },
       outputFacialTransformationMatrixes: true,
       runningMode: 'VIDEO',
       numFaces: 1,
     });
+    // No WebGL (blocked GPU, some VMs): fall back to the CPU delegate
+    this.landmarker = await make('GPU').catch(() => make('CPU'));
     this.stream = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false,
     });

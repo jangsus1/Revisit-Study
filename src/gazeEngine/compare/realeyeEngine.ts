@@ -55,10 +55,14 @@ export class RealEyeEngine extends GazeEngineBase {
 
   protected async startImpl() {
     const mod = await import(/* @vite-ignore */ URL_ESM) as { WebcamETLight: new (cfg: object) => Tracker };
-    const tracker = new mod.WebcamETLight({
-      delegate: 'GPU', runningMode: 'IMAGE', wasmPath: WASM, faceDetectorMode: 'landmarker',
-    });
-    await tracker.initialize();
+    const make = async (delegate: 'GPU' | 'CPU') => {
+      const t = new mod.WebcamETLight({
+        delegate, runningMode: 'IMAGE', wasmPath: WASM, faceDetectorMode: 'landmarker',
+      });
+      await t.initialize();
+      return t;
+    };
+    const tracker = await make('GPU').catch(() => make('CPU'));
     this.tracker = tracker;
     this.stream = await navigator.mediaDevices.getUserMedia({
       video: { width: { ideal: 640 }, height: { ideal: 480 }, facingMode: 'user' }, audio: false,

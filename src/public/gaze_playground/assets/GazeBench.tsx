@@ -8,7 +8,7 @@
  * Nothing is uploaded; "Export JSON" saves the runs (numbers only) to a local file.
  */
 import {
-  Badge, Box, Button, Checkbox, Group, Menu, Paper, SimpleGrid, Stack, Switch, Table, Text, Title,
+  Badge, Box, Button, Checkbox, Group, Menu, Paper, Select, SimpleGrid, Stack, Switch, Table, Text, Title,
 } from '@mantine/core';
 import {
   useCallback, useEffect, useMemo, useRef, useState,
@@ -17,6 +17,9 @@ import { StimulusParams } from '../../../store/types';
 import { gazeTracker, normToPx } from '../../scatterplot_gaze/assets/gazeTracker';
 import { CalibrationOverlay, FULL_GRID, VALIDATION_POINTS } from '../../scatterplot_gaze/assets/CalibrationOverlay';
 import type { NormPoint } from '../../scatterplot_gaze/assets/CalibrationOverlay';
+import { PositionGuide } from '../../scatterplot_gaze/assets/PositionGuide';
+import type { DistanceFeed } from '../../scatterplot_gaze/assets/PositionGuide';
+import { faceSource } from '../../../gazeEngine/compare/faceLandmarks';
 import type { GazeEngineBase, EngineSample } from '../../../gazeEngine/compare/types';
 import { runMetrics } from '../../../gazeEngine/compare/metrics';
 import type { DotSamples, RunMetrics } from '../../../gazeEngine/compare/metrics';
@@ -28,6 +31,34 @@ const OFF_GRID: NormPoint[] = [
   { nx: -0.2, ny: -0.2 }, { nx: 0.2, ny: -0.2 }, { nx: -0.2, ny: 0.2 }, { nx: 0.2, ny: 0.2 },
   { nx: 0, ny: -0.2 }, { nx: 0, ny: 0.2 }, { nx: -0.3, ny: 0 }, { nx: 0.3, ny: 0 },
 ];
+
+const g = (xs: number[], ys: number[]) => ys.flatMap((ny) => xs.map((nx) => ({ nx, ny })));
+// Task region = plot + axis labels of the scatterplot_gaze trial, measured on the 1512x862 pilot
+// (plot x -0.12..0.21, y -0.30..0.28 of the viewport; y label at x -0.22..-0.12; x label at y ~0.31).
+const PATTERNS: Record<string, { label: string; points: NormPoint[] }> = {
+  grid9: { label: '9: 3x3 grid at 10/50/90 % (study now)', points: FULL_GRID },
+  grid13: { label: '13: 3x3 grid + 4 inner points', points: [...FULL_GRID, ...g([-0.2, 0.2], [-0.2, 0.2])] },
+  grid17: { label: '17: 4x4 grid at 5/35/65/95 % + centre (RealEye)', points: [...g([-0.45, -0.15, 0.15, 0.45], [-0.45, -0.15, 0.15, 0.45]), { nx: 0, ny: 0 }] },
+  task13: { label: '13: 3x3 over the plot + labels, 4 outer corners', points: [...g([-0.2, 0, 0.2], [-0.3, 0, 0.3]), ...g([-0.42, 0.42], [-0.42, 0.42])] },
+};
+// Check dots inside the task region, none on a calibration target of any pattern
+const TASK_CHECK: NormPoint[] = [
+  { nx: -0.1, ny: -0.15 }, { nx: 0.1, ny: -0.15 }, { nx: -0.1, ny: 0.15 }, { nx: 0.1, ny: 0.15 },
+  { nx: -0.17, ny: 0.07 }, { nx: 0.05, ny: 0.24 }, { nx: 0.05, ny: -0.25 }, { nx: 0.17, ny: 0.07 },
+];
+const shuffle = <T,>(a: T[]) => {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+};
+
+// Distance feed from the shared MediaPipe landmarker (used when WebEyeTrack is not running)
+const faceSourceFeed: DistanceFeed = (fn) => faceSource.subscribe((f) => {
+  fn({ cm: f.lm && f.matrix ? Math.abs(f.matrix[14]) : null, face: !!f.lm });
+});
 
 type Run = {
   id: number;
@@ -53,6 +84,8 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
   const [collecting, setCollecting] = useState(false);
   const [message, setMessage] = useState('');
   const [showLive, setShowLive] = useState(true);
+  const [pattern, setPattern] = useState('grid9');
+  const [showGuide, setShowGuide] = useState(true);
   const [live, setLive] = useState<Record<string, { hz: number; valid: boolean }>>({});
   const markers = useRef<Record<string, HTMLDivElement | null>>({});
   const cancelled = useRef(false);
@@ -67,8 +100,6 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
       if (!mounted) return;
       const list: GazeEngineBase[] = [
         new m.WebEyeTrackEngine(gazeTracker),
-        new m.WebGazerEngine(),
-        new m.IrisRidgeEngine(),
         new m.RealEyeEngine(),
         new m.EyeGesturesEngine(),
       ];
@@ -166,8 +197,9 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
   });
   const calibrate = () => guard(async () => {
     await Promise.all(active().map((e) => e.reset()));
-    await sequence(FULL_GRID, 'calib', 1800, 1000, 'Follow the dot; keep your head still');
-    await check(VALIDATION_POINTS, 'after calibration: 5 dots');
+    const pts = PATTERNS[pattern].points;
+    await sequence(shuffle(pts), 'calib', 1800, 1000, 'Follow the dot; keep your head still');
+    await check(TASK_CHECK, `calibrated with ${pts.length} (${pattern}); task-region check`);
   });
   const runCheck = (pts: NormPoint[], label: string) => guard(async () => { await check(pts, label); });
   const fixDrift = () => guard(async () => {
@@ -203,6 +235,11 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
   const anyReady = engines.some((e) => e.state === 'ready');
   const anyStarting = engines.some((e) => e.state === 'starting');
   const locked = busy || dot !== null;
+  const wet = engines.find((e) => e.info.id === 'webeyetrack');
+  const eg = engines.find((e) => e.info.id === 'eyegestures');
+  let guideSource: { stream: MediaStream | null; feed?: DistanceFeed } | null = null;
+  if (wet?.state === 'ready') guideSource = { stream: gazeTracker.getStream() ?? null };
+  else if (eg?.state === 'ready') guideSource = { stream: faceSource.getStream() ?? null, feed: faceSourceFeed };
   const run = runs.find((r) => r.id === selected) ?? runs[0];
   const info = useMemo(() => Object.fromEntries(engines.map((e) => [e.info.id, e.info])), [engines]);
 
@@ -265,17 +302,23 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
                 {(e.offset[0] || e.offset[1]) ? ` · offset ${Math.round(e.offset[0])},${Math.round(e.offset[1])}` : ''}
               </Text>
             )}
-            {e.error && <Text size="xs" c="red">{e.error}</Text>}
+            {e.error && <Text size="xs" c="red" lineClamp={4} style={{ wordBreak: 'break-word' }} title={e.error}>{e.error}</Text>}
           </Paper>
         ))}
       </SimpleGrid>
 
       <Group mt="md" gap="sm">
         <Button onClick={start} loading={anyStarting} disabled={locked || !engines.length}>1 · Start</Button>
-        <Button onClick={calibrate} disabled={locked || !anyReady}>2 · Calibrate (9 dots + 5-dot check)</Button>
+        <Button onClick={calibrate} disabled={locked || !anyReady}>
+          2 · Calibrate (
+          {PATTERNS[pattern].points.length}
+          {' '}
+          dots + task check)
+        </Button>
         <Menu shadow="md" disabled={locked || !anyReady}>
           <Menu.Target><Button variant="light" disabled={locked || !anyReady}>3 · Check accuracy ▾</Button></Menu.Target>
           <Menu.Dropdown>
+            <Menu.Item onClick={() => runCheck(TASK_CHECK, '8 task-region dots')}>8 task-region dots (plot + labels)</Menu.Item>
             <Menu.Item onClick={() => runCheck(CENTRE, 'centre')}>Centre dot</Menu.Item>
             <Menu.Item onClick={() => runCheck(VALIDATION_POINTS, '5 dots')}>5 dots (study validation)</Menu.Item>
             <Menu.Item onClick={() => runCheck(FULL_GRID, '9 dots (calibration targets)')}>9 dots (calibration targets)</Menu.Item>
@@ -294,7 +337,27 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
         </Menu>
         <Switch label="live gaze dots" checked={showLive} onChange={(ev) => setShowLive(ev.currentTarget.checked)} />
       </Group>
-      {error && <Text c="red" size="sm" mt="xs">{error}</Text>}
+      <Group mt="xs" gap="sm" align="flex-end">
+        <Select
+          label="Calibration layout (dots shown in random order)"
+          w={420}
+          data={Object.entries(PATTERNS).map(([value, p]) => ({ value, label: p.label }))}
+          value={pattern}
+          onChange={(v) => v && setPattern(v)}
+          disabled={locked}
+          allowDeselect={false}
+        />
+        <Switch label="position guide" checked={showGuide} onChange={(ev) => setShowGuide(ev.currentTarget.checked)} />
+      </Group>
+      {showGuide && anyReady && !dot && (
+        <Paper withBorder p="sm" mt="sm">
+          <Text size="sm" fw={600} mb={6}>Position before calibrating</Text>
+          {guideSource
+            ? <PositionGuide stream={guideSource.stream} feed={guideSource.feed} />
+            : <Text size="sm" c="dimmed">Distance needs WebEyeTrack or the EyeGesturesLite engine running.</Text>}
+        </Paper>
+      )}
+      {error && <Text c="red" size="sm" mt="xs" lineClamp={6} style={{ wordBreak: 'break-word' }}>{error}</Text>}
 
       {run ? (
         <Stack mt="lg" gap="sm">

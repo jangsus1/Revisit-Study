@@ -126,15 +126,22 @@ collect frames → `endPoint()` refits; output in viewport px, unsmoothed; const
 | engine | method | licence / loading |
 |---|---|---|
 | WebEyeTrack (study) | the study's `gazeTracker` (BlazeGaze CNN + affine), raw output | MIT, vendored |
-| WebGazer.js 3.5.3 | eye patches → ridge; `recordScreenPosition` every frame of the fixation; mouse training and Kalman off | GPL-3.0, jsDelivr at runtime (not bundled) |
 | RealEye Light 1.1 | landmarks + blendshapes + eye crops (1,653 features) → ridge + head-pose compensation; ≤ 8 frames per dot | AGPL-3.0 / free academic licence, jsDelivr ESM at runtime |
-| Iris + head pose | own: iris position in the eye frame, eyelid opening, yaw/pitch → 2nd-order polynomial ridge | own code + MediaPipe |
 | EyeGesturesLite method | re-implementation: 30 eye landmarks normalized to the face box + face scale/shift → linear regression | re-implemented (original licence requires their logo) |
 
-Buttons: Start, Calibrate (9 dots, 1.8 s / 1.0 s collect, then 5-dot check), checks (centre, 5, 9 calibration
-targets, 8 off-grid, 25), Fix drift (centre-dot offset for every engine, then 5-dot check), reset, export JSON
+(WebGazer 3.5.3 and an iris + head-pose polynomial ridge were tried on 2026-09-27 and dropped as clearly worse.)
+Buttons: Start, position guide (distance meter), calibration layout (9 grid = study, 13 = grid + inner, 17 = RealEye
+4x4 + centre, 13 task-region = 3x3 over plot + labels + 4 corners; dots in random order, 1.8 s / 1.0 s collect,
+then an 8-dot task-region check), checks (task region, centre, 5, 9 calibration targets, 8 off-grid, 25), Fix drift (centre-dot offset for every engine, then 5-dot check), reset, export JSON
 (local download). Per check and engine: accuracy (mean over dots of the median sample error), best/worst dot,
 sample-error IQR, precision (spread SD, sample-to-sample RMS), bias and error left after removing it, data loss,
-Hz; an error-range chart and a map of median gaze per dot. Running all five costs frame rate (each engine runs
+Hz; an error-range chart and a map of median gaze per dot. Running all engines costs frame rate (each engine runs
 its own face mesh); untick engines to compare at full speed. Open it in a real Chrome window (the embedded
 browser has no camera). Not tried with a real face yet (verified headless with Chrome's fake camera only).
+
+### Position guide before calibration (`PositionGuide.tsx`)
+
+`gazeCalibration` (study) and the bench show a mirrored camera preview with a face oval and a distance meter
+(WebEyeTrack's 3D face-origin z; assumes a ~60° vertical camera FOV, so approximate). Target 45–70 cm; the Start
+button unlocks after 1.5 s in range, or after 30 s regardless ("start anyway"). Each calibration attempt logs
+`position = {distanceCm, ready, guideMs, overridden}` in `perAttempt[]`.

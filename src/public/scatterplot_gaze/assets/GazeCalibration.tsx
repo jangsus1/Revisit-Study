@@ -9,12 +9,19 @@ import {
   CalibrationOverlay, FULL_GRID, VALIDATION_POINTS, useDotSequence,
 } from './CalibrationOverlay';
 import type { CalibPointLog, ValidationResult } from './CalibrationOverlay';
+import { PositionGuide } from './PositionGuide';
+import type { PositionState } from './PositionGuide';
+
+// After this long on the guide the participant may start even if the distance never reads "good"
+// (the estimate assumes a typical webcam field of view and can be off for unusual cameras).
+const OVERRIDE_MS = 30000;
 
 type Params = { maxAttempts?: number; acceptPctW?: number };
 
 type Phase = 'intro' | 'running' | 'retry' | 'done';
 
-type Attempt = ValidationResult & { calib?: CalibPointLog[]; head?: HeadPose | null };
+type Position = { distanceCm: number | null; ready: boolean; guideMs: number; overridden: boolean };
+type Attempt = ValidationResult & { calib?: CalibPointLog[]; head?: HeadPose | null; position?: Position };
 
 /** Mean of the per-dot head poses of a validation run (reference pose for later head-shift checks). */
 function meanPose(points: ValidationResult['points']): HeadPose | null {
@@ -35,6 +42,9 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
   const [phase, setPhase] = useState<Phase>('intro');
   const [attempts, setAttempts] = useState<Attempt[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [pos, setPos] = useState<PositionState | null>(null);
+  const [guideSince, setGuideSince] = useState(() => performance.now());
+  const [canOverride, setCanOverride] = useState(false);
   const {
     dot, collecting, message, setMessage, runCalibration, runValidation,
   } = useDotSequence();
@@ -73,7 +83,25 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
     });
   }, [phase, attempts, accepted, last, setAnswer, acceptPctW, error]);
 
+  // Camera is normally already on (webcamPermission page); start it here otherwise so the guide has video
+  useEffect(() => { gazeTracker.init().catch(() => {}); }, []);
+
+  // The guide is shown on the intro and retry screens; allow "start anyway" after OVERRIDE_MS there
+  useEffect(() => {
+    if (phase !== 'intro' && phase !== 'retry') return undefined;
+    setGuideSince(performance.now());
+    setCanOverride(false);
+    const t = setTimeout(() => setCanOverride(true), OVERRIDE_MS);
+    return () => clearTimeout(t);
+  }, [phase]);
+
   const runOnce = useCallback(async () => {
+    const position: Position = {
+      distanceCm: pos?.distanceCm === null || pos?.distanceCm === undefined ? null : Math.round(pos.distanceCm),
+      ready: !!pos?.ready,
+      guideMs: Math.round(performance.now() - guideSince),
+      overridden: !pos?.ready,
+    };
     setPhase('running');
     setError(null);
     try {
@@ -82,7 +110,9 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
       setMessage('Follow the dot with your eyes. Keep your head still.');
       const calib = await runCalibration(FULL_GRID, 'calib');
       const validation = await runValidation(VALIDATION_POINTS, 1500, 800, 'Checking accuracy');
-      const result: Attempt = { ...validation, calib, head: meanPose(validation.points) };
+      const result: Attempt = {
+        ...validation, calib, head: meanPose(validation.points), position,
+      };
       setAttempts((prev) => {
         const next = [...prev, result];
         const ok = result.meanErrorPctW !== null && result.meanErrorPctW <= acceptPctW;
@@ -94,11 +124,11 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
       setAttempts((prev) => {
         setPhase(prev.length + 1 >= maxAttempts ? 'done' : 'retry');
         return [...prev, {
-          points: [], meanErrorPx: null, meanErrorPctW: null, meanOffsetPx: null, viewport: [window.innerWidth, window.innerHeight], hz: 0,
+          points: [], meanErrorPx: null, meanErrorPctW: null, meanOffsetPx: null, viewport: [window.innerWidth, window.innerHeight], hz: 0, position,
         }];
       });
     }
-  }, [acceptPctW, maxAttempts, runCalibration, runValidation, setMessage]);
+  }, [acceptPctW, maxAttempts, runCalibration, runValidation, setMessage, pos, guideSince]);
 
   const errText = last?.meanErrorPx !== null && last?.meanErrorPx !== undefined
     ? `${Math.round(last.meanErrorPx)} px (${(100 * (last.meanErrorPctW ?? 0)).toFixed(1)} % of screen width)`
@@ -113,7 +143,10 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
       {phase === 'intro' && (
         <>
           <Title order={2}>Eye-tracking calibration</Title>
-          <Text mt="sm">
+          <Title order={4} mt="md">1. Adjust your position</Title>
+          <Box mt="xs"><PositionGuide onChange={setPos} /></Box>
+          <Title order={4} mt="lg">2. Calibrate</Title>
+          <Text mt="xs">
             A dot will appear at 9 positions on the screen, then at 5 more to check accuracy.
             Look directly at each dot until it moves. The whole procedure takes about 30 seconds.
           </Text>
@@ -122,9 +155,7 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
             <List.Item>Do not move the mouse or touch the keyboard while the dots are shown.</List.Item>
             <List.Item>Try not to blink while a dot turns red.</List.Item>
           </List>
-          <Button mt="md" onClick={runOnce}>
-            {gazeTracker.state === 'ready' ? 'Start calibration' : 'Start camera and calibration'}
-          </Button>
+          <StartButton ready={!!pos?.ready} canOverride={canOverride} onClick={runOnce} label="Start calibration" />
         </>
       )}
 
@@ -136,7 +167,8 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
             follow the dots with your eyes only.
           </Text>
           {error && <Text c="red" mt="xs">{error}</Text>}
-          <Button mt="md" onClick={runOnce}>Recalibrate ({attempts.length + 1} / {maxAttempts})</Button>
+          <Box mt="md"><PositionGuide onChange={setPos} /></Box>
+          <StartButton ready={!!pos?.ready} canOverride={canOverride} onClick={runOnce} label={`Recalibrate (${attempts.length + 1} / ${maxAttempts})`} />
         </>
       )}
 
@@ -155,6 +187,25 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
         </>
       )}
     </Box>
+  );
+}
+
+function StartButton({
+  ready, canOverride, onClick, label,
+}: { ready: boolean; canOverride: boolean; onClick: () => void; label: string }) {
+  return (
+    <>
+      <Button mt="md" onClick={onClick} disabled={!ready && !canOverride}>
+        {ready || !canOverride ? label : `${label} anyway`}
+      </Button>
+      {!ready && (
+        <Text size="xs" c="dimmed" mt={4}>
+          {canOverride
+            ? 'If the distance never turns green even though you sit about an arm\'s length away, you can start anyway.'
+            : 'The button unlocks once your position is good.'}
+        </Text>
+      )}
+    </>
   );
 }
 
