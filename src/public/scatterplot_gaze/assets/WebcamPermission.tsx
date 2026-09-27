@@ -72,8 +72,8 @@ function WebcamPermission({ parameters, setAnswer }: StimulusParams<Params>) {
       <Alert color="blue" mt="sm" title="Nothing is recorded">
         <strong>Your camera video and your screen are never recorded, uploaded, or stored.</strong>
         {' '}
-        The video is processed entirely inside your browser and discarded frame by frame. Only the
-        estimated on-screen gaze position (a pair of numbers per moment) is saved.
+        The video is processed entirely inside your browser and discarded frame by frame. Only numbers
+        are saved: the estimated on-screen gaze position and the approximate head position.
       </Alert>
       <Alert color="orange" mt="sm" title="Please keep your head still">
         Eye tracking only works if <strong>your head stays as still as possible</strong> from the
