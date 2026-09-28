@@ -145,3 +145,11 @@ browser has no camera). Not tried with a real face yet (verified headless with C
 (WebEyeTrack's 3D face-origin z; assumes a ~60° vertical camera FOV, so approximate). Target 45–70 cm; the Start
 button unlocks after 1.5 s in range, or after 30 s regardless ("start anyway"). Each calibration attempt logs
 `position = {distanceCm, ready, guideMs, overridden}` in `perAttempt[]`.
+
+### Calibration fits after the dots, not during them
+
+Since 2026-09-27 every calibration (full 9-dot, per-trial 3/5-dot, bench) only *collects* eye samples while a
+dot is shown (`calibEnd({defer: true})`); the tracker adapts to all points in order afterwards
+(`calibFlush` / `gazeTracker.flushCalibration()`, `finishCalibration()` on bench engines) on a blank screen
+("You can blink and relax your eyes"). Before, WebEyeTrack's `adapt()` ran inside each dot and held the dot
+until it finished. Same result (eye patches do not depend on the weights); the last `calib[]` entry logs `fitMs`.
