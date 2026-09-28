@@ -122,7 +122,8 @@ class GazeTracker {
 
     const baseUrl = `${window.location.origin}${PREFIX}${STUDY_ID}/`;
     this.cam = new WebcamClient(video);
-    this.proxy = new WebEyeTrackProxy(this.cam, { baseUrl, maxPoints: 13, clickTTL: 90 });
+    // Support set: 9 calibration dots + 12 smooth-pursuit chunks + room for per-trial 'click' dots
+    this.proxy = new WebEyeTrackProxy(this.cam, { baseUrl, maxPoints: 25, clickTTL: 90 });
     this.proxy.onGazeResults = (r: SlimGazeResult) => this.handleResult(r);
     await this.proxy.start();
     this.state = 'ready';
@@ -189,9 +190,15 @@ class GazeTracker {
   }
 
   /** Split form of calibrate() for callers that time the fixation themselves (gaze_playground bench). */
-  calibStart(nx: number, ny: number): Promise<void> {
+  calibStart(nx: number, ny: number, pursuit = false): Promise<void> {
     if (!this.proxy) return Promise.reject(new Error('tracker not started'));
-    return this.proxy.calibStart(nx, ny);
+    return this.proxy.calibStart(nx, ny, pursuit);
+  }
+
+  /** Close a smooth-pursuit recording; path = [[t_ms (performance.now), nx, ny], ...]. Fit on flush. */
+  pursuitEnd(path: number[][], chunks = 12, perChunk = 10): Promise<CalibResult & { frames: number; chunks: number }> {
+    if (!this.proxy) return Promise.reject(new Error('tracker not started'));
+    return this.proxy.pursuitEnd(path, chunks, perChunk);
   }
 
   calibEnd(ptType: 'calib' | 'click', maxSamples = 10, defer = false): Promise<CalibResult> {

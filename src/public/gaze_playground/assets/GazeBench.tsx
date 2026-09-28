@@ -8,19 +8,21 @@
  * Nothing is uploaded; "Export JSON" saves the runs (numbers only) to a local file.
  */
 import {
-  Badge, Box, Button, Checkbox, Group, Menu, Paper, Select, SimpleGrid, Stack, Switch, Table, Text, Title,
+  Badge, Box, Button, Checkbox, Group, Menu, Paper, SegmentedControl, Select, SimpleGrid, Stack, Switch, Table, Text, Title,
 } from '@mantine/core';
 import {
   useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
 import { StimulusParams } from '../../../store/types';
 import { gazeTracker, normToPx } from '../../scatterplot_gaze/assets/gazeTracker';
-import { CalibrationOverlay, FULL_GRID, VALIDATION_POINTS } from '../../scatterplot_gaze/assets/CalibrationOverlay';
+import {
+  CalibrationOverlay, FULL_GRID, PURSUIT_LAG_MS, PURSUIT_MS, PURSUIT_SKIP_MS, VALIDATION_POINTS, animatePursuit, lissajous, nextPaint,
+} from '../../scatterplot_gaze/assets/CalibrationOverlay';
 import type { NormPoint } from '../../scatterplot_gaze/assets/CalibrationOverlay';
 import { PositionGuide } from '../../scatterplot_gaze/assets/PositionGuide';
 import type { DistanceFeed } from '../../scatterplot_gaze/assets/PositionGuide';
 import { faceSource } from '../../../gazeEngine/compare/faceLandmarks';
-import type { GazeEngineBase, EngineSample } from '../../../gazeEngine/compare/types';
+import type { GazeEngineBase, EngineSample, TargetFn } from '../../../gazeEngine/compare/types';
 import { runMetrics } from '../../../gazeEngine/compare/metrics';
 import type { DotSamples, RunMetrics } from '../../../gazeEngine/compare/metrics';
 
@@ -46,6 +48,9 @@ const TASK_CHECK: NormPoint[] = [
   { nx: -0.1, ny: -0.15 }, { nx: 0.1, ny: -0.15 }, { nx: -0.1, ny: 0.15 }, { nx: 0.1, ny: 0.15 },
   { nx: -0.17, ny: 0.07 }, { nx: 0.05, ny: 0.24 }, { nx: 0.05, ny: -0.25 }, { nx: 0.17, ny: 0.07 },
 ];
+// Smooth pursuit uses the study's path and timing (CalibrationOverlay: lissajous, PURSUIT_*).
+type Method = 'dots' | 'pursuit' | 'both';
+
 const shuffle = <T,>(a: T[]) => {
   const b = [...a];
   for (let i = b.length - 1; i > 0; i -= 1) {
@@ -85,6 +90,10 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
   const [message, setMessage] = useState('');
   const [showLive, setShowLive] = useState(true);
   const [pattern, setPattern] = useState('grid9');
+  const [method, setMethod] = useState<Method>('dots');
+  const [pursuitOn, setPursuitOn] = useState(false);
+  const [relax, setRelax] = useState(false);
+  const pursuitDot = useRef<HTMLDivElement | null>(null);
   const [showGuide, setShowGuide] = useState(true);
   const [live, setLive] = useState<Record<string, { hz: number; valid: boolean }>>({});
   const markers = useRef<Record<string, HTMLDivElement | null>>({});
@@ -136,7 +145,7 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
   const guard = useCallback(async (fn: () => Promise<void>) => {
     setBusy(true); setError(null);
     try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); } finally {
-      setBusy(false); setDot(null); setCollecting(false);
+      setBusy(false); setDot(null); setCollecting(false); setPursuitOn(false); setRelax(false);
     }
   }, []);
 
@@ -170,12 +179,37 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
     }
     setDot(null);
     setCollecting(false);
-    if (mode === 'calib') {
-      // Fit after the dots (never while a dot is held); a blank screen while the models train
-      setMessage('Done. You can blink and relax your eyes for a moment…');
-      await Promise.all(list.map((e) => e.finishCalibration().catch((err) => console.warn(e.info.id, err))));
-    }
     return out;
+  }, [active]);
+
+  /** Fit every engine once all calibration input is in (blank screen: the participant may rest). */
+  const fitAll = useCallback(async () => {
+    setRelax(true);
+    // Let the "Calibrating…" screen paint first: RealEye's fit runs synchronously on the main thread
+    await nextPaint();
+    try {
+      await Promise.all(active().map((e) => e.finishCalibration().catch((err) => console.warn(e.info.id, err))));
+    } finally { setRelax(false); }
+  }, [active]);
+
+  /** Continuous calibration: every engine pairs each frame with the moving dot's (lagged) position. */
+  const runPursuit = useCallback(async (durationMs: number) => {
+    const list = active();
+    if (!list.length) throw new Error('no engine running - press Start first');
+    setMessage('Follow the moving dot with your eyes. Keep your head still.');
+    setPursuitOn(true);
+    await nextPaint();
+    let t0 = Infinity;
+    const targetAt: TargetFn = (t) => {
+      const e = t - PURSUIT_LAG_MS - t0;
+      return e < PURSUIT_SKIP_MS || e > durationMs ? null : lissajous(e / durationMs);
+    };
+    await animatePursuit(() => pursuitDot.current, durationMs, () => cancelled.current, (start) => {
+      t0 = start;
+      list.forEach((e) => e.beginPursuit(targetAt));
+    });
+    await Promise.all(list.map((e) => e.endPursuit().catch((err) => console.warn(e.info.id, err))));
+    setPursuitOn(false);
   }, [active]);
 
   const check = useCallback(async (points: NormPoint[], label: string) => {
@@ -203,8 +237,13 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
   const calibrate = () => guard(async () => {
     await Promise.all(active().map((e) => e.reset()));
     const pts = PATTERNS[pattern].points;
-    await sequence(shuffle(pts), 'calib', 1800, 1000, 'Follow the dot; keep your head still');
-    await check(TASK_CHECK, `calibrated with ${pts.length} (${pattern}); task-region check`);
+    if (method !== 'pursuit') await sequence(shuffle(pts), 'calib', 1800, 1000, 'Look at the dot; keep your head still');
+    if (method !== 'dots') await runPursuit(PURSUIT_MS);
+    await fitAll();
+    const how = {
+      dots: `${pts.length} dots (${pattern})`, pursuit: `pursuit ${PURSUIT_MS / 1000} s`, both: `${pts.length} dots (${pattern}) + pursuit`,
+    }[method];
+    await check(TASK_CHECK, `calibrated: ${how}; task-region check`);
   });
   const runCheck = (pts: NormPoint[], label: string) => guard(async () => { await check(pts, label); });
   const fixDrift = () => guard(async () => {
@@ -239,7 +278,7 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
 
   const anyReady = engines.some((e) => e.state === 'ready');
   const anyStarting = engines.some((e) => e.state === 'starting');
-  const locked = busy || dot !== null;
+  const locked = busy || dot !== null || pursuitOn || relax;
   const wet = engines.find((e) => e.info.id === 'webeyetrack');
   const eg = engines.find((e) => e.info.id === 'eyegestures');
   let guideSource: { stream: MediaStream | null; feed?: DistanceFeed } | null = null;
@@ -250,7 +289,9 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
 
   return (
     <Box p="md" maw={1200}>
-      {dot && <CalibrationOverlay dot={dot} collecting={collecting} message={message} />}
+      {(dot || relax || pursuitOn) && (
+        <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={relax} pursuitOn={pursuitOn} pursuitDotRef={pursuitDot} />
+      )}
       {engines.map((e) => (
         <div
           key={e.info.id}
@@ -316,9 +357,9 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
         <Button onClick={start} loading={anyStarting} disabled={locked || !engines.length}>1 · Start</Button>
         <Button onClick={calibrate} disabled={locked || !anyReady}>
           2 · Calibrate (
-          {PATTERNS[pattern].points.length}
+          {{ dots: `${PATTERNS[pattern].points.length} dots`, pursuit: 'pursuit', both: `${PATTERNS[pattern].points.length} dots + pursuit` }[method]}
           {' '}
-          dots + task check)
+          + task check)
         </Button>
         <Menu shadow="md" disabled={locked || !anyReady}>
           <Menu.Target><Button variant="light" disabled={locked || !anyReady}>3 · Check accuracy ▾</Button></Menu.Target>
@@ -343,13 +384,26 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
         <Switch label="live gaze dots" checked={showLive} onChange={(ev) => setShowLive(ev.currentTarget.checked)} />
       </Group>
       <Group mt="xs" gap="sm" align="flex-end">
+        <Box>
+          <Text size="sm" fw={500} mb={3}>Calibration method</Text>
+          <SegmentedControl
+            value={method}
+            onChange={(v) => setMethod(v as Method)}
+            disabled={locked}
+            data={[
+              { value: 'dots', label: 'Dots' },
+              { value: 'pursuit', label: `Smooth pursuit (${PURSUIT_MS / 1000} s)` },
+              { value: 'both', label: 'Dots + pursuit' },
+            ]}
+          />
+        </Box>
         <Select
-          label="Calibration layout (dots shown in random order)"
+          label="Dot layout (random order)"
           w={420}
           data={Object.entries(PATTERNS).map(([value, p]) => ({ value, label: p.label }))}
           value={pattern}
           onChange={(v) => v && setPattern(v)}
-          disabled={locked}
+          disabled={locked || method === 'pursuit'}
           allowDeselect={false}
         />
         <Switch label="position guide" checked={showGuide} onChange={(ev) => setShowGuide(ev.currentTarget.checked)} />

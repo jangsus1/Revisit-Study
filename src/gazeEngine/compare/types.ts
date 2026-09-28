@@ -5,7 +5,8 @@
  * fixates a known screen target, the tracker pairs its per-frame eye features with that target,
  * then fits a mapping (ridge / linear / affine / few-shot CNN) from features to screen position.
  * Each adapter exposes exactly that: beginPoint(target) -> collect -> endPoint(), per dot; then
- * finishCalibration() fits once all dots are done (so no dot waits on the fit).
+ * finishCalibration() fits once all dots are done (so no dot waits on the fit). Smooth pursuit uses
+ * beginPursuit(targetAt) / endPursuit() instead: every frame is paired with the moving dot's position.
  * All coordinates are viewport CSS pixels.
  */
 
@@ -25,6 +26,9 @@ export type EngineInfo = {
   license: string;
   color: string;
 };
+
+/** Where the participant should be looking at frame time t (viewport px), or null to skip the frame. */
+export type TargetFn = (t: number) => [number, number] | null;
 
 type Listener = (s: EngineSample) => void;
 
@@ -82,6 +86,15 @@ export abstract class GazeEngineBase {
 
   /** Stop collecting for the current target (cheap: no fitting while a dot is on screen). */
   abstract endPoint(): Promise<void>;
+
+  /**
+   * Smooth-pursuit (continuous) calibration: from now on pair every frame with targetAt(frame time).
+   * The caller builds lag compensation and the excluded catch-up window into targetAt.
+   */
+  abstract beginPursuit(targetAt: TargetFn): void;
+
+  /** Stop pairing frames with the moving target (fit happens in finishCalibration). */
+  abstract endPursuit(): Promise<void>;
 
   /** Fit the mapping to every collected point; called once after the last calibration dot. */
   abstract finishCalibration(): Promise<void>;

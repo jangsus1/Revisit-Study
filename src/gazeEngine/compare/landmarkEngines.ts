@@ -10,6 +10,7 @@
  *    get the same dots.
  */
 import { GazeEngineBase } from './types';
+import type { TargetFn } from './types';
 import { RidgeMap } from './ridge';
 import { faceSource } from './faceLandmarks';
 import type { FaceFrame } from './faceLandmarks';
@@ -21,9 +22,7 @@ abstract class LandmarkEngine extends GazeEngineBase {
 
   protected targets = new Set<string>();
 
-  private target: [number, number] | null = null;
-
-  private framesInPoint = 0;
+  private targetAt: TargetFn | null = null;
 
   private unsub?: () => void;
 
@@ -37,7 +36,12 @@ abstract class LandmarkEngine extends GazeEngineBase {
     this.unsub?.();
     this.unsub = faceSource.subscribe((f) => {
       const x = this.features(f);
-      if (x && this.target) { this.X.push(x); this.Y.push([...this.target]); this.framesInPoint += 1; }
+      const tgt = x && this.targetAt ? this.targetAt(f.t) : null;
+      if (x && tgt) {
+        this.X.push(x);
+        this.Y.push([...tgt]);
+        this.targets.add(tgt.map((v) => Math.round(v / 40)).join(','));   // distinct 40-px cells
+      }
       if (!x || !this.model.fitted) { this.emit(f.t, NaN, NaN, false); return; }
       const [px, py] = this.model.predict(x);
       this.emit(f.t, px, py, true);
@@ -62,13 +66,16 @@ abstract class LandmarkEngine extends GazeEngineBase {
 
   protected onClear() { /* engine-specific state */ }
 
-  beginPoint(x: number, y: number) { this.target = [x, y]; this.framesInPoint = 0; }
+  beginPoint(x: number, y: number) { this.targetAt = () => [x, y]; }
+
+  beginPursuit(targetAt: TargetFn) { this.targetAt = targetAt; }
 
   async endPoint() {
-    if (this.target && this.framesInPoint > 0) this.targets.add(this.target.map(Math.round).join(','));
-    this.target = null;
+    this.targetAt = null;
     this.calibTargets = this.targets.size;
   }
+
+  async endPursuit() { await this.endPoint(); }
 
   async finishCalibration() {
     // Needs >= 3 distinct targets before the fit is meaningful

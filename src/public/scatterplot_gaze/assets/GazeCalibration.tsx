@@ -6,7 +6,7 @@ import { StimulusParams } from '../../../store/types';
 import { gazeTracker } from './gazeTracker';
 import type { HeadPose } from './gazeTracker';
 import {
-  CalibrationOverlay, FULL_GRID, VALIDATION_POINTS, useDotSequence,
+  CalibrationOverlay, FULL_GRID, PURSUIT_MS, VALIDATION_POINTS, useDotSequence,
 } from './CalibrationOverlay';
 import type { CalibPointLog, ValidationResult } from './CalibrationOverlay';
 import { PositionGuide } from './PositionGuide';
@@ -46,7 +46,7 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
   const [guideSince, setGuideSince] = useState(() => performance.now());
   const [canOverride, setCanOverride] = useState(false);
   const {
-    dot, collecting, message, setMessage, runCalibration, runValidation,
+    dot, collecting, message, setMessage, runCalibration, runValidation, fitting, pursuitOn, pursuitDotRef,
   } = useDotSequence();
 
   const last = attempts[attempts.length - 1];
@@ -108,7 +108,8 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
       await gazeTracker.init();
       await gazeTracker.resetCalibration();
       setMessage('Follow the dot with your eyes. Keep your head still.');
-      const calib = await runCalibration(FULL_GRID, 'calib');
+      // 9 fixation dots, then 20 s of smooth pursuit; the tracker fits all of it on the "Calibrating…" screen
+      const calib = await runCalibration(FULL_GRID, 'calib', 1800, 1000, PURSUIT_MS);
       const validation = await runValidation(VALIDATION_POINTS, 1500, 800, 'Checking accuracy');
       const result: Attempt = {
         ...validation, calib, head: meanPose(validation.points), position,
@@ -137,7 +138,7 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
   return (
     <Box p="md" maw={760}>
       {phase === 'running' && (
-        <CalibrationOverlay dot={dot} collecting={collecting} message={message} />
+        <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={fitting} pursuitOn={pursuitOn} pursuitDotRef={pursuitDotRef} />
       )}
 
       {phase === 'intro' && (
@@ -147,8 +148,9 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
           <Box mt="xs"><PositionGuide onChange={setPos} /></Box>
           <Title order={4} mt="lg">2. Calibrate</Title>
           <Text mt="xs">
-            A dot will appear at 9 positions on the screen, then at 5 more to check accuracy.
-            Look directly at each dot until it moves. The whole procedure takes about 30 seconds.
+            A dot will appear at 9 positions on the screen: look directly at each one until it moves.
+            Then the dot will glide slowly around the screen for 20 seconds: follow it with your eyes.
+            After a short pause, 5 more dots check the accuracy. The whole procedure takes about a minute.
           </Text>
           <List mt="sm" spacing="xs">
             <List.Item><strong>Keep your head as still as possible</strong>; move only your eyes. Stay in this position until the task ends.</List.Item>

@@ -3,6 +3,7 @@
  * Dots are positioned in normalized screen coordinates ([-0.5, 0.5], origin = viewport centre,
  * y down) so they match the tracker's normPog frame exactly.
  */
+import { Loader } from '@mantine/core';
 import {
   useCallback, useEffect, useRef, useState,
 } from 'react';
@@ -29,10 +30,23 @@ export type ValidationPoint = NormPoint & {
   pose: HeadPose | null;               // mean head pose over the collection window
 };
 
+/** Smooth-pursuit record: frames used and a gaze trace against the moving target. */
+export type PursuitLog = {
+  durationMs: number;
+  lagMs: number;
+  skipMs: number;
+  frames: number;                      // frames that got a target (worker side)
+  chunks: number;                      // support-set entries created
+  n: number;                           // frames used for adaptation
+  // [t_ms_since_motion_onset, raw_x, raw_y, target_x, target_y, open01] (gaze before the pursuit fit)
+  trace: number[][];
+};
+
 export type CalibPointLog = CalibResult & NormPoint & {
   dwellMs: number;
   collectMs: number;
   fitMs?: number;                      // last point only: time adapting to all points after the dots
+  pursuit?: PursuitLog;                // last point only, when a pursuit phase ran
   trace: DotTrace;                     // predictions before this dot was added to the calibration
   pose: HeadPose | null;
 };
@@ -62,10 +76,61 @@ export function shortCalibPoints(trialIndex: number, count = 3): NormPoint[] {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
 
+/** Resolve after the browser has painted the current state (so a new screen is visible before heavy work). */
+export const nextPaint = () => new Promise<void>((resolve) => {
+  requestAnimationFrame(() => requestAnimationFrame(() => { setTimeout(resolve, 0); }));
+});
+
+// Smooth pursuit (continuous calibration): the dot follows a 3:2 Lissajous curve over 80 % of the
+// viewport (smooth, passes the centre region many times; peak speed ~0.31 viewport widths/s, about
+// 14 deg/s on a laptop). Frames are paired with the dot position PURSUIT_LAG_MS earlier (camera +
+// pipeline latency); the first PURSUIT_SKIP_MS of motion (catch-up saccade) are not used.
+export const PURSUIT_MS = 20000;
+export const PURSUIT_LAG_MS = 80;
+export const PURSUIT_SKIP_MS = 600;
+export const PURSUIT_LEAD_MS = 1200;   // dot waits at its start position before moving
+export function lissajous(u: number): [number, number] {
+  return [
+    (0.5 + 0.4 * Math.sin(2 * Math.PI * 3 * u + Math.PI / 2)) * window.innerWidth,
+    (0.5 + 0.4 * Math.sin(2 * Math.PI * 2 * u)) * window.innerHeight,
+  ];
+}
+
+/** Move `el` along the Lissajous path for durationMs; resolves with the motion onset time. */
+export async function animatePursuit(
+  getEl: () => HTMLDivElement | null,
+  durationMs: number,
+  cancelled: () => boolean,
+  onStart: (t0: number) => void,
+): Promise<number> {
+  const place = (p: [number, number]) => {
+    const el = getEl();
+    if (el) el.style.transform = `translate(${p[0] - 9}px, ${p[1] - 9}px)`;
+  };
+  place(lissajous(0));
+  await sleep(PURSUIT_LEAD_MS);
+  const t0 = performance.now();
+  onStart(t0);
+  await new Promise<void>((resolve) => {
+    const step = () => {
+      const e = performance.now() - t0;
+      if (cancelled() || e >= durationMs) { place(lissajous(1)); resolve(); return; }
+      place(lissajous(e / durationMs));
+      requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+  await sleep(PURSUIT_LAG_MS + 100);   // frames still in the pipeline
+  return t0;
+}
+
 export function useDotSequence() {
   const [dot, setDot] = useState<NormPoint | null>(null);
   const [collecting, setCollecting] = useState(false);
   const [message, setMessage] = useState('');
+  const [fitting, setFitting] = useState(false);
+  const [pursuitOn, setPursuitOn] = useState(false);
+  const pursuitDotRef = useRef<HTMLDivElement | null>(null);
   const cancelled = useRef(false);
 
   // Reset on (re)mount so React StrictMode's simulated unmount does not leave it cancelled forever
@@ -98,15 +163,50 @@ export function useDotSequence() {
     return { result, trace, pose: meanHeadPose(poseSamples) };
   }, []);
 
+  /** Smooth pursuit with the study tracker: the worker buffers frames, then gets the (lagged) path. */
+  const runPursuit = useCallback(async (durationMs: number): Promise<PursuitLog> => {
+    setDot(null);
+    setMessage('Now follow the moving dot with your eyes. Keep your head still.');
+    setPursuitOn(true);
+    await nextPaint();
+    const trace: number[][] = [];
+    let t0 = Infinity;
+    const target = (t: number) => {
+      const e = t - PURSUIT_LAG_MS - t0;
+      return e < PURSUIT_SKIP_MS || e > durationMs ? null : lissajous(e / durationMs);
+    };
+    const unsub = gazeTracker.onSample((s: GazeSample) => {
+      if (s.t < t0) return;
+      const [rx, ry] = normToPx(s.rx, s.ry);
+      const tg = lissajous(Math.min(1, Math.max(0, (s.t - t0) / durationMs)));
+      trace.push([Math.round(s.t - t0), Math.round(rx), Math.round(ry), Math.round(tg[0]), Math.round(tg[1]), s.open && s.face ? 1 : 0]);
+    });
+    await gazeTracker.calibStart(0, 0, true);
+    await animatePursuit(() => pursuitDotRef.current, durationMs, () => cancelled.current, (t) => { t0 = t; });
+    unsub();
+    setPursuitOn(false);
+    const path: number[][] = [];
+    for (let t = t0; t <= performance.now(); t += 10) {
+      const xy = target(t);
+      if (xy) path.push([t, xy[0] / window.innerWidth - 0.5, xy[1] / window.innerHeight - 0.5]);
+    }
+    const r = await gazeTracker.pursuitEnd(path, 12, 10);
+    return {
+      durationMs, lagMs: PURSUIT_LAG_MS, skipMs: PURSUIT_SKIP_MS, frames: r.frames, chunks: r.chunks, n: r.n, trace,
+    };
+  }, []);
+
   /**
-   * Show each point and collect eye samples during its last `collectMs`; the tracker adapts to all points
-   * only after the last dot (blank screen, "relax your eyes"), so no dot is held while the model trains.
+   * Show each point and collect eye samples during its last `collectMs` (optionally followed by
+   * `pursuitMs` of smooth pursuit); the tracker adapts to all of it only afterwards, on a
+   * "Calibrating…" screen, so no dot is held while the model trains.
    */
   const runCalibration = useCallback(async (
     points: NormPoint[],
     ptType: 'calib' | 'click',
     dwellMs = 1800,
     collectMs = 1000,
+    pursuitMs = 0,
   ): Promise<CalibPointLog[]> => {
     const results: CalibPointLog[] = [];
     for (let i = 0; i < points.length; i += 1) {
@@ -122,16 +222,23 @@ export function useDotSequence() {
     }
     setDot(null);
     setCollecting(false);
-    setMessage('Done. You can blink and relax your eyes for a moment…');
-    const fit = await gazeTracker.flushCalibration();
-    const last = results[results.length - 1];
-    if (last) {
-      Object.assign(last, {
-        entries: fit.entries, distinctTargets: fit.distinctTargets, affineFitted: fit.affineFitted, fitMs: fit.fitMs,
-      });
+    const pursuit = pursuitMs > 0 && !cancelled.current ? await runPursuit(pursuitMs) : undefined;
+    setMessage('');
+    setFitting(true);
+    await nextPaint();
+    try {
+      const fit = await gazeTracker.flushCalibration();
+      const last = results[results.length - 1];
+      if (last) {
+        Object.assign(last, {
+          entries: fit.entries, distinctTargets: fit.distinctTargets, affineFitted: fit.affineFitted, fitMs: fit.fitMs, pursuit,
+        });
+      }
+    } finally {
+      setFitting(false);
     }
     return results;
-  }, [showDot]);
+  }, [showDot, runPursuit]);
 
   /** Show each point; during the last `collectMs` measure the gaze error (no adaptation). */
   const runValidation = useCallback(async (
@@ -202,17 +309,37 @@ export function useDotSequence() {
   }, [showDot]);
 
   return {
-    dot, collecting, message, setMessage, runCalibration, runValidation,
+    dot, collecting, message, setMessage, runCalibration, runValidation, fitting, pursuitOn, pursuitDotRef,
   };
 }
 
+/** The moving smooth-pursuit dot (positioned by animatePursuit via its ref, no CSS transitions). */
+export function PursuitDot({ dotRef }: { dotRef: React.RefObject<HTMLDivElement | null> }) {
+  return (
+    <div
+      ref={dotRef}
+      style={{
+        position: 'absolute', left: 0, top: 0, width: 18, height: 18, borderRadius: 9, background: '#d7263d', boxShadow: '0 0 0 4px rgba(0,0,0,0.08)', willChange: 'transform',
+      }}
+    >
+      <div style={{
+        position: 'absolute', left: 7, top: 7, width: 4, height: 4, borderRadius: 2, background: '#fff',
+      }}
+      />
+    </div>
+  );
+}
+
 export function CalibrationOverlay({
-  dot, collecting, message, children,
+  dot, collecting, message, children, fitting = false, pursuitDotRef, pursuitOn = false,
 }: {
   dot: NormPoint | null;
   collecting: boolean;
   message?: string;
   children?: React.ReactNode;
+  fitting?: boolean;                                        // "Calibrating…" rest screen
+  pursuitOn?: boolean;
+  pursuitDotRef?: React.RefObject<HTMLDivElement | null>;
 }) {
   const [px, py] = dot ? normToPx(dot.nx, dot.ny) : [0, 0];
   const size = collecting ? 14 : 26;
@@ -227,7 +354,18 @@ export function CalibrationOverlay({
         userSelect: 'none',
       }}
     >
-      {dot && (
+      {fitting && (
+        <div style={{
+          position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 18, color: '#444',
+        }}
+        >
+          <Loader size="lg" />
+          <div style={{ fontSize: 22, fontWeight: 600 }}>Calibrating…</div>
+          <div style={{ fontSize: 16, color: '#666' }}>You can blink and rest your eyes. Please keep your head where it is.</div>
+        </div>
+      )}
+      {pursuitOn && pursuitDotRef && <PursuitDot dotRef={pursuitDotRef} />}
+      {dot && !fitting && (
         <div
           style={{
             position: 'absolute',
@@ -248,7 +386,7 @@ export function CalibrationOverlay({
           />
         </div>
       )}
-      {message && (
+      {message && !fitting && (
         <div style={{
           position: 'absolute', bottom: 24, left: 0, right: 0, textAlign: 'center', color: '#666', fontSize: 16,
         }}

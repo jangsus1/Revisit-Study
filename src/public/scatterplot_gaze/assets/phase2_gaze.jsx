@@ -36,7 +36,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
   const [labelsVisible, setLabelsVisible] = useState(false);
 
   // ---- gaze bookkeeping (refs so the render loop never re-runs because of them) ----
-  const { dot, collecting, message, setMessage, runCalibration, runValidation } = useDotSequence();
+  const { dot, collecting, message, setMessage, runCalibration, runValidation, fitting } = useDotSequence();
   const shortCalibRef = useRef(null);
   const samplesRef = useRef([]);
   const startAtRef = useRef(null);
@@ -397,7 +397,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
         <h1 style={{ color: "red" }}>Example Question</h1>
       )}
       {view === "shortcalib" && (
-        <CalibrationOverlay dot={dot} collecting={collecting} message={message} />
+        <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={fitting} />
       )}
       {view === "scatter" && (
         // Full-viewport, plain white screen: hides the platform header, progress bar and Next

@@ -114,8 +114,13 @@ export default class WebEyeTrackProxy {
   }
 
   /** Start buffering eye patches while the participant fixates the target at normalized (x, y). */
-  calibStart(x: number, y: number): Promise<void> {
-    return this.request<void>('calibStart', { x, y });
+  calibStart(x: number, y: number, pursuit = false): Promise<void> {
+    return this.request<void>('calibStart', { x, y, pursuit });
+  }
+
+  /** End a smooth-pursuit recording: path = [[t_ms, nx, ny], ...] on the main-thread clock. */
+  pursuitEnd(path: number[][], chunks = 12, perChunk = 10): Promise<CalibResult & { frames: number; chunks: number }> {
+    return this.request<CalibResult & { frames: number; chunks: number }>('pursuitEnd', { path, chunks, perChunk });
   }
 
   /** Stop buffering and adapt the model with the collected samples (defer: keep them for calibFlush). */

@@ -7,11 +7,16 @@
  * here it gets the same dots as every other engine, up to MAX_FRAMES frames per dot.
  */
 import { GazeEngineBase } from './types';
+import type { TargetFn } from './types';
 
 const URL_ESM = 'https://cdn.jsdelivr.net/npm/@realeye-io/webcam-eyetracker-light-open@1.1.0/+esm';
 // The ESM build resolves @mediapipe/tasks-vision 0.10.35; the library's default wasm is 0.10.18.
 const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm';
 const MAX_FRAMES = 8;
+// Pursuit: keep one frame every PURSUIT_STEP_MS, at most PURSUIT_MAX (each stored frame is a full
+// 640x480 ImageData, ~1.2 MB, re-detected inside calibrate()).
+const PURSUIT_STEP_MS = 200;
+const PURSUIT_MAX = 150;
 
 type Detection = unknown;
 type Tracker = {
@@ -43,9 +48,13 @@ export class RealEyeEngine extends GazeEngineBase {
 
   private lastTime = -1;
 
-  private target: [number, number] | null = null;
+  private targetAt: TargetFn | null = null;
+
+  private pursuit = false;
 
   private frameInPoint = 0;
+
+  private lastKept = -Infinity;
 
   private samples: { image: ImageData; gazeX: number; gazeY: number }[] = [];
 
@@ -104,9 +113,15 @@ export class RealEyeEngine extends GazeEngineBase {
       this.ctx.drawImage(v, 0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
       const img = this.ctx.getImageData(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
       const det = this.tracker.detectFace(img);
-      if (det && this.target && this.frameInPoint < MAX_FRAMES) {
+      const tgt = det && this.targetAt ? this.targetAt(t) : null;
+      const keep = this.pursuit
+        ? t - this.lastKept >= PURSUIT_STEP_MS && this.frameInPoint < PURSUIT_MAX
+        : this.frameInPoint < MAX_FRAMES;
+      if (tgt && keep) {
         this.frameInPoint += 1;
-        this.samples.push({ image: img, gazeX: this.target[0], gazeY: this.target[1] });
+        this.lastKept = t;
+        this.samples.push({ image: img, gazeX: tgt[0], gazeY: tgt[1] });
+        this.targets.add(tgt.map((c) => Math.round(c / 40)).join(','));
       }
       if (det && this.fitted) {
         const p = this.tracker.predictWithDetection(img, det);
@@ -142,15 +157,25 @@ export class RealEyeEngine extends GazeEngineBase {
   }
 
   beginPoint(x: number, y: number) {
-    this.target = [x, y];
+    this.targetAt = () => [x, y];
+    this.pursuit = false;
     this.frameInPoint = 0;
   }
 
+  beginPursuit(targetAt: TargetFn) {
+    this.targetAt = targetAt;
+    this.pursuit = true;
+    this.frameInPoint = 0;
+    this.lastKept = -Infinity;
+  }
+
   async endPoint() {
-    if (this.target && this.frameInPoint > 0) this.targets.add(this.target.map(Math.round).join(','));
-    this.target = null;
+    this.targetAt = null;
+    this.pursuit = false;
     this.calibTargets = this.targets.size;
   }
+
+  async endPursuit() { await this.endPoint(); }
 
   async finishCalibration() {
     if (this.tracker && this.targets.size >= 3 && this.samples.length >= 5) {
