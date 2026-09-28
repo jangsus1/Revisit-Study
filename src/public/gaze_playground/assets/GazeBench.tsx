@@ -14,7 +14,7 @@ import {
   useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
 import { StimulusParams } from '../../../store/types';
-import { gazeTracker, normToPx } from '../../scatterplot_gaze/assets/gazeTracker';
+import { GazeTracker, gazeTracker, normToPx } from '../../scatterplot_gaze/assets/gazeTracker';
 import {
   CalibrationOverlay, FULL_GRID, PURSUIT_LAG_MS, PURSUIT_MS, PURSUIT_SKIP_MS, VALIDATION_POINTS, animatePursuit, lissajous, nextPaint,
 } from '../../scatterplot_gaze/assets/CalibrationOverlay';
@@ -108,8 +108,8 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
     import('../../../gazeEngine/compare').then((m) => {
       if (!mounted) return;
       const list: GazeEngineBase[] = [
-        new m.WebEyeTrackEngine(gazeTracker),
-        new m.RealEyeEngine(),
+        new m.StudyTrackerEngine(gazeTracker),                   // RealEye, exactly as in the study
+        new m.StudyTrackerEngine(new GazeTracker('webeyetrack')),
         new m.EyeGesturesEngine(),
       ];
       setEngines(list);
@@ -279,7 +279,7 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
   const anyReady = engines.some((e) => e.state === 'ready');
   const anyStarting = engines.some((e) => e.state === 'starting');
   const locked = busy || dot !== null || pursuitOn || relax;
-  const wet = engines.find((e) => e.info.id === 'webeyetrack');
+  const wet = engines.find((e) => e.info.id === gazeTracker.engine);   // the study tracker drives the guide
   const eg = engines.find((e) => e.info.id === 'eyegestures');
   let guideSource: { stream: MediaStream | null; feed?: DistanceFeed } | null = null;
   if (wet?.state === 'ready') guideSource = { stream: gazeTracker.getStream() ?? null };
@@ -413,7 +413,7 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
           <Text size="sm" fw={600} mb={6}>Position before calibrating</Text>
           {guideSource
             ? <PositionGuide stream={guideSource.stream} feed={guideSource.feed} />
-            : <Text size="sm" c="dimmed">Distance needs WebEyeTrack or the EyeGesturesLite engine running.</Text>}
+            : <Text size="sm" c="dimmed">Distance needs the study tracker (RealEye) or the EyeGesturesLite engine running.</Text>}
         </Paper>
       )}
       {error && <Text c="red" size="sm" mt="xs" lineClamp={6} style={{ wordBreak: 'break-word' }}>{error}</Text>}

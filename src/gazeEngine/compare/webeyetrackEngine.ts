@@ -1,10 +1,11 @@
 /**
- * Adapter for the study's own tracker (the `gazeTracker` singleton around vendored WebEyeTrack),
- * so the bench exercises exactly the code the scatterplot_gaze study runs. Output = `raw`
- * (affine-corrected, before Kalman smoothing), the same estimate the study validates with.
+ * Adapter for scatterplot_gaze's GazeTracker (the study pipeline: calibration store, deferred fit,
+ * pursuit chunks, drift offset), so the bench exercises exactly the code the study runs. One instance
+ * wraps the study singleton (RealEye since 2026-09-28), another a separate WebEyeTrack GazeTracker.
+ * Output = `raw` (before Kalman smoothing), the same estimate the study validates with.
  */
 import { GazeEngineBase } from './types';
-import type { TargetFn } from './types';
+import type { EngineInfo, TargetFn } from './types';
 import type { CalibResult } from '../webeyetrack/types';
 
 /** The subset of scatterplot_gaze's gazeTracker this adapter needs (passed in, not imported). */
@@ -19,20 +20,34 @@ export type WetTracker = {
   onSample(fn: (s: { t: number; rx: number; ry: number; open: boolean; face: boolean }) => void): () => void;
 };
 
-export class WebEyeTrackEngine extends GazeEngineBase {
-  readonly info = {
+export const STUDY_ENGINE_INFO = {
+  realeye: {
+    id: 'realeye',
+    name: 'RealEye Light 1.1 (study)',
+    method: 'landmarks + blendshapes + head pose + 2 eye crops (1,653 features) -> ridge (dual solver); study calibration store',
+    license: 'AGPL-3.0 / free academic licence (loaded from jsDelivr)',
+    color: '#ea580c',
+  },
+  webeyetrack: {
     id: 'webeyetrack',
-    name: 'WebEyeTrack (study)',
-    method: 'MediaPipe face mesh -> eye patch -> BlazeGaze CNN; few-shot MAML + affine fit on calibration dots',
-    license: 'MIT (vendored, runs in a worker)',
+    name: 'WebEyeTrack',
+    method: 'MediaPipe face mesh -> eye patch -> BlazeGaze CNN; few-shot MAML + affine fit (worker)',
+    license: 'MIT (vendored)',
     color: '#d7263d',
-  };
+  },
+};
+
+export class StudyTrackerEngine extends GazeEngineBase {
+  readonly info: EngineInfo;
 
   private unsub?: () => void;
 
   private pending?: Promise<void>;
 
-  constructor(private tracker: WetTracker) { super(); }
+  constructor(private tracker: WetTracker & { engine: 'realeye' | 'webeyetrack' }) {
+    super();
+    this.info = STUDY_ENGINE_INFO[tracker.engine];
+  }
 
   protected async startImpl() {
     await this.tracker.init();

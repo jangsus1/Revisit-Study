@@ -1,10 +1,29 @@
 /**
- * Singleton wrapper around the vendored WebEyeTrack engine, shared by every component of the
- * scatterplot_gaze study within one page session. The webcam stays on between trials; GazeEnd
+ * Singleton gaze tracker shared by every component of the scatterplot_gaze study within one page
+ * session. Engine (since 2026-09-28): RealEye Webcam EyeTracker Light 1.1 (src/gazeEngine/realeye);
+ * the vendored WebEyeTrack engine stays available (`new GazeTracker('webeyetrack')`, used by the
+ * gaze_playground bench). Both backends expose the same calibration API. The webcam stays on between trials; GazeEnd
  * stops it. Heavy code (tfjs, MediaPipe) is loaded lazily so other studies' bundles stay small.
  */
 import { PREFIX } from '../../../utils/Prefix';
 import type { SlimGazeResult, CalibResult } from '../../../gazeEngine/webeyetrack/types';
+
+export type EngineName = 'realeye' | 'webeyetrack';
+
+/** What gazeTracker needs from an engine (implemented by WebEyeTrackProxy and RealEyeBackend). */
+type Backend = {
+  onGazeResults: (r: SlimGazeResult) => void;
+  start(): Promise<void>;
+  calibStart(x: number, y: number, pursuit?: boolean): Promise<void>;
+  calibEnd(ptType: 'calib' | 'click', maxSamples?: number, defer?: boolean): Promise<CalibResult>;
+  calibFlush(): Promise<CalibResult & { points: number; fitMs: number }>;
+  pursuitEnd(path: number[][], chunks?: number, perChunk?: number): Promise<CalibResult & { frames: number; chunks: number }>;
+  snapshotCalib(): Promise<void>;
+  restoreCalib(): Promise<{ restored: boolean } & CalibResult>;
+  setOffset(dx: number, dy: number): Promise<{ offset: [number, number] }>;
+  resetCalib(): Promise<void>;
+  dispose(): void;
+};
 
 export type GazeSample = {
   t: number;        // performance.now() when the frame was captured
@@ -39,6 +58,7 @@ export function headShiftMm(a: HeadPose | null | undefined, b: HeadPose | null |
 }
 
 export type CalibrationSummary = {
+  engine?: EngineName;
   attempts: number;
   accepted: boolean;
   meanErrorPx: number | null;
@@ -55,7 +75,9 @@ export function normToPx(nx: number, ny: number): [number, number] {
   return [(nx + 0.5) * window.innerWidth, (ny + 0.5) * window.innerHeight];
 }
 
-class GazeTracker {
+export class GazeTracker {
+  constructor(readonly engine: EngineName = 'realeye') {}
+
   state: TrackerState = 'idle';
 
   error?: string;
@@ -72,7 +94,7 @@ class GazeTracker {
 
   sampleCount = 0;
 
-  private proxy?: import('../../../gazeEngine/webeyetrack/WebEyeTrackProxy').default;
+  private proxy?: Backend;
 
   private cam?: import('../../../gazeEngine/webeyetrack/WebcamClient').default;
 
@@ -115,15 +137,17 @@ class GazeTracker {
     document.body.appendChild(video);
     this.video = video;
 
-    const [{ default: WebcamClient }, { default: WebEyeTrackProxy }] = await Promise.all([
-      import('../../../gazeEngine/webeyetrack/WebcamClient'),
-      import('../../../gazeEngine/webeyetrack/WebEyeTrackProxy'),
-    ]);
-
-    const baseUrl = `${window.location.origin}${PREFIX}${STUDY_ID}/`;
+    const { default: WebcamClient } = await import('../../../gazeEngine/webeyetrack/WebcamClient');
     this.cam = new WebcamClient(video);
-    // Support set: 9 calibration dots + 12 smooth-pursuit chunks + room for per-trial 'click' dots
-    this.proxy = new WebEyeTrackProxy(this.cam, { baseUrl, maxPoints: 25, clickTTL: 90 });
+    // Calibration store: 9 calibration dots + 12 smooth-pursuit chunks + room for per-trial 'click' dots
+    if (this.engine === 'realeye') {
+      const { default: RealEyeBackend } = await import('../../../gazeEngine/realeye/RealEyeBackend');
+      this.proxy = new RealEyeBackend(this.cam, { maxPoints: 25, clickTTL: 90 });
+    } else {
+      const { default: WebEyeTrackProxy } = await import('../../../gazeEngine/webeyetrack/WebEyeTrackProxy');
+      const baseUrl = `${window.location.origin}${PREFIX}${STUDY_ID}/`;
+      this.proxy = new WebEyeTrackProxy(this.cam, { baseUrl, maxPoints: 25, clickTTL: 90 });
+    }
     this.proxy.onGazeResults = (r: SlimGazeResult) => this.handleResult(r);
     await this.proxy.start();
     this.state = 'ready';
@@ -261,7 +285,7 @@ class GazeTracker {
 }
 
 const g = globalThis as unknown as { __scatterplotGazeTracker?: GazeTracker };
-if (!g.__scatterplotGazeTracker) g.__scatterplotGazeTracker = new GazeTracker();
+if (!g.__scatterplotGazeTracker) g.__scatterplotGazeTracker = new GazeTracker('realeye');
 export const gazeTracker: GazeTracker = g.__scatterplotGazeTracker;
 
 if (import.meta.hot) {

@@ -56,6 +56,7 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
   useEffect(() => {
     const finished = phase === 'done';
     const summary = {
+      engine: gazeTracker.engine,
       attempts: attempts.length,
       accepted,
       meanErrorPx: last?.meanErrorPx ?? null,

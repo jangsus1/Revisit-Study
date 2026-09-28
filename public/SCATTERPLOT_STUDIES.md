@@ -165,3 +165,15 @@ The last `calib[]` entry logs `pursuit = {durationMs, lagMs, skipMs, frames, chu
 `trace = [t_since_motion_onset, raw_x, raw_y, target_x, target_y, open]` (estimate the real lag from it).
 Per-trial short calibrations stay dot-only but also end on the spinner screen. The bench offers Dots / Smooth
 pursuit / Dots + pursuit with the same path and timing (`lissajous`, `animatePursuit` in `CalibrationOverlay.tsx`).
+
+### Engine switch: RealEye (2026-09-28)
+
+`scatterplot_gaze` now tracks with **RealEye Webcam EyeTracker Light 1.1** (`src/gazeEngine/realeye/`, see its
+README) instead of WebEyeTrack; `gazeTracker` picks the backend (`new GazeTracker('realeye' | 'webeyetrack')`,
+singleton = RealEye), and the calibration pages, per-trial recalibration, pursuit, drift offset and data formats
+are unchanged. `engine` is logged in `webcamPermission` and in `fullCalib` (copied into every trial's `gaze` row).
+Differences for analysis: `raw_*` = features . weights (+ offset), `x,y` = Kalman-smoothed; `face_*_mm` =
+MediaPipe head translation; eyes closed = blink blendshape > 0.5; before calibration samples have `open = 0`.
+Rows per fit: 9 dots x 10 frames + 12 pursuit chunks x 10 frames, x5 shifts ≈ 1,050 rows (< 1 s).
+The bench's first engine is the study pipeline itself; WebEyeTrack runs as a second `GazeTracker`.
+Licence (AGPL or free academic commercial licence) must be settled before data collection.

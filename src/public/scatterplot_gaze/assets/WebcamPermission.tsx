@@ -40,6 +40,7 @@ function WebcamPermission({ parameters, setAnswer }: StimulusParams<Params>) {
       status: faceSeen,
       answers: {
         webcamPermission: JSON.stringify({
+          engine: gazeTracker.engine,
           granted: gazeTracker.state === 'ready',
           faceDetected: faceSeen,
           error: gazeTracker.error ?? null,
