@@ -34,6 +34,9 @@ type HeadPose = { yaw: number; pitch: number; roll: number; translationX: number
 type Detection = {
   boundingBox: unknown; keypoints: unknown; allLandmarks?: unknown[];
   blendshapes?: Record<string, number>; headPose?: HeadPose;
+  // MediaPipe's column-major 4x4 split into rows of 4 values (RealEye 1.1 reads it as row-major, so its
+  // headPose.translation* are wrong: translationZ is always 0). Translation = transformationMatrix[3][0..2].
+  transformationMatrix?: number[][];
 };
 type Tracker = {
   initialize(): Promise<void>;
@@ -132,16 +135,18 @@ export default class RealEyeBackend {
       raw = [dot(this.W![0], f) + this.offset[0], dot(this.W![1], f) + this.offset[1]];
       norm = open ? this.kalman.step(raw) : raw;
     }
-    const yaw = hp?.yaw ?? 0;
-    const pitch = hp?.pitch ?? 0;
+    // Head position / direction from the raw matrix (column-major: row k of the 4x4 array is column k)
+    const m = det.transformationMatrix;
+    const origin = m && m.length === 4 ? [m[3][0], m[3][1], Math.abs(m[3][2])] : null;   // cm, camera frame
+    const head = m && m.length === 4 ? [m[2][0], m[2][1], m[2][2]] : null;                // face forward axis
     this.onGazeResults({
       normPog: norm,
       rawPog: raw,
       // Uncalibrated frames are reported as 'closed' so nothing treats the placeholder as gaze
       gazeState: open && fitted ? 'open' : 'closed',
       faceDetected: true,
-      head: hp ? [Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)] : null,
-      origin: hp ? [hp.translationX, hp.translationY, Math.abs(hp.translationZ)] : null,   // cm, camera frame
+      head,
+      origin,
       capturedAt,
       durations: { detect: t1 - t0, total: performance.now() - t0 },
     });

@@ -1,6 +1,4 @@
-import {
-  Box, Button, List, Text, Title,
-} from '@mantine/core';
+import { Button } from '@mantine/core';
 import { useCallback, useEffect, useState } from 'react';
 import { StimulusParams } from '../../../store/types';
 import { gazeTracker } from './gazeTracker';
@@ -10,6 +8,7 @@ import {
 } from './CalibrationOverlay';
 import type { CalibPointLog, ValidationResult } from './CalibrationOverlay';
 import { PositionGuide } from './PositionGuide';
+import { FullscreenGate, Panel, fullscreenStats } from './FullScreen';
 import type { PositionState } from './PositionGuide';
 
 // After this long on the guide the participant may start even if the distance never reads "good"
@@ -35,7 +34,7 @@ function meanPose(points: ValidationResult['points']): HeadPose | null {
   };
 }
 
-function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
+function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Params>) {
   const maxAttempts = parameters?.maxAttempts ?? 3;
   const acceptPctW = parameters?.acceptPctW ?? 0.08;
 
@@ -79,6 +78,8 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
           inferenceHz: Math.round(gazeTracker.hz * 10) / 10,
           perAttempt: attempts,
           trackerError: error,
+          fullscreen: !!document.fullscreenElement,
+          fullscreenExits: fullscreenStats.exits,
         }),
       },
     });
@@ -132,82 +133,42 @@ function GazeCalibration({ parameters, setAnswer }: StimulusParams<Params>) {
     }
   }, [acceptPctW, maxAttempts, runCalibration, runValidation, setMessage, pos, guideSince]);
 
-  const errText = last?.meanErrorPx !== null && last?.meanErrorPx !== undefined
-    ? `${Math.round(last.meanErrorPx)} px (${(100 * (last.meanErrorPctW ?? 0)).toFixed(1)} % of screen width)`
-    : 'could not be measured';
+  const startLabel = (label: string) => (pos?.ready || !canOverride ? label : `${label} anyway`);
 
   return (
-    <Box p="md" maw={760}>
+    <>
       {phase === 'running' && (
         <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={fitting} pursuitOn={pursuitOn} pursuitDotRef={pursuitDotRef} />
       )}
 
       {phase === 'intro' && (
-        <>
-          <Title order={2}>Eye-tracking calibration</Title>
-          <Title order={4} mt="md">1. Adjust your position</Title>
-          <Box mt="xs"><PositionGuide onChange={setPos} /></Box>
-          <Title order={4} mt="lg">2. Calibrate</Title>
-          <Text mt="xs">
-            A dot will appear at 9 positions on the screen: look directly at each one until it moves.
-            Then the dot will glide slowly around the screen for 20 seconds: follow it with your eyes.
-            After a short pause, 5 more dots check the accuracy. The whole procedure takes about a minute.
-          </Text>
-          <List mt="sm" spacing="xs">
-            <List.Item><strong>Keep your head as still as possible</strong>; move only your eyes. Stay in this position until the task ends.</List.Item>
-            <List.Item>Do not move the mouse or touch the keyboard while the dots are shown.</List.Item>
-            <List.Item>Try not to blink while a dot turns red.</List.Item>
-          </List>
-          <StartButton ready={!!pos?.ready} canOverride={canOverride} onClick={runOnce} label="Start calibration" />
-        </>
+        <Panel
+          title="Calibration"
+          actions={<Button size="lg" onClick={runOnce} disabled={!pos?.ready && !canOverride}>{startLabel('Start')}</Button>}
+        >
+          Look at each dot, then follow the moving dot.
+          <br />
+          <strong>Keep your head still. Move only your eyes.</strong>
+          <div style={{ marginTop: 22 }}><PositionGuide onChange={setPos} compact /></div>
+        </Panel>
       )}
 
       {phase === 'retry' && (
-        <>
-          <Title order={2}>Let&apos;s try that again</Title>
-          <Text mt="sm">
-            Accuracy on attempt {attempts.length}: {errText}. Please sit still, face the screen, and
-            follow the dots with your eyes only.
-          </Text>
-          {error && <Text c="red" mt="xs">{error}</Text>}
-          <Box mt="md"><PositionGuide onChange={setPos} /></Box>
-          <StartButton ready={!!pos?.ready} canOverride={canOverride} onClick={runOnce} label={`Recalibrate (${attempts.length + 1} / ${maxAttempts})`} />
-        </>
+        <Panel
+          title="Let's try again"
+          actions={<Button size="lg" onClick={runOnce} disabled={!pos?.ready && !canOverride}>{startLabel(`Recalibrate (${attempts.length + 1}/${maxAttempts})`)}</Button>}
+        >
+          Sit still and follow the dots with your eyes only.
+          <div style={{ marginTop: 22 }}><PositionGuide onChange={setPos} compact /></div>
+        </Panel>
       )}
 
       {phase === 'done' && (
-        <>
-          <Title order={2}>Calibration complete</Title>
-          <Text mt="sm">
-            {accepted
-              ? 'Your eye tracking is calibrated.'
-              : 'We recorded the best calibration we could obtain.'}
-            {' '}
-            Before every plot in the next task, a dot in the centre checks the accuracy (and a few
-            more dots appear if needed). <strong>Please keep your head in this position</strong> until the
-            task ends. Press <strong>Next</strong> to continue.
-          </Text>
-        </>
+        <Panel title="Calibration done" actions={<Button size="lg" onClick={() => advance?.()}>Continue</Button>}>
+          Keep your head in this position until the task ends.
+        </Panel>
       )}
-    </Box>
-  );
-}
-
-function StartButton({
-  ready, canOverride, onClick, label,
-}: { ready: boolean; canOverride: boolean; onClick: () => void; label: string }) {
-  return (
-    <>
-      <Button mt="md" onClick={onClick} disabled={!ready && !canOverride}>
-        {ready || !canOverride ? label : `${label} anyway`}
-      </Button>
-      {!ready && (
-        <Text size="xs" c="dimmed" mt={4}>
-          {canOverride
-            ? 'If the distance never turns green even though you sit about an arm\'s length away, you can start anyway.'
-            : 'The button unlocks once your position is good.'}
-        </Text>
-      )}
+      <FullscreenGate />
     </>
   );
 }

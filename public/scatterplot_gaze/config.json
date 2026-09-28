@@ -229,6 +229,22 @@
                 }
             ]
         },
+        "fullscreen": {
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/FullScreen.tsx",
+            "response": [
+                {
+                    "id": "fullscreen",
+                    "prompt": "Full screen",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "reactive",
+                    "hidden": true
+                }
+            ],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
         "webcamPermission": {
             "type": "react-component",
             "path": "scatterplot_gaze/assets/WebcamPermission.tsx",
@@ -106592,6 +106608,7 @@
     "sequence": {
         "order": "fixed",
         "components": [
+            "fullscreen",
             "consent",
             "attentionCheck",
             "phase3_intro",

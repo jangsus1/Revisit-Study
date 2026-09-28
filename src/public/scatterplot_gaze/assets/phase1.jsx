@@ -3,6 +3,7 @@ import { useEffect, useState, useRef, useCallback } from "react"
 import { Box, Button } from "@mantine/core"
 import React from "react"
 import { NormalSlider } from "./Slider"
+import { usePlotScale } from "./plotScale";
 
 
 // timer for 5 seconds
@@ -17,6 +18,8 @@ function Plain({ parameters, setAnswer }) {
   
   // Fixed size for everything
   const fixedSize = { width: 600, height: 600 }
+  // Shown larger than the 600-px design size (viewBox), within the platform layout (header, padding)
+  const scale = usePlotScale(fixedSize.width, fixedSize.height, 80, 170)
   
   const [view, setView] = useState("scatter") // scatter, slider, feedback
   const [slider, setSlider] = useState(0)
@@ -49,7 +52,7 @@ function Plain({ parameters, setAnswer }) {
     svg.selectAll("*").remove();
 
     // Use fixed size
-    svg.attr('width', fixedSize.width).attr('height', fixedSize.height);
+    svg.attr('width', fixedSize.width * scale).attr('height', fixedSize.height * scale).attr('viewBox', `0 0 ${fixedSize.width} ${fixedSize.height}`);
 
     // Add proper axes with visible lines
     const xAxis = d3.axisBottom(xScale).tickSize(0).tickFormat(() => '');
@@ -105,7 +108,7 @@ function Plain({ parameters, setAnswer }) {
       .attr('cy', d => yScale(d[1]))
       .attr('r', 3)
       .attr('fill', 'black');
-  }, [view, coordinates, xScale, yScale, fixedSize, margin]);
+  }, [view, coordinates, xScale, yScale, fixedSize, margin, scale]);
 
   // Handle click to remove blur
   const handleClick = useCallback(() => {
@@ -182,8 +185,9 @@ function Plain({ parameters, setAnswer }) {
             <svg 
               id="clickAccuracySvg" 
               ref={ref} 
-              width={fixedSize.width} 
-              height={fixedSize.height}
+              width={fixedSize.width * scale}
+              height={fixedSize.height * scale}
+              viewBox={`0 0 ${fixedSize.width} ${fixedSize.height}`}
               style={{ 
                 display: 'block', 
                 filter: isBlurred ? 'blur(50px)' : 'none',
@@ -253,8 +257,9 @@ function Plain({ parameters, setAnswer }) {
             <svg 
               id="feedbackSvg" 
               ref={ref} 
-              width={fixedSize.width} 
-              height={fixedSize.height}
+              width={fixedSize.width * scale}
+              height={fixedSize.height * scale}
+              viewBox={`0 0 ${fixedSize.width} ${fixedSize.height}`}
               style={{ 
                 display: 'block'
               }}

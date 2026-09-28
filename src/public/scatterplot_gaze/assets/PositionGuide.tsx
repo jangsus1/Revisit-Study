@@ -26,11 +26,12 @@ const trackerFeed: DistanceFeed = (fn) => gazeTracker.onSample((s) => {
 });
 
 export function PositionGuide({
-  onChange, stream, feed = trackerFeed,
+  onChange, stream, feed = trackerFeed, compact = false,
 }: {
   onChange?: (s: PositionState) => void;
   stream?: MediaStream | null;
   feed?: DistanceFeed;
+  compact?: boolean;          // meter and message only, no camera preview
 }) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [state, setState] = useState<PositionState>({
@@ -81,47 +82,34 @@ export function PositionGuide({
   const inRange = face && cm !== null && cm >= MIN_CM && cm <= MAX_CM;
   let msg: string;
   let color: string;
-  if (!src && stream === undefined && gazeTracker.state === 'error') { msg = 'The camera or eye tracker could not start. Reload the page, or use the help link.'; color = 'red'; } else if (!src) { msg = 'Starting the camera…'; color = 'gray'; } else if (!face || cm === null) { msg = 'We cannot see your face. Face the screen, make sure your face is well lit and not covered.'; color = 'red'; } else if (cm < MIN_CM) { msg = 'Too close. Lean back a little.'; color = 'orange'; } else if (cm > MAX_CM) { msg = 'Too far. Move a little closer to the screen.'; color = 'orange'; } else { msg = state.ready ? 'Good position. Stay like this.' : 'Good. Hold still…'; color = 'green'; }
+  if (!src && stream === undefined && gazeTracker.state === 'error') { msg = 'The camera could not start.'; color = '#dc2626'; } else if (!src) { msg = 'Starting the camera…'; color = '#666'; } else if (!face || cm === null) { msg = 'Face not found. Face the screen in good light.'; color = '#dc2626'; } else if (cm < MIN_CM) { msg = 'Too close. Lean back a little.'; color = '#d97706'; } else if (cm > MAX_CM) { msg = 'Too far. Move a little closer.'; color = '#d97706'; } else { msg = state.ready ? 'Good position.' : 'Good. Hold still…'; color = '#16a34a'; }
   const pct = (v: number) => (100 * (Math.min(BAR_MAX, Math.max(BAR_MIN, v)) - BAR_MIN)) / (BAR_MAX - BAR_MIN);
   const ok = inRange ? '#16a34a' : '#f59e0b';
+  const W = 320;
 
   return (
-    <Group align="flex-start" gap="lg" wrap="wrap">
-      <Box pos="relative" w={280} h={210} style={{ borderRadius: 8, overflow: 'hidden', background: '#111', flex: 'none' }}>
-        <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-        <svg viewBox="0 0 280 210" width={280} height={210} style={{ position: 'absolute', inset: 0 }}>
-          <ellipse cx={140} cy={100} rx={52} ry={70} fill="none" stroke={face ? ok : '#ef4444'} strokeWidth={3} strokeDasharray={inRange ? undefined : '8 6'} />
-        </svg>
-      </Box>
-      <Box style={{ flex: 1, minWidth: 240 }}>
-        <Text fw={600} c={color}>{msg}</Text>
-        <Text size="sm" mt={6}>
-          Sit about an arm&apos;s length from the screen, with your face inside the oval and the camera at eye
-          level if possible. Rest your arms so you can keep your head in this position for the whole task.
-        </Text>
-        <Box mt="md" pos="relative" h={34}>
-          <Box pos="absolute" top={12} left={0} right={0} h={10} style={{ background: '#e5e7eb', borderRadius: 5 }} />
-          <Box pos="absolute" top={12} h={10} style={{ left: `${pct(MIN_CM)}%`, width: `${pct(MAX_CM) - pct(MIN_CM)}%`, background: '#bbf7d0', borderRadius: 5 }} />
-          {cm !== null && face && (
-            <Box pos="absolute" top={4} w={4} h={26} style={{ left: `calc(${pct(cm)}% - 2px)`, background: ok, borderRadius: 2, transition: 'left 0.15s' }} />
-          )}
+    <Box style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}>
+      {!compact && (
+        <Box pos="relative" w={W} h={240} style={{ borderRadius: 10, overflow: 'hidden', background: '#111' }}>
+          <video ref={videoRef} autoPlay muted playsInline style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
+          <svg viewBox={`0 0 ${W} 240`} width={W} height={240} style={{ position: 'absolute', inset: 0 }}>
+            <ellipse cx={W / 2} cy={115} rx={60} ry={80} fill="none" stroke={face ? ok : '#ef4444'} strokeWidth={3} strokeDasharray={inRange ? undefined : '8 6'} />
+          </svg>
         </Box>
-        <Group justify="space-between" mt={-4}>
-          <Text size="xs" c="dimmed">closer</Text>
-          <Text size="xs" c="dimmed">
-            {cm !== null && face ? `about ${Math.round(cm)} cm` : '—'}
-            {' '}
-            (aim for
-            {' '}
-            {MIN_CM}
-            –
-            {MAX_CM}
-            {' '}
-            cm)
-          </Text>
-          <Text size="xs" c="dimmed">farther</Text>
-        </Group>
+      )}
+      <Text fw={600} size="lg" style={{ color }}>{msg}</Text>
+      <Box pos="relative" w={W} h={30}>
+        <Box pos="absolute" top={10} left={0} right={0} h={10} style={{ background: '#e5e7eb', borderRadius: 5 }} />
+        <Box pos="absolute" top={10} h={10} style={{ left: `${pct(MIN_CM)}%`, width: `${pct(MAX_CM) - pct(MIN_CM)}%`, background: '#bbf7d0', borderRadius: 5 }} />
+        {cm !== null && face && (
+          <Box pos="absolute" top={2} w={4} h={26} style={{ left: `calc(${pct(cm)}% - 2px)`, background: ok, borderRadius: 2, transition: 'left 0.15s' }} />
+        )}
       </Box>
-    </Group>
+      <Group justify="space-between" w={W} mt={-6}>
+        <Text size="xs" c="dimmed">closer</Text>
+        <Text size="xs" c="dimmed">{cm !== null && face ? `about ${Math.round(cm)} cm` : ''}</Text>
+        <Text size="xs" c="dimmed">farther</Text>
+      </Group>
+    </Box>
   );
 }

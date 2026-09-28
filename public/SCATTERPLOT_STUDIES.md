@@ -177,3 +177,18 @@ MediaPipe head translation; eyes closed = blink blendshape > 0.5; before calibra
 Rows per fit: 9 dots x 10 frames + 12 pursuit chunks x 10 frames, x5 shifts ≈ 1,050 rows (< 1 s).
 The bench's first engine is the study pipeline itself; WebEyeTrack runs as a second `GazeTracker`.
 Licence (AGPL or free academic commercial licence) must be settled before data collection.
+
+### Full screen, minimal camera / calibration screens, larger plots (2026-09-28)
+
+- First page `fullscreen` (`FullScreen.tsx`): one "Enter full screen" button, then the page advances by itself.
+  Camera, calibration, trials and the final check show a "Return to full screen" gate whenever full screen is
+  left; `fullscreenExits` is logged in `webcamPermission`, `calibration` and `finalCheck`. All later page indices
+  shifted by +1 (camera 30, calibration 31, first main trial 35).
+- Camera, calibration, final check and end pages are plain full-window `Panel`s (cluster-flow style: no header,
+  one or two lines, one button, advance by themselves). The position guide sits on the camera page (preview +
+  meter) and in compact form (meter only) on the calibration start / retry screens.
+- Distance fix: RealEye 1.1 reads MediaPipe's column-major transformation matrix as row-major, so its
+  `headPose.translationZ` is always 0 ("too close"). `origin` now comes from the raw matrix (translation column).
+- Plots are drawn in their 600-px design units and shown through an SVG viewBox at `plotScale`
+  (`plotScale.ts`): up to 1.4x (phase 1 inside the platform layout, phase 2 full window), never below 1.
+  `gaze.plotArea` is in scaled viewport px; `gaze.plotScale` is logged.

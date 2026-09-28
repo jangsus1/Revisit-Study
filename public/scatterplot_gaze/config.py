@@ -648,6 +648,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
     sequence = {
         "order": "fixed",
         "components": [
+            "fullscreen",
             "consent",
             "attentionCheck",
             "phase3_intro",
@@ -698,6 +699,14 @@ def create_gaze_components(fail_link):
         "location": "belowStimulus", "type": "reactive", "hidden": True
     }]
     return {
+        "fullscreen": {
+            # first page: enter browser full screen (gaze coordinates need a fixed viewport)
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/FullScreen.tsx",
+            "response": hidden("fullscreen", "Full screen"),
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
         "webcamPermission": {
             "type": "react-component",
             "path": "scatterplot_gaze/assets/WebcamPermission.tsx",

@@ -1,9 +1,10 @@
-import { Box, Text, Title } from '@mantine/core';
+import { Button } from '@mantine/core';
 import { useEffect } from 'react';
 import { StimulusParams } from '../../../store/types';
 import { gazeTracker } from './gazeTracker';
+import { Panel } from './FullScreen';
 
-function GazeEnd({ setAnswer }: StimulusParams<undefined>) {
+function GazeEnd({ setAnswer, advance }: StimulusParams<undefined>) {
   useEffect(() => {
     const samplesTotal = gazeTracker.sampleCount;
     gazeTracker.stop();
@@ -15,13 +16,15 @@ function GazeEnd({ setAnswer }: StimulusParams<undefined>) {
     });
   }, [setAnswer]);
 
+  const next = () => {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
+    advance?.();
+  };
+
   return (
-    <Box p="md" maw={760}>
-      <Title order={2}>Eye tracking finished</Title>
-      <Text mt="sm">
-        Your camera has been turned off. You may cover it if you wish. A short questionnaire follows.
-      </Text>
-    </Box>
+    <Panel title="Eye tracking finished" actions={<Button size="lg" onClick={next}>Continue</Button>}>
+      The camera is off. You can leave full screen now. A short questionnaire follows.
+    </Panel>
   );
 }
 

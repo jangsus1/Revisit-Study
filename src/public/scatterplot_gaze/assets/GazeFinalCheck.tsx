@@ -3,9 +3,7 @@
  * 9 dots at the full-calibration positions. Nothing is recalibrated, so the result measures how far
  * the tracker drifted over the session across the whole screen, with the head pose at every dot.
  */
-import {
-  Box, Button, List, Text, Title,
-} from '@mantine/core';
+import { Button } from '@mantine/core';
 import { useCallback, useEffect, useState } from 'react';
 import { StimulusParams } from '../../../store/types';
 import { gazeTracker, headShiftMm } from './gazeTracker';
@@ -13,10 +11,11 @@ import {
   CalibrationOverlay, FULL_GRID, useDotSequence,
 } from './CalibrationOverlay';
 import type { ValidationResult } from './CalibrationOverlay';
+import { FullscreenGate, Panel, fullscreenStats } from './FullScreen';
 
 type Phase = 'intro' | 'running' | 'done';
 
-function GazeFinalCheck({ setAnswer }: StimulusParams<undefined>) {
+function GazeFinalCheck({ setAnswer, advance }: StimulusParams<undefined>) {
   const [phase, setPhase] = useState<Phase>('intro');
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +37,8 @@ function GazeFinalCheck({ setAnswer }: StimulusParams<undefined>) {
           lastTrialErrorPx: gazeTracker.lastTrialErrorPx,
           windowPos: [window.screenX, window.screenY, window.outerWidth, window.outerHeight],
           trackerState: gazeTracker.state,
+          fullscreen: !!document.fullscreenElement,
+          fullscreenExits: fullscreenStats.exits,
           error,
         }),
       },
@@ -59,32 +60,22 @@ function GazeFinalCheck({ setAnswer }: StimulusParams<undefined>) {
     setPhase('done');
   }, [runValidation]);
 
+  // Done: the answer is complete, move on by itself
+  useEffect(() => { if (phase === 'done') advance?.(); }, [phase, advance]);
+
   return (
-    <Box p="md" maw={760}>
+    <>
       {phase === 'running' && <CalibrationOverlay dot={dot} collecting={collecting} message={message} />}
-
       {phase === 'intro' && (
-        <>
-          <Title order={2}>Last accuracy check</Title>
-          <Text mt="sm">
-            One final step before the camera turns off: a dot will appear at 9 positions. Look directly at
-            each dot until it moves. This takes about 15 seconds.
-          </Text>
-          <List mt="sm" spacing="xs">
-            <List.Item><strong>Keep your head as still as possible</strong> and move only your eyes.</List.Item>
-            <List.Item>Do not move the mouse while the dots are shown.</List.Item>
-          </List>
-          <Button mt="md" onClick={run}>Start</Button>
-        </>
+        <Panel title="Last accuracy check" actions={<Button size="lg" onClick={run}>Start</Button>}>
+          Look at each dot. About 15 seconds.
+          <br />
+          <strong>Keep your head still.</strong>
+        </Panel>
       )}
-
-      {phase === 'done' && (
-        <>
-          <Title order={2}>Thank you</Title>
-          <Text mt="sm">Press <strong>Next</strong> to turn off the camera.</Text>
-        </>
-      )}
-    </Box>
+      {phase === 'done' && <Panel title="Thank you" />}
+      <FullscreenGate />
+    </>
   );
 }
 

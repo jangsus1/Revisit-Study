@@ -4,6 +4,8 @@ import React from "react";
 import { NormalSlider } from "./Slider";
 import { gazeTracker, normToPx, headShiftMm } from "./gazeTracker";
 import { CalibrationOverlay, shortCalibPoints, useDotSequence } from "./CalibrationOverlay";
+import { FullscreenGate } from "./FullScreen";
+import { usePlotScale } from "./plotScale";
 
 // Trial of the timing design (labels visible during [label_start, label_end) seconds after the click,
 // plot shown for `seconds`; label_start = label_end = seconds means never shown) with (1) a test-first
@@ -23,6 +25,8 @@ function Phase2Gaze({ parameters, setAnswer }) {
 
   const dotPadding = 10;
   const fixedSize = { width: 600 + 110, height: 600 };
+  // Shown larger than the 600-px design size (viewBox); the trial screen is a full-window overlay
+  const scale = usePlotScale(fixedSize.width, fixedSize.height, 40, 40);
 
   const ref = useRef(null);
   const { coordinates, example, seconds, label_seconds, label_start, label_end, correlation, label, X, Y, label_idx } = parameters;
@@ -222,7 +226,8 @@ function Phase2Gaze({ parameters, setAnswer }) {
     };
     geometryRef.current = {
       plotRect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
-      plotArea: [Math.round(r.left + margin.left), Math.round(r.top + margin.top), Math.round(plotWidth), Math.round(plotHeight)],
+      plotArea: [Math.round(r.left + margin.left * scale), Math.round(r.top + margin.top * scale), Math.round(plotWidth * scale), Math.round(plotHeight * scale)],
+      plotScale: Math.round(scale * 1000) / 1000,
       labelRects: { x: rect(svg.querySelector('.x-label')), y: rect(svg.querySelector('.y-label')) },
       viewport: [window.innerWidth, window.innerHeight],
       // Browser window placement on the physical screen: a change since calibration means the
@@ -232,7 +237,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
       dpr: window.devicePixelRatio,
       scroll: [Math.round(window.scrollX), Math.round(window.scrollY)],
     };
-  }, [margin, plotWidth, plotHeight]);
+  }, [margin, plotWidth, plotHeight, scale]);
 
   // Answer callback - called when the slider is touched
   const answerCallback = useCallback((newCorrAfter) => {
@@ -275,7 +280,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
 
     const svg = d3.select(ref.current);
     svg.selectAll("*").remove();
-    svg.attr('width', fixedSize.width).attr('height', fixedSize.height);
+    svg.attr('width', fixedSize.width * scale).attr('height', fixedSize.height * scale).attr('viewBox', `0 0 ${fixedSize.width} ${fixedSize.height}`);
 
     const xAxis = d3.axisBottom(xScale).tickSize(0).tickFormat(() => '');
     const yAxis = d3.axisLeft(yScale).tickSize(0).tickFormat(() => '');
@@ -352,7 +357,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
       .attr('r', 3)
       .attr('fill', 'black');
 
-  }, [view, coordinates, xScale, yScale, fixedSize, margin, X, Y]);
+  }, [view, coordinates, xScale, yScale, fixedSize, margin, X, Y, scale]);
 
   // Label blur toggle
   useEffect(() => {
@@ -393,6 +398,7 @@ function Phase2Gaze({ parameters, setAnswer }) {
 
   return (
     <div>
+      <FullscreenGate />
       {example && view !== "scatter" && (
         <h1 style={{ color: "red" }}>Example Question</h1>
       )}
@@ -413,8 +419,9 @@ function Phase2Gaze({ parameters, setAnswer }) {
             <svg
               id="clickAccuracySvg"
               ref={ref}
-              width={fixedSize.width}
-              height={fixedSize.height}
+              width={fixedSize.width * scale}
+              height={fixedSize.height * scale}
+              viewBox={`0 0 ${fixedSize.width} ${fixedSize.height}`}
               style={{
                 display: 'block',
                 filter: isBlurred ? 'blur(50px)' : 'none',
