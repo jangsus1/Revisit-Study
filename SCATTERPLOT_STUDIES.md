@@ -153,3 +153,27 @@ dot is shown (`calibEnd({defer: true})`); the tracker adapts to all points in or
 (`calibFlush` / `gazeTracker.flushCalibration()`, `finishCalibration()` on bench engines) on a blank screen
 ("You can blink and relax your eyes"). Before, WebEyeTrack's `adapt()` ran inside each dot and held the dot
 until it finished. Same result (eye patches do not depend on the weights); the last `calib[]` entry logs `fitMs`.
+
+### Smooth pursuit and the "Calibrating…" screen (2026-09-28)
+
+`gazeCalibration` now runs 9 fixation dots, then **20 s of smooth pursuit** (dot on a 3:2 Lissajous curve over
+80 % of the viewport, peak ~0.31 viewport widths/s), then a "Calibrating…" spinner screen while the tracker fits,
+then the 5-dot validation. Pursuit frames are paired with the dot position 80 ms earlier (`PURSUIT_LAG_MS`), the
+first 600 ms of motion are skipped; WebEyeTrack's worker buffers timestamped frames and splits them into 12
+support-set entries of ≤ 10 frames (`pursuitEnd`), so `maxPoints` is now 25 (9 dots + 12 chunks + per-trial dots).
+The last `calib[]` entry logs `pursuit = {durationMs, lagMs, skipMs, frames, chunks, n, trace}` with
+`trace = [t_since_motion_onset, raw_x, raw_y, target_x, target_y, open]` (estimate the real lag from it).
+Per-trial short calibrations stay dot-only but also end on the spinner screen. The bench offers Dots / Smooth
+pursuit / Dots + pursuit with the same path and timing (`lissajous`, `animatePursuit` in `CalibrationOverlay.tsx`).
+
+### Engine switch: RealEye (2026-09-28)
+
+`scatterplot_gaze` now tracks with **RealEye Webcam EyeTracker Light 1.1** (`src/gazeEngine/realeye/`, see its
+README) instead of WebEyeTrack; `gazeTracker` picks the backend (`new GazeTracker('realeye' | 'webeyetrack')`,
+singleton = RealEye), and the calibration pages, per-trial recalibration, pursuit, drift offset and data formats
+are unchanged. `engine` is logged in `webcamPermission` and in `fullCalib` (copied into every trial's `gaze` row).
+Differences for analysis: `raw_*` = features . weights (+ offset), `x,y` = Kalman-smoothed; `face_*_mm` =
+MediaPipe head translation; eyes closed = blink blendshape > 0.5; before calibration samples have `open = 0`.
+Rows per fit: 9 dots x 10 frames + 12 pursuit chunks x 10 frames, x5 shifts ≈ 1,050 rows (< 1 s).
+The bench's first engine is the study pipeline itself; WebEyeTrack runs as a second `GazeTracker`.
+Licence (AGPL or free academic commercial licence) must be settled before data collection.
