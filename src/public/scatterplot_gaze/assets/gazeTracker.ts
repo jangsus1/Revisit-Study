@@ -63,6 +63,8 @@ export type CalibrationSummary = {
   accepted: boolean;
   meanErrorPx: number | null;
   meanErrorPctW: number | null;
+  meanErrorDeg?: number | null;
+  mode?: 'full' | 'recalibrate';
   viewport: [number, number];
 };
 
@@ -85,6 +87,28 @@ export class GazeTracker {
   lastSample?: GazeSample;
 
   fullCalib?: CalibrationSummary;
+
+  /**
+   * Device calibration from the camera page (card -> px per cm, blind spot -> viewing distance), and the
+   * factor that turns the tracker's face-distance estimate (assumes a typical webcam lens) into real cm.
+   */
+  device: {
+    pxPerCm: number | null; cardWidthPx: number | null;
+    blindSpotCm: number | null; faceZcm: number | null; distanceScale: number;
+    sweepsPx?: number[]; invalidSweeps?: number;
+  } | null = null;
+
+  get distanceScale(): number { return this.device?.distanceScale ?? 1; }
+
+  /** Visual angle (deg) of a length in CSS px at the measured distance; null without device calibration. */
+  pxToDeg(px: number | null | undefined): number | null {
+    const d = this.device;
+    if (px === null || px === undefined || !d?.pxPerCm || !d.blindSpotCm) return null;
+    return Math.round(((2 * Math.atan(px / d.pxPerCm / 2 / d.blindSpotCm) * 180) / Math.PI) * 100) / 100;
+  }
+
+  /** Halfway recalibration (pooled with the first one), when it has run. */
+  midCalib?: CalibrationSummary;
 
   /** Mean head pose during the validation of the last full calibration (reference for head shift). */
   calibHead: HeadPose | null = null;
@@ -139,12 +163,13 @@ export class GazeTracker {
 
     const { default: WebcamClient } = await import('../../../gazeEngine/webeyetrack/WebcamClient');
     this.cam = new WebcamClient(video);
-    // Calibration store: 9 calibration dots + 12 smooth-pursuit chunks + room for per-trial 'click' dots
     if (this.engine === 'realeye') {
+      // RealEye: every calibration entry of the session is kept and pooled (no expiry, thinned to a frame budget)
       const { default: RealEyeBackend } = await import('../../../gazeEngine/realeye/RealEyeBackend');
-      this.proxy = new RealEyeBackend(this.cam, { maxPoints: 25, clickTTL: 90 });
+      this.proxy = new RealEyeBackend(this.cam, { maxPoints: 500, clickTTL: 0 });
     } else {
       const { default: WebEyeTrackProxy } = await import('../../../gazeEngine/webeyetrack/WebEyeTrackProxy');
+      // WebEyeTrack (bench): MAML support set of 9 dots + 12 pursuit chunks + per-trial dots (90 s expiry)
       const baseUrl = `${window.location.origin}${PREFIX}${STUDY_ID}/`;
       this.proxy = new WebEyeTrackProxy(this.cam, { baseUrl, maxPoints: 25, clickTTL: 90 });
     }

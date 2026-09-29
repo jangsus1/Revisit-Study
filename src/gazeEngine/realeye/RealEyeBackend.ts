@@ -29,6 +29,11 @@ const LAMBDA = 1e-5;             // RealEye's ridgeLambda
 const MAX_DOT_FRAMES = 40;
 const MAX_PURSUIT_FRAMES = 900;
 const BLINK = 0.5;               // mean eyeBlink blendshape above this = eyes closed
+// Calibration data is pooled over the whole session (Saxena et al., 2024: pooling calibrations from the
+// start, middle and end beat using only the latest one). To keep every refit near a second, a fit uses
+// at most FRAME_BUDGET frames (x5 augmented rows): when there is more, every entry is thinned to the
+// same evenly spaced subset of its frames, so no calibration target is ever dropped.
+const FRAME_BUDGET = 280;
 
 type HeadPose = { yaw: number; pitch: number; roll: number; translationX: number; translationY: number; translationZ: number };
 type Detection = {
@@ -53,7 +58,8 @@ type Features = {
 };
 
 type Frame = { rows: Float32Array[]; t: number };
-type Entry = { rows: Float32Array[]; rowTargets: [number, number][]; key: [number, number]; ptType: 'calib' | 'click'; ts: number };
+// One calibration entry = one dot or one pursuit chunk; frames keep their augmented rows and target
+type Entry = { frames: { rows: Float32Array[]; target: [number, number] }[]; key: [number, number]; ptType: 'calib' | 'click'; ts: number };
 
 export default class RealEyeBackend {
   onGazeResults: (r: SlimGazeResult) => void = () => {};
@@ -160,10 +166,10 @@ export default class RealEyeBackend {
   }
 
   private prune() {
-    const ttl = (this.opts.clickTTL ?? 90) * 1000;
+    const ttl = (this.opts.clickTTL ?? 0) * 1000;   // 0 = per-trial dots never expire
     const now = Date.now();
-    this.entries = this.entries.filter((e) => e.ptType !== 'click' || now - e.ts <= ttl);
-    const max = this.opts.maxPoints ?? 25;
+    if (ttl > 0) this.entries = this.entries.filter((e) => e.ptType !== 'click' || now - e.ts <= ttl);
+    const max = this.opts.maxPoints ?? 500;
     while (this.entries.length > max) {
       const i = this.entries.findIndex((e) => e.ptType === 'click');
       this.entries.splice(i >= 0 ? i : 0, 1);
@@ -177,18 +183,25 @@ export default class RealEyeBackend {
     const X: Float32Array[] = [];
     const xs: number[] = [];
     const ys: number[] = [];
-    this.entries.forEach((e) => e.rows.forEach((r, i) => {
-      X.push(r); xs.push(e.rowTargets[i][0]); ys.push(e.rowTargets[i][1]);
-    }));
+    const total = this.entries.reduce((a, e) => a + e.frames.length, 0);
+    const perEntry = total > FRAME_BUDGET ? Math.max(2, Math.floor(FRAME_BUDGET / this.entries.length)) : Infinity;
+    this.entries.forEach((e) => {
+      const n = e.frames.length;
+      const keep = n <= perEntry ? e.frames : Array.from({ length: perEntry }, (_, i) => e.frames[Math.floor(((i + 0.5) * n) / perEntry)]);
+      keep.forEach((f) => f.rows.forEach((r) => { X.push(r); xs.push(f.target[0]); ys.push(f.target[1]); }));
+    });
+    this.lastFitRows = X.length;
     if (distinctTargets < 3 || X.length < 5) return;
     this.W = ridgeDual(X, [xs, ys], LAMBDA);
     this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
   }
 
+  /** Rows used by the last fit (after thinning). */
+  lastFitRows = 0;
+
   private toEntry(frames: Frame[], targets: [number, number][], ptType: 'calib' | 'click'): Entry {
     return {
-      rows: frames.flatMap((f) => f.rows),
-      rowTargets: frames.flatMap((f, i) => f.rows.map(() => targets[i])),
+      frames: frames.map((f, i) => ({ rows: f.rows, target: targets[i] })),
       key: targets[0],
       ptType,
       ts: Date.now(),
@@ -255,7 +268,9 @@ export default class RealEyeBackend {
     this.pending = [];
     const t0 = performance.now();
     if (points) this.fit();
-    return { ...this.stats(), points, fitMs: Math.round(performance.now() - t0) };
+    return {
+      ...this.stats(), points, fitMs: Math.round(performance.now() - t0), rows: this.lastFitRows,
+    };
   }
 
   async snapshotCalib(): Promise<void> {

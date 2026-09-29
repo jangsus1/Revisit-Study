@@ -263,6 +263,8 @@ function Phase2Gaze({ parameters, setAnswer }) {
           ...(geometryRef.current ?? {}),
           shortCalib: shortCalibRef.current,
           fullCalib: gazeTracker.fullCalib ?? null,
+          midCalib: gazeTracker.midCalib ?? null,
+          device: gazeTracker.device,
           hz: samples.length > 1 ? Math.round((samples.length - 1) * 1000 / Math.max(1, durationMs) * 10) / 10 : 0,
           hidden: hiddenEventsRef.current,
           // [t_ms_since_click, x_px, y_px, open(1/0), raw_x_px, raw_y_px, face_x_mm, face_y_mm, face_z_mm]

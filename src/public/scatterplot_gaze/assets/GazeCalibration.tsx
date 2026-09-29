@@ -15,7 +15,9 @@ import type { PositionState } from './PositionGuide';
 // (the estimate assumes a typical webcam field of view and can be off for unusual cameras).
 const OVERRIDE_MS = 30000;
 
-type Params = { maxAttempts?: number; acceptPctW?: number };
+// mode 'recalibrate' (halfway through the trials): keep the calibration collected so far and add a new
+// dots + pursuit set to it (pooled), one attempt, logged as gazeTracker.midCalib.
+type Params = { maxAttempts?: number; acceptPctW?: number; mode?: 'full' | 'recalibrate' };
 
 type Phase = 'intro' | 'running' | 'retry' | 'done';
 
@@ -35,7 +37,8 @@ function meanPose(points: ValidationResult['points']): HeadPose | null {
 }
 
 function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Params>) {
-  const maxAttempts = parameters?.maxAttempts ?? 3;
+  const recal = parameters?.mode === 'recalibrate';
+  const maxAttempts = recal ? 1 : parameters?.maxAttempts ?? 3;
   const acceptPctW = parameters?.acceptPctW ?? 0.08;
 
   const [phase, setPhase] = useState<Phase>('intro');
@@ -56,15 +59,18 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
     const finished = phase === 'done';
     const summary = {
       engine: gazeTracker.engine,
+      mode: (recal ? 'recalibrate' : 'full') as 'recalibrate' | 'full',
       attempts: attempts.length,
       accepted,
       meanErrorPx: last?.meanErrorPx ?? null,
       meanErrorPctW: last?.meanErrorPctW ?? null,
+      meanErrorDeg: gazeTracker.pxToDeg(last?.meanErrorPx),
       viewport: [window.innerWidth, window.innerHeight] as [number, number],
     };
     if (finished) {
-      gazeTracker.fullCalib = summary;
-      gazeTracker.calibHead = last?.head ?? null;
+      if (recal) gazeTracker.midCalib = summary; else gazeTracker.fullCalib = summary;
+      // head-shift reference = pose at the latest full calibration
+      gazeTracker.calibHead = last?.head ?? gazeTracker.calibHead ?? null;
     }
     setAnswer({
       status: finished,
@@ -78,6 +84,7 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
           inferenceHz: Math.round(gazeTracker.hz * 10) / 10,
           perAttempt: attempts,
           trackerError: error,
+          device: gazeTracker.device,
           fullscreen: !!document.fullscreenElement,
           fullscreenExits: fullscreenStats.exits,
         }),
@@ -108,7 +115,9 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
     setError(null);
     try {
       await gazeTracker.init();
-      await gazeTracker.resetCalibration();
+      // Full calibration starts from scratch; the halfway one adds to (pools with) what is there. Either
+      // way the drift offset goes: the refit maps raw estimates straight onto the targets.
+      if (recal) await gazeTracker.setOffsetPx(0, 0); else await gazeTracker.resetCalibration();
       setMessage('Follow the dot with your eyes. Keep your head still.');
       // 9 fixation dots, then 20 s of smooth pursuit; the tracker fits all of it on the "Calibrating…" screen
       const calib = await runCalibration(FULL_GRID, 'calib', 1800, 1000, PURSUIT_MS);
@@ -131,7 +140,7 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
         }];
       });
     }
-  }, [acceptPctW, maxAttempts, runCalibration, runValidation, setMessage, pos, guideSince]);
+  }, [acceptPctW, maxAttempts, runCalibration, runValidation, setMessage, pos, guideSince, recal]);
 
   const startLabel = (label: string) => (pos?.ready || !canOverride ? label : `${label} anyway`);
 
@@ -143,7 +152,7 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
 
       {phase === 'intro' && (
         <Panel
-          title="Calibration"
+          title={recal ? "Halfway: short recalibration" : "Calibration"}
           actions={<Button size="lg" onClick={runOnce} disabled={!pos?.ready && !canOverride}>{startLabel('Start')}</Button>}
         >
           Look at each dot, then follow the moving dot.

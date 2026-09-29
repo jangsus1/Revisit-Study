@@ -640,6 +640,8 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
                 break
         else:
             raise RuntimeError(f"could not separate pairs in scheme {si}")
+        # halfway recalibration (dots + pursuit, pooled with the first calibration) after trial 12
+        order = order[:12] + ["gazeRecalibration"] + order[12:]
         schemes.append({"id": f"scheme_{si}", "order": "fixed", "components": order})
 
     # Create list of example component names
@@ -720,6 +722,16 @@ def create_gaze_components(fail_link):
             "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
             "parameters": {"maxAttempts": 3, "acceptPctW": 0.08},
             "response": hidden("calibration", "Calibration result"),
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
+        "gazeRecalibration": {
+            # after trial 12 of 24: one more dots + pursuit calibration, pooled with the first
+            # (Saxena et al., 2024: pooling calibrations over the session beats the first one alone)
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
+            "parameters": {"mode": "recalibrate", "acceptPctW": 0.08},
+            "response": hidden("calibration", "Halfway recalibration"),
             "instructionLocation": "belowStimulus",
             "nextButtonLocation": "belowStimulus"
         },

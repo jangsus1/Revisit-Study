@@ -22,7 +22,8 @@ const BAR_MIN = 25;
 const BAR_MAX = 100;
 
 const trackerFeed: DistanceFeed = (fn) => gazeTracker.onSample((s) => {
-  fn({ cm: s.face && s.origin ? Math.abs(s.origin[2]) : null, face: s.face });
+  // corrected by the blind-spot measurement when the camera page ran it (gazeTracker.distanceScale)
+  fn({ cm: s.face && s.origin ? Math.abs(s.origin[2]) * gazeTracker.distanceScale : null, face: s.face });
 });
 
 export function PositionGuide({

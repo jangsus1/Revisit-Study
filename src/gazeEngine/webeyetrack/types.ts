@@ -50,4 +50,5 @@ export interface CalibResult {
   distinctTargets: number;
   affineFitted: boolean;
   deferred?: boolean;           // samples stored; the model adapts at calibFlush
+  rows?: number;                // RealEye: feature rows used by the last fit (after thinning)
 }
