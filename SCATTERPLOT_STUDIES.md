@@ -177,3 +177,35 @@ MediaPipe head translation; eyes closed = blink blendshape > 0.5; before calibra
 Rows per fit: 9 dots x 10 frames + 12 pursuit chunks x 10 frames, x5 shifts ≈ 1,050 rows (< 1 s).
 The bench's first engine is the study pipeline itself; WebEyeTrack runs as a second `GazeTracker`.
 Licence (AGPL or free academic commercial licence) must be settled before data collection.
+
+### Full screen, minimal camera / calibration screens, larger plots (2026-09-28)
+
+- First page `fullscreen` (`FullScreen.tsx`): one "Enter full screen" button, then the page advances by itself.
+  Camera, calibration, trials and the final check show a "Return to full screen" gate whenever full screen is
+  left; `fullscreenExits` is logged in `webcamPermission`, `calibration` and `finalCheck`. All later page indices
+  shifted by +1 (camera 30, calibration 31, first main trial 35).
+- Camera, calibration, final check and end pages are plain full-window `Panel`s (cluster-flow style: no header,
+  one or two lines, one button, advance by themselves). The position guide sits on the camera page (preview +
+  meter) and in compact form (meter only) on the calibration start / retry screens.
+- Distance fix: RealEye 1.1 reads MediaPipe's column-major transformation matrix as row-major, so its
+  `headPose.translationZ` is always 0 ("too close"). `origin` now comes from the raw matrix (translation column).
+- Plots are drawn in their 600-px design units and shown through an SVG viewBox at `plotScale`
+  (`plotScale.ts`): up to 1.4x (phase 1 inside the platform layout, phase 2 full window), never below 1.
+  `gaze.plotArea` is in scaled viewport px; `gaze.plotScale` is logged.
+
+### Pooled calibration, halfway recalibration, device calibration (2026-09-29; Saxena et al., 2024)
+
+- **Pooling:** the RealEye store keeps every calibration entry of the session (no expiry of per-trial dots).
+  A fit uses at most 280 frames (x5 augmented rows): with more data every entry is thinned to the same evenly
+  spaced subset of its frames, so no target is dropped (69 entries -> 1,380 rows, 1.5 s fit headless).
+  Last `calib[]` entry logs `rows`.
+- **Halfway recalibration:** component `gazeRecalibration` (GazeCalibration.tsx, `mode: 'recalibrate'`) sits
+  after trial 12 in every scheme (index 47 of the sequence; trials after it shift by one). It adds dots + pursuit
+  to the existing data (no reset, drift offset cleared), one attempt, logged as `gazeTracker.midCalib` (also in
+  every later trial's `gaze.midCalib`) and in its own `calibration` row with `mode: 'recalibrate'`.
+- **Device calibration** on the camera page, before the position guide (`DeviceCheck.tsx`, virtual chinrest):
+  card match -> `pxPerCm`; blind-spot sweeps (right eye closed, Space when the dot vanishes, 5 valid, median)
+  -> `blindSpotCm`; `distanceScale = blindSpotCm / tracker face z` (clamped 0.5-2) corrects the position guide.
+  Stored as `gazeTracker.device` and logged in `webcamPermission`, `calibration`, every trial's `gaze.device`
+  and `finalCheck`; `meanErrorDeg` (calibration, final check) = visual angle at the blind-spot distance.
+  "I have no card" / "Skip" leave `device` fields null and the guide uncorrected.

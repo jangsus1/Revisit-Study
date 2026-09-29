@@ -1,7 +1,5 @@
-# Example Tasks
+# 2 example tasks
 
-## You will see 2 example tasks, then the 24 main tasks start right away.
+The 24 main tasks follow right away. Before each plot, look at the centre dot, then click the plot to start.
 
-Before each scatterplot, look at the centre dot (and any extra dots that appear), then click the plot to start.
-
-**Keep your head as still as possible for the rest of the task.** Your camera video and screen are not recorded.
+**Keep your head still.**
