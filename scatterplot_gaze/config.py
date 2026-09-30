@@ -162,8 +162,8 @@ def generate_base_components():
     }
 
 
-def intro_page(kicker, title, bullets, image=None, button="Continue"):
-    params = {"kicker": kicker, "title": title, "bullets": bullets, "button": button}
+def intro_page(kicker, title, bullets, image=None, button="Continue", head_still=False):
+    params = {"kicker": kicker, "title": title, "bullets": bullets, "button": button, "headStill": head_still}
     if image:
         params["image"] = image
     return {
@@ -198,19 +198,19 @@ def create_default_components(fail_link):
              "Estimate the correlation from **0** (none) to **1** (perfect), then see the correct answer.",
              "From here on your **webcam estimates where you look**. Video never leaves your computer; nothing is recorded.",
              "Before each plot, look at the dot in the centre. **Keep your head still.**"],
-            image="scatterplot_gaze/assets/phase1.png", button="Set up the camera"),
+            image="scatterplot_gaze/assets/phase1.png", button="Set up the camera", head_still=True),
         "phase2_intro": intro_page(
             "Task 3 of 3", "Scatterplots with labels",
             ["**2** examples, then **24** plots, each shown for **5 to 11 seconds**.",
              "The axis labels may appear at any time, and may blur again.",
              "Estimate the correlation from **0** to **1**.",
              "Before each plot, look at the centre dot. **Keep your head still.**"],
-            image="scatterplot_gaze/assets/phase2.png", button="Recalibrate"),
+            image="scatterplot_gaze/assets/phase2.png", button="Recalibrate", head_still=True),
         "phase2_examples": intro_page(
             "Task 3 of 3", "2 example tasks",
             ["The **24** main tasks follow right away.",
              "Look at the centre dot, then click the plot to start."],
-            button="Start the examples"),
+            button="Start the examples", head_still=True),
         "attentionCheck": {
             # Reading text + four comprehension questions on one page. reVISit training mode:
             # Next becomes "Check Answer"; wrong answers show "Please try again." and Next stays
