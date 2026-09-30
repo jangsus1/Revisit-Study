@@ -113,11 +113,21 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
       const b = el.getBoundingClientRect();
       return [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)];
     };
+    const textRect = (el) => {
+      if (!el) return null;
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const b = range.getBoundingClientRect();
+      return b.width > 0 && b.height > 0 ? [Math.round(b.left), Math.round(b.top), Math.round(b.width), Math.round(b.height)] : rect(el);
+    };
     geometryRef.current = {
       plotRect: [Math.round(r.left), Math.round(r.top), Math.round(r.width), Math.round(r.height)],
       plotArea: [Math.round(r.left + margin.left * scale), Math.round(r.top + margin.top * scale), Math.round(plotWidth * scale), Math.round(plotHeight * scale)],
       plotScale: Math.round(scale * 1000) / 1000,
-      labelRects: { x: rect(svg.querySelector('.x-label')), y: rect(svg.querySelector('.y-label')) },
+      // label AOIs = the rendered text itself (a Range over the text), not the containing box: the y label's
+      // foreignObject spans the whole left strip. labelBoxes keeps the old container rectangles.
+      labelRects: { x: textRect(svg.querySelector('.x-label')), y: textRect(svg.querySelector('.y-label')) },
+      labelBoxes: { x: rect(svg.querySelector('.x-label')), y: rect(svg.querySelector('.y-label')) },
       viewport: [window.innerWidth, window.innerHeight],
       // Browser window placement on the physical screen: a change since calibration means the
       // calibration frame moved relative to the camera and the trial should be flagged.
