@@ -266,3 +266,18 @@ Licence (AGPL or free academic commercial licence) must be settled before data c
   `checks.pre` holds the 3 per-dot errors / offsets / traces (accuracy at the plot and labels before every trial);
   `points` = `[nx, ny, target]`; `errorPx` = dots' mean error (or the re-check after a kept refit).
 - Bench: layout "15: 3x3 grid + 6 on the trial plot (study now)" is the default.
+
+### After pilot 4: regularized pooled fit, better per-trial check, card sanity check, progress (2026-09-30)
+
+- **Fit (RealEyeBackend):** at most 140 frames (700 rows) per fit (was 280 / up to 1,400) and ridge lambda chosen
+  per fit by leave-one-entry-out CV over `[1e-5 ... 10] x mean squared row norm` (`ridgeDualCV`, exact grouped
+  held-out residuals from one Cholesky per candidate, ~1 s at 700 rows). Pilots 3 and 4 showed fixation noise
+  doubling after pooled refits with 1,050-1,320 rows at lambda 1e-5 (near the 1,653 features). Logged per fit:
+  `lambdaRel`, `lambdaCV` (`[relative lambda, held-out error]`) on the last `calib[]` entry and in `shortCalib`.
+- **Per-trial check:** dots 1.0 s (last 500 ms used; gaze arrives ~400 ms after onset), the drift offset corrects
+  half the measured drift (`shortCalib.gain = 0.5`; full correction helped the next trial less), and a refit is
+  re-checked on the same 3 dots (was the centre only) and reverted to the snapshot + half offset if their mean is worse.
+- **Card:** the implied screen diagonal is shown live; outside 11-34 in the participant is asked to check the card
+  again (`device.screenInches`, `device.confirmedImplausible`).
+- **Progress:** every `Panel` shows a thin bar and "N % done · About N min left" (`StudyProgress.tsx`, weighted by
+  expected seconds per page); hidden on dot and plot screens.
