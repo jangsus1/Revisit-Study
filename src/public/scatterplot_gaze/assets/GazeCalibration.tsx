@@ -17,7 +17,7 @@ const OVERRIDE_MS = 30000;
 
 // mode 'recalibrate' (halfway through the trials): keep the calibration collected so far and add a new
 // dots + pursuit set to it (pooled), one attempt, logged as gazeTracker.midCalib.
-type Params = { maxAttempts?: number; acceptPctW?: number; mode?: 'full' | 'recalibrate' };
+type Params = { maxAttempts?: number; acceptPctW?: number; mode?: 'full' | 'recalibrate'; title?: string };
 
 type Phase = 'intro' | 'running' | 'retry' | 'done';
 
@@ -152,7 +152,7 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
 
       {phase === 'intro' && (
         <Panel
-          title={recal ? "Halfway: short recalibration" : "Calibration"}
+          title={parameters?.title ?? (recal ? "Halfway: short recalibration" : "Calibration")}
           actions={<Button size="lg" onClick={runOnce} disabled={!pos?.ready && !canOverride}>{startLabel('Start')}</Button>}
         >
           Look at each dot, then follow the moving dot.

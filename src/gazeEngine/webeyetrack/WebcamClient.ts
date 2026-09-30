@@ -3,6 +3,8 @@
 //  - takes an HTMLVideoElement instead of an element id
 //  - getUserMedia failures reject instead of being swallowed
 //  - double-start guard, getStream(), clean stop
+//  - each video frame is processed once (requestVideoFrameCallback, or skip unchanged currentTime):
+//    on 120 Hz displays the rAF loop otherwise re-processed the same 30 fps frame ~4 times
 import { convertVideoFrameToImageData } from './utils/misc';
 
 export default class WebcamClient {
@@ -10,6 +12,7 @@ export default class WebcamClient {
     private stream?: MediaStream;
     private frameCallback?: (frame: ImageData, timestamp: number) => Promise<void>;
     private running = false;
+    private lastTime = -1;
 
     constructor(videoElement: HTMLVideoElement) {
         this.videoElement = videoElement;
@@ -50,17 +53,25 @@ export default class WebcamClient {
     }
 
     private _processFrames(): void {
+        const v = this.videoElement;
+        const next = () => {
+            if (!this.running) return;
+            if (v && 'requestVideoFrameCallback' in v) (v as any).requestVideoFrameCallback(() => { process(); });
+            else requestAnimationFrame(process);
+        };
         const process = async () => {
             if (!this.running) return;
-            if (!this.videoElement || this.videoElement.paused || this.videoElement.ended || this.videoElement.videoWidth === 0) {
-                requestAnimationFrame(process);
+            if (!v || v.paused || v.ended || v.videoWidth === 0 || v.currentTime === this.lastTime) {
+                // no new frame yet (rVFC normally only fires on new frames; the check covers rAF)
+                if (!v || v.paused || v.ended || v.videoWidth === 0) requestAnimationFrame(process); else next();
                 return;
             }
-            const imageData = convertVideoFrameToImageData(this.videoElement);
+            this.lastTime = v.currentTime;
+            const imageData = convertVideoFrameToImageData(v);
             if (this.frameCallback) {
-                await this.frameCallback(imageData, this.videoElement.currentTime);
+                await this.frameCallback(imageData, v.currentTime);
             }
-            requestAnimationFrame(process);
+            next();
         };
         requestAnimationFrame(process);
     }

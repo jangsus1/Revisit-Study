@@ -45,20 +45,25 @@ const panelStyle: CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
-  justifyContent: 'center',
+  justifyContent: 'safe center',   // centred, but scrolls from the top when taller than the window
   gap: 18,
   padding: 24,
   textAlign: 'center',
   fontFamily: 'system-ui, -apple-system, Segoe UI, sans-serif',
 };
 
+/**
+ * The study's one page layout (camera, calibration, intro and question screens): full window, white,
+ * centred column; optional small `kicker` above the title ("Task 2 of 3"), short body, one row of buttons.
+ */
 export function Panel({
-  title, children, actions, zIndex,
-}: { title?: ReactNode; children?: ReactNode; actions?: ReactNode; zIndex?: number }) {
+  title, children, actions, zIndex, kicker, maxWidth = 560,
+}: { title?: ReactNode; children?: ReactNode; actions?: ReactNode; zIndex?: number; kicker?: ReactNode; maxWidth?: number }) {
   return (
-    <div style={{ ...panelStyle, zIndex: zIndex ?? panelStyle.zIndex }}>
+    <div style={{ ...panelStyle, zIndex: zIndex ?? panelStyle.zIndex, overflowY: 'auto' }}>
+      {kicker && <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase', color: '#1c7ed6' }}>{kicker}</div>}
       {title && <div style={{ fontSize: 28, fontWeight: 650 }}>{title}</div>}
-      {children && <div style={{ fontSize: 18, lineHeight: 1.5, color: '#444', maxWidth: 560 }}>{children}</div>}
+      {children && <div style={{ fontSize: 18, lineHeight: 1.5, color: '#444', maxWidth }}>{children}</div>}
       {actions && <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>{actions}</div>}
     </div>
   );

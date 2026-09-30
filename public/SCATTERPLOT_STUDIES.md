@@ -209,3 +209,21 @@ Licence (AGPL or free academic commercial licence) must be settled before data c
   Stored as `gazeTracker.device` and logged in `webcamPermission`, `calibration`, every trial's `gaze.device`
   and `finalCheck`; `meanErrorDeg` (calibration, final check) = visual angle at the blind-spot distance.
   "I have no card" / "Skip" leave `device` fields null and the guide uncorrected.
+
+### Task 2 gaze, card-only device check, one page layout (2026-09-30)
+
+- **Task 2 (phase1, unlabeled training plots) is tracked too** (`phase1_gaze.jsx`, rows `responseId == 'gaze'`,
+  same format as Task 3 with `labelRects: null`) as a no-label gaze baseline. Camera + calibration now run right
+  before Task 2; a pooled recalibration `gazeRecalibrationTask3` runs after the Task 3 intro. Per-trial check,
+  recording and the common `gaze` fields live in `trialGaze.jsx` (shared by Task 2 and Task 3).
+  Indices: camera 17, calibration 18, Task 2 trials 19-30, recalibration 32, Task 3 trials 36-60 (halfway
+  recalibration at 48), final check 61.
+- **Blind-spot test removed** (too hard in the pilot); card only. Distance = MediaPipe face z x
+  `distanceScale` = tan(63/2) / tan(45/2) = 1.48 (`ASSUMED_CAMERA_VFOV_DEG = 45` in gazeTracker.ts: MediaPipe
+  assumes a 63 deg vertical FOV, laptop webcams are ~40-48 deg). `device.distanceCm` = corrected distance at the
+  end of the camera page; `meanErrorDeg` uses it. Logged `origin` / `face_z` stay raw MediaPipe values.
+- **Each camera frame is processed once** (WebcamClient uses requestVideoFrameCallback / skips unchanged
+  `currentTime`); pilot 3 logged ~118 Hz of which only ~28 Hz were distinct frames.
+- **One page layout**: intro pages are `IntroPage.tsx` (text in config.py via `intro_page(...)`: "Task N of 3",
+  title, bullets, image, button); belief rating, correlation sliders and Task 2 feedback are full-window `Panel`s
+  with their own Next (advance). Consent, comprehension check and demographics stay reVISit pages.

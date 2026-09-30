@@ -120,11 +120,20 @@ def generate_base_components():
         },
         "phase1": {
             "type": "react-component",
-            "path": "scatterplot_gaze/assets/phase1.jsx",
+            # Task 2 with eye tracking (no-label gaze baseline): per-trial check + gaze recording
+            "path": "scatterplot_gaze/assets/phase1_gaze.jsx",
             "response": [
                 {
                     "id": "answer",
                     "prompt": "",
+                    "required": True,
+                    "location": "belowStimulus",
+                    "type": "reactive",
+                    "hidden": True
+                },
+                {
+                    "id": "gaze",
+                    "prompt": "Gaze trace",
                     "required": True,
                     "location": "belowStimulus",
                     "type": "reactive",
@@ -153,6 +162,20 @@ def generate_base_components():
     }
 
 
+def intro_page(kicker, title, bullets, image=None, button="Continue"):
+    params = {"kicker": kicker, "title": title, "bullets": bullets, "button": button}
+    if image:
+        params["image"] = image
+    return {
+        "type": "react-component",
+        "path": "scatterplot_gaze/assets/IntroPage.tsx",
+        "parameters": params,
+        "response": [],
+        "instructionLocation": "belowStimulus",
+        "nextButtonLocation": "belowStimulus",
+    }
+
+
 def create_default_components(fail_link):
     """Create default components: consent, introduction, and demographics"""
     return {
@@ -162,26 +185,32 @@ def create_default_components(fail_link):
             "nextButtonText": "I agree",
             "response": []
         },
-        "phase1_intro": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase1_intro.md",
-            "response": []
-        },
-        "phase2_intro": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase2_intro.md",
-            "response": []
-        },
-        "phase2_examples": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase2_examples.md",
-            "response": []
-        },
-        "phase3_intro": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase3_intro.md",
-            "response": []
-        },
+        # Intro pages: one layout for all (IntroPage.tsx: "Task N of 3", title, short bullets, image, button)
+        "phase3_intro": intro_page(
+            "Task 1 of 3", "Your beliefs",
+            ["You will read **12** statements.",
+             "Rate how strongly you believe each one, from **not at all** to **completely**.",
+             "Answer from your **intuition**."],
+            button="Start"),
+        "phase1_intro": intro_page(
+            "Task 2 of 3", "Estimate correlations",
+            ["**12** scatterplots, each shown for **5 seconds** after you click it.",
+             "Estimate the correlation from **0** (none) to **1** (perfect), then see the correct answer.",
+             "From here on your **webcam estimates where you look**. Video never leaves your computer; nothing is recorded.",
+             "Before each plot, look at the dot in the centre. **Keep your head still.**"],
+            image="scatterplot_gaze/assets/phase1.png", button="Set up the camera"),
+        "phase2_intro": intro_page(
+            "Task 3 of 3", "Scatterplots with labels",
+            ["**2** examples, then **24** plots, each shown for **5 to 11 seconds**.",
+             "The axis labels may appear at any time, and may blur again.",
+             "Estimate the correlation from **0** to **1**.",
+             "Before each plot, look at the centre dot. **Keep your head still.**"],
+            image="scatterplot_gaze/assets/phase2.png", button="Recalibrate"),
+        "phase2_examples": intro_page(
+            "Task 3 of 3", "2 example tasks",
+            ["The **24** main tasks follow right away.",
+             "Look at the centre dot, then click the plot to start."],
+            button="Start the examples"),
         "attentionCheck": {
             # Reading text + four comprehension questions on one page. reVISit training mode:
             # Next becomes "Check Answer"; wrong answers show "Please try again." and Next stays
@@ -661,6 +690,9 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
             },
 
             "phase1_intro",
+            # camera + calibration right before the first tracked task (Task 2)
+            "webcamPermission",
+            "gazeCalibration",
             {
                 "id": "phase1",
                 "order": "random",
@@ -668,8 +700,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
             },
 
             "phase2_intro",
-            "webcamPermission",
-            "gazeCalibration",
+            "gazeRecalibrationTask3",   # pooled recalibration before Task 3
             "phase2_examples",
             *example_component_names,  # Add the 2 example tasks
             # no instruction page here: the main trials follow the examples directly so the
@@ -732,6 +763,15 @@ def create_gaze_components(fail_link):
             "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
             "parameters": {"mode": "recalibrate", "acceptPctW": 0.08},
             "response": hidden("calibration", "Halfway recalibration"),
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
+        "gazeRecalibrationTask3": {
+            # before Task 3 (after the intro page): dots + pursuit, pooled with the earlier calibration
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
+            "parameters": {"mode": "recalibrate", "acceptPctW": 0.08, "title": "Short recalibration"},
+            "response": hidden("calibration", "Recalibration before Task 3"),
             "instructionLocation": "belowStimulus",
             "nextButtonLocation": "belowStimulus"
         },

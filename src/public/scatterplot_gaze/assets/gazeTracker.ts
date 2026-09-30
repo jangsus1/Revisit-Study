@@ -73,6 +73,9 @@ type TrackerState = 'idle' | 'starting' | 'ready' | 'error';
 
 const STUDY_ID = 'scatterplot_gaze';
 
+/** Assumed true vertical field of view of the webcam (see GazeTracker.distanceScale); tune from pilots. */
+export const ASSUMED_CAMERA_VFOV_DEG = 45;
+
 export function normToPx(nx: number, ny: number): [number, number] {
   return [(nx + 0.5) * window.innerWidth, (ny + 0.5) * window.innerHeight];
 }
@@ -94,17 +97,24 @@ export class GazeTracker {
    */
   device: {
     pxPerCm: number | null; cardWidthPx: number | null;
-    blindSpotCm: number | null; faceZcm: number | null; distanceScale: number;
-    sweepsPx?: number[]; invalidSweeps?: number;
+    distanceCm: number | null;      // lens-corrected face distance when the camera page was left
+    distanceScale: number;
   } | null = null;
 
-  get distanceScale(): number { return this.device?.distanceScale ?? 1; }
+  /**
+   * MediaPipe's face transform assumes a 63 deg vertical field of view; laptop webcams are narrower
+   * (16:9 sensors, ~65-78 deg horizontal -> ~40-48 deg vertical; 640x480 is a horizontal crop of it), so
+   * the raw estimate reads too close. Scale = tan(63/2) / tan(ASSUMED_VFOV/2). Logged `origin` stays raw.
+   */
+  get distanceScale(): number {
+    return this.device?.distanceScale ?? Math.tan((63 / 2) * (Math.PI / 180)) / Math.tan((ASSUMED_CAMERA_VFOV_DEG / 2) * (Math.PI / 180));
+  }
 
   /** Visual angle (deg) of a length in CSS px at the measured distance; null without device calibration. */
   pxToDeg(px: number | null | undefined): number | null {
     const d = this.device;
-    if (px === null || px === undefined || !d?.pxPerCm || !d.blindSpotCm) return null;
-    return Math.round(((2 * Math.atan(px / d.pxPerCm / 2 / d.blindSpotCm) * 180) / Math.PI) * 100) / 100;
+    if (px === null || px === undefined || !d?.pxPerCm || !d.distanceCm) return null;
+    return Math.round(((2 * Math.atan(px / d.pxPerCm / 2 / d.distanceCm) * 180) / Math.PI) * 100) / 100;
   }
 
   /** Halfway recalibration (pooled with the first one), when it has run. */

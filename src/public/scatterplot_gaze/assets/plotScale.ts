@@ -6,18 +6,18 @@
  */
 import { useEffect, useState } from 'react';
 
-export function plotScale(baseW: number, baseH: number, reservedW: number, reservedH: number, max = 1.4): number {
+export function plotScale(baseW: number, baseH: number, reservedW: number, reservedH: number, max = 1.4, min = 1): number {
   if (typeof window === 'undefined') return 1;
   const s = Math.min((window.innerHeight - reservedH) / baseH, (window.innerWidth - reservedW) / baseW, max);
-  return Math.max(1, s);
+  return Math.max(min, s);
 }
 
-export function usePlotScale(baseW: number, baseH: number, reservedW: number, reservedH: number, max = 1.4): number {
-  const [s, setS] = useState(() => plotScale(baseW, baseH, reservedW, reservedH, max));
+export function usePlotScale(baseW: number, baseH: number, reservedW: number, reservedH: number, max = 1.4, min = 1): number {
+  const [s, setS] = useState(() => plotScale(baseW, baseH, reservedW, reservedH, max, min));
   useEffect(() => {
-    const on = () => setS(plotScale(baseW, baseH, reservedW, reservedH, max));
+    const on = () => setS(plotScale(baseW, baseH, reservedW, reservedH, max, min));
     window.addEventListener('resize', on);
     return () => window.removeEventListener('resize', on);
-  }, [baseW, baseH, reservedW, reservedH, max]);
+  }, [baseW, baseH, reservedW, reservedH, max, min]);
   return s;
 }

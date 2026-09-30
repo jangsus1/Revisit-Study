@@ -1,7 +1,7 @@
 /**
- * Camera page (full window, minimal text): allow the camera, device calibration (card -> px per cm,
- * blind spot -> viewing distance, which also corrects the tracker's face-distance estimate), then the
- * position guide (preview, face oval, distance meter). Continue unlocks after the position has been good for 1.5 s (or after 30 s,
+ * Camera page (full window, minimal text): allow the camera, card match (-> px per cm), then the position
+ * guide (preview, face oval, distance meter; distance = face estimate corrected for the camera lens, see
+ * gazeTracker.distanceScale). Continue unlocks after the position has been good for 1.5 s (or after 30 s,
  * "Continue anyway") and advances by itself; the platform's Next button is covered.
  */
 import { Button, Loader } from '@mantine/core';
@@ -13,8 +13,8 @@ import { gazeTracker } from './gazeTracker';
 import { PositionGuide } from './PositionGuide';
 import type { PositionState } from './PositionGuide';
 import { FullscreenGate, Panel, fullscreenStats } from './FullScreen';
-import { BlindSpotCheck, CardCheck } from './DeviceCheck';
-import type { BlindSpotResult, CardResult } from './DeviceCheck';
+import { CardCheck } from './DeviceCheck';
+import type { CardResult } from './DeviceCheck';
 
 type Params = { failLink?: string };
 
@@ -25,26 +25,19 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
   const [faceSeen, setFaceSeen] = useState(false);
   const [pos, setPos] = useState<PositionState | null>(null);
   const [canOverride, setCanOverride] = useState(false);
-  const [step, setStep] = useState<'card' | 'blind' | 'position'>('card');
-  const [card, setCard] = useState<CardResult>(null);
+  const [step, setStep] = useState<'card' | 'position'>('card');
   const readySince = useRef<number | null>(null);
   const submitted = useRef(false);
 
   useEffect(() => gazeTracker.onStateChange(() => bump((n) => n + 1)), []);
   const { state, error } = gazeTracker;
 
-  const onCard = (r: CardResult) => { setCard(r); setStep(r ? 'blind' : 'position'); };
-  const onBlind = (r: BlindSpotResult | null) => {
-    // The blind-spot distance is the reference; scale the tracker's estimate to it (clamped)
-    const scale = r && r.faceZcm ? Math.min(2, Math.max(0.5, r.distanceCm / r.faceZcm)) : 1;
+  const onCard = (r: CardResult) => {
     gazeTracker.device = {
-      pxPerCm: card ? Math.round(card.pxPerCm * 100) / 100 : null,
-      cardWidthPx: card?.cardWidthPx ?? null,
-      blindSpotCm: r?.distanceCm ?? null,
-      faceZcm: r?.faceZcm ?? null,
-      distanceScale: Math.round(scale * 1000) / 1000,
-      sweepsPx: r?.sweepsPx,
-      invalidSweeps: r?.invalid,
+      pxPerCm: r ? Math.round(r.pxPerCm * 100) / 100 : null,
+      cardWidthPx: r?.cardWidthPx ?? null,
+      distanceCm: null,
+      distanceScale: gazeTracker.distanceScale,
     };
     setStep('position');
   };
@@ -92,6 +85,8 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
 
   const next = () => {
     submitted.current = true;
+    // viewing distance (lens-corrected face estimate) at Continue: used for px -> degrees
+    if (gazeTracker.device && pos?.distanceCm) gazeTracker.device.distanceCm = Math.round(pos.distanceCm * 10) / 10;
     setAnswer({ status: true, answers: { webcamPermission: answer(pos) } });
     advance?.();
   };
@@ -129,8 +124,6 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
     );
   } else if (step === 'card') {
     body = <CardCheck onDone={onCard} />;
-  } else if (step === 'blind' && card) {
-    body = <BlindSpotCheck pxPerCm={card.pxPerCm} onDone={onBlind} />;
   } else {
     const ok = !!pos?.ready && faceSeen;
     body = (
