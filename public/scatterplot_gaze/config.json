@@ -277,6 +277,19 @@
                         "Doctoral degree or equivalent"
                     ],
                     "withDivider": true
+                },
+                {
+                    "id": "eyewear",
+                    "prompt": "Were you wearing **glasses or contact lenses** during this experiment?",
+                    "required": true,
+                    "location": "aboveStimulus",
+                    "type": "radio",
+                    "options": [
+                        "Glasses",
+                        "Contact lenses",
+                        "None"
+                    ],
+                    "withDivider": true
                 }
             ]
         },

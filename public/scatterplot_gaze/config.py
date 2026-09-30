@@ -341,6 +341,20 @@ def create_default_components(fail_link):
                         "Doctoral degree or equivalent"
                     ],
                     "withDivider": True
+                },
+                {
+                    # eyewear changes webcam eye tracking (reflections, occluded pupils): covariate for gaze quality
+                    "id": "eyewear",
+                    "prompt": "Were you wearing **glasses or contact lenses** during this experiment?",
+                    "required": True,
+                    "location": "aboveStimulus",
+                    "type": "radio",
+                    "options": [
+                        "Glasses",
+                        "Contact lenses",
+                        "None"
+                    ],
+                    "withDivider": True
                 }
             ]
         }
