@@ -13,6 +13,7 @@ import {
   CSSProperties, ReactNode, useCallback, useEffect, useState,
 } from 'react';
 import { StimulusParams } from '../../../store/types';
+import { StudyProgress } from './StudyProgress';
 
 export const canFullscreen = () => typeof document !== 'undefined' && typeof document.documentElement?.requestFullscreen === 'function';
 export const isFullscreen = () => !canFullscreen() || !!document.fullscreenElement;
@@ -57,10 +58,11 @@ const panelStyle: CSSProperties = {
  * centred column; optional small `kicker` above the title ("Task 2 of 3"), short body, one row of buttons.
  */
 export function Panel({
-  title, children, actions, zIndex, kicker, maxWidth = 560,
-}: { title?: ReactNode; children?: ReactNode; actions?: ReactNode; zIndex?: number; kicker?: ReactNode; maxWidth?: number }) {
+  title, children, actions, zIndex, kicker, maxWidth = 560, progress = true,
+}: { title?: ReactNode; children?: ReactNode; actions?: ReactNode; zIndex?: number; kicker?: ReactNode; maxWidth?: number; progress?: boolean }) {
   return (
     <div style={{ ...panelStyle, zIndex: zIndex ?? panelStyle.zIndex, overflowY: 'auto' }}>
+      {progress && <StudyProgress />}
       {kicker && <div style={{ fontSize: 14, fontWeight: 600, letterSpacing: 0.6, textTransform: 'uppercase', color: '#1c7ed6' }}>{kicker}</div>}
       {title && <div style={{ fontSize: 28, fontWeight: 650 }}>{title}</div>}
       {children && <div style={{ fontSize: 18, lineHeight: 1.5, color: '#444', maxWidth }}>{children}</div>}

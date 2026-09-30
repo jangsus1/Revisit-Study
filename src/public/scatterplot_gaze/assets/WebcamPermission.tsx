@@ -40,6 +40,8 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
     gazeTracker.device = {
       pxPerCm: r ? Math.round(r.pxPerCm * 100) / 100 : null,
       cardWidthPx: r?.cardWidthPx ?? null,
+      screenInches: r?.screenInches ?? null,
+      confirmedImplausible: r?.confirmedImplausible ?? false,
       distanceCm: null,
       distanceScale: gazeTracker.distanceScale,
     };

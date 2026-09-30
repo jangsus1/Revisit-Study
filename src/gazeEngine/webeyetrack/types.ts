@@ -51,4 +51,6 @@ export interface CalibResult {
   affineFitted: boolean;
   deferred?: boolean;           // samples stored; the model adapts at calibFlush
   rows?: number;                // RealEye: feature rows used by the last fit (after thinning)
+  lambdaRel?: number | null;    // RealEye: ridge lambda chosen by CV, relative to the mean squared row norm
+  lambdaCV?: number[][];        // RealEye: [relative lambda, held-out error (normalized units)] per candidate
 }

@@ -97,6 +97,8 @@ export class GazeTracker {
    */
   device: {
     pxPerCm: number | null; cardWidthPx: number | null;
+    screenInches?: number | null;   // diagonal implied by the card
+    confirmedImplausible?: boolean; // outside 11-34 in and confirmed anyway
     distanceCm: number | null;      // lens-corrected face distance when the camera page was left
     distanceScale: number;
   } | null = null;

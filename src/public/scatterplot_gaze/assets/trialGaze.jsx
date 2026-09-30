@@ -3,15 +3,18 @@
  *  - a quick drift check / fine-tune before the plot (while `active`), see below; calls onReady() when done
  *  - gaze recording from the click (start) until stop(), and the common part of the `gaze` answer
  * Before every plot (2026-09-30) three dots appear where the trial's plot centre, x label and y label will
- * be (taskLayout.ts). At each dot the current error is measured and calibration frames are collected at
- * the same time; then:
+ * be (taskLayout.ts), 1 s each (gaze arrives ~400 ms after onset; the last 500 ms are used). At each dot the
+ * current error is measured and calibration frames are collected at the same time; then:
  *   mean error <= threshold (6 % of width)                  -> 'none'   (frames dropped)
- *   <= large (15 %) and the 3 errors share one direction    -> 'offset' (drift offset = mean gaze - target,
- *                                                                        frames dropped)
+ *   <= large (15 %) and the 3 errors share one direction    -> 'offset' (half the drift, mean gaze - target, is
+ *                                                                        corrected; frames dropped)
  *   otherwise                                               -> 'refit'  (frames added to the pooled calibration
  *                                                                        and fitted on the "Calibrating…" screen,
- *                                                                        then a plot-centre re-check; reverted to
- *                                                                        the snapshot + drift offset if worse)
+ *                                                                        then the 3 dots are re-checked; if the mean
+ *                                                                        is worse the snapshot is restored and half
+ *                                                                        the drift is corrected instead)
+ * Pilot 4: a full offset fixed the current dots (81 -> 51 px) but only helped the next trial 89 -> 79 px
+ * (half: 77), and a centre-only re-check reverted a refit that the y-label dot had triggered.
  * "Recalibrate briefly" (RecalibrateButton) makes the next trial use 7 dots (3 + the 4 plot quadrants) and
  * always refit (tier 'user').
  * If the dots find the head >= HEAD_WARN_MM away from its calibration position, the trial pauses on a
@@ -75,14 +78,16 @@ export function useTrialGaze({ active, onReady, view }) {
         checks: {}, head: null, headShiftMm: null, calibHead: gazeTracker.calibHead ?? null, headWarning: false,
       };
       const msg = "Look at each dot. Keep your head still.";
-      const centre = () => runValidation([points[0]], 1300, 700, "Look at the dot. Keep your head still.");
+      const DWELL = 1000;
+      const COLLECT = 500;
+      const GAIN = 0.5;   // share of the measured drift corrected by the offset
       try {
         await gazeTracker.init();
         const off0 = gazeTracker.offsetPx;
         result.offsetBeforePx = round2(off0);
         // snapshot first: restoring it drops the frames collected at the dots (and any refit / offset)
         await gazeTracker.snapshotCalibration();
-        let pre = await runTaskCheck(points, 1300, 700, msg);
+        let pre = await runTaskCheck(points, DWELL, COLLECT, msg);
         let shift = headShiftMm(meanPose(pre.points), gazeTracker.calibHead);
         if (shift !== null && shift >= HEAD_WARN_MM) {
           // Clear warning, back to the calibration position, then the dots again
@@ -95,7 +100,7 @@ export function useTrialGaze({ active, onReady, view }) {
           resumeRef.current = null;
           setHeadWarning(false);
           await gazeTracker.snapshotCalibration();
-          pre = await runTaskCheck(points, 1300, 700, msg);
+          pre = await runTaskCheck(points, DWELL, COLLECT, msg);
           shift = headShiftMm(meanPose(pre.points), gazeTracker.calibHead);
         }
         result.checks.pre = pre;
@@ -109,9 +114,8 @@ export function useTrialGaze({ active, onReady, view }) {
         if (pre.meanOffsetPx && offs.length) {
           result.spreadPx = Math.round(offs.reduce((a, o) => a + Math.hypot(o[0] - pre.meanOffsetPx[0], o[1] - pre.meanOffsetPx[1]), 0) / offs.length);
         }
-        const driftFixed = pre.meanOffsetPx ? [off0[0] - pre.meanOffsetPx[0], off0[1] - pre.meanOffsetPx[1]] : null;
-        const preCentre = pre.points[0]?.errorPx ?? null;
-        const worse = (post, base) => post.meanErrorPx === null || (base !== null && post.meanErrorPx > base);
+        const driftFixed = pre.meanOffsetPx ? [off0[0] - GAIN * pre.meanOffsetPx[0], off0[1] - GAIN * pre.meanOffsetPx[1]] : null;
+        result.gain = GAIN;
 
         if (!userRequested && (pre.meanErrorPx === null || pre.meanErrorPx <= thresholdPx)) {
           result.tier = "none";
@@ -127,29 +131,23 @@ export function useTrialGaze({ active, onReady, view }) {
           await gazeTracker.setOffsetPx(0, 0);
           const fit = await fitPending();
           result.fitMs = fit.fitMs;
+          result.lambdaRel = fit.lambdaRel ?? null;
           result.calib = pre.calib;
-          const post = await centre();
+          // re-check the same 3 dots (the one that triggered the refit may be a label)
+          const post = await runValidation(trialCheckPoints(), DWELL, COLLECT, msg);
           result.checks.post = post;
           result.postErrorPx = post.meanErrorPx;
-          if (worse(post, preCentre)) {
+          // compare on the same 3 dots (a user-requested check has 7)
+          const pre3 = pre.points.slice(0, 3).map((p) => p.errorPx).filter((e) => e !== null);
+          const base = pre3.length ? pre3.reduce((a, e) => a + e, 0) / pre3.length : null;
+          if (post.meanErrorPx === null || (base !== null && post.meanErrorPx > base)) {
             await gazeTracker.restoreCalibration();
             result.reverted = true;
-            if (driftFixed) {
-              // Fallback: plain drift correction from the dots
-              await gazeTracker.setOffsetPx(driftFixed[0], driftFixed[1]);
-              const post2 = await centre();
-              result.checks.fallback = post2;
-              result.fallbackErrorPx = post2.meanErrorPx;
-              if (worse(post2, preCentre)) await gazeTracker.setOffsetPx(off0[0], off0[1]);
-            }
+            if (driftFixed) await gazeTracker.setOffsetPx(driftFixed[0], driftFixed[1]);
           }
         }
-        // Error kept for this trial: the dots' mean error, or the plot-centre re-check after a kept refit /
-        // fallback offset
-        result.errorPx = result.tier === "refit" || result.tier === "user"
-          ? (!result.reverted ? result.postErrorPx
-            : (result.fallbackErrorPx !== null && result.fallbackErrorPx <= preCentre ? result.fallbackErrorPx : pre.meanErrorPx))
-          : pre.meanErrorPx;
+        // Error kept for this trial: the 3-dot re-check after a kept refit, else the dots' mean error before any fix
+        result.errorPx = (result.tier === "refit" || result.tier === "user") && !result.reverted ? result.postErrorPx : pre.meanErrorPx;
         result.offsetPx = round2(gazeTracker.offsetPx);
         gazeTracker.lastTrialErrorPx = result.errorPx;
       } catch (err) {

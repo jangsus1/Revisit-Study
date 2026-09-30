@@ -78,3 +78,106 @@ export function dot(w: Float64Array, x: ArrayLike<number>): number {
   for (let k = 0; k < w.length; k += 1) s += w[k] * x[k];
   return s;
 }
+
+/** Inverse of a lower-triangular Cholesky factor (row-major n x n, lower part). */
+function lowerInverse(L: Float64Array, n: number): Float64Array {
+  const M = new Float64Array(n * n);
+  for (let j = 0; j < n; j += 1) {
+    M[j * n + j] = 1 / L[j * n + j];
+    for (let i = j + 1; i < n; i += 1) {
+      let s = 0;
+      for (let k = j; k < i; k += 1) s += L[i * n + k] * M[k * n + j];
+      M[i * n + j] = -s / L[i * n + i];
+    }
+  }
+  return M;
+}
+
+/** Solve the small dense system B x = b in place (Gaussian elimination with partial pivoting). */
+function solveSmall(B: Float64Array, m: number, bs: Float64Array[]): Float64Array[] {
+  const A = B.slice();
+  const rhs = bs.map((b) => b.slice());
+  for (let c = 0; c < m; c += 1) {
+    let piv = c;
+    for (let r = c + 1; r < m; r += 1) if (Math.abs(A[r * m + c]) > Math.abs(A[piv * m + c])) piv = r;
+    if (piv !== c) {
+      for (let k = 0; k < m; k += 1) { const t = A[c * m + k]; A[c * m + k] = A[piv * m + k]; A[piv * m + k] = t; }
+      rhs.forEach((b) => { const t = b[c]; b[c] = b[piv]; b[piv] = t; });
+    }
+    const d = A[c * m + c];
+    for (let r = c + 1; r < m; r += 1) {
+      const f = A[r * m + c] / d;
+      if (f === 0) continue;
+      for (let k = c; k < m; k += 1) A[r * m + k] -= f * A[c * m + k];
+      rhs.forEach((b) => { b[r] -= f * b[c]; });
+    }
+  }
+  return rhs.map((b) => {
+    const x = new Float64Array(m);
+    for (let r = m - 1; r >= 0; r -= 1) {
+      let s = b[r];
+      for (let k = r + 1; k < m; k += 1) s -= A[r * m + k] * x[k];
+      x[r] = s / A[r * m + r];
+    }
+    return x;
+  });
+}
+
+export type RidgeCV = { W: Float64Array[]; lambda: number; cv: { lambda: number; err: number }[] };
+
+/**
+ * Ridge with lambda chosen by leave-one-group-out cross-validation (2026-09-30). With lambda ~0 the dual
+ * solution interpolates the training rows, and as the row count approaches the feature count the weights blow
+ * up and predictions get noisy (pilots 3 and 4: fixation noise doubled after pooled refits with 1,050-1,320
+ * rows vs 1,653 features). Held-out residuals of a group g come from one factorization per lambda:
+ *   alpha = (G + lambda I)^-1 y,  y_g - yhat_g(without g) = [(G + lambda I)^-1]_gg^-1 alpha_g.
+ * groups[i] = group of row i (calibration entry); the error is the mean Euclidean held-out error over rows.
+ */
+export function ridgeDualCV(X: Float32Array[], targets: number[][], groups: number[], lambdas: number[]): RidgeCV {
+  const n = X.length;
+  const p = X[0].length;
+  const G0 = gram(X);
+  const byGroup = new Map<number, number[]>();
+  groups.forEach((g, i) => { if (!byGroup.has(g)) byGroup.set(g, []); byGroup.get(g)!.push(i); });
+  let best: { lambda: number; err: number; alphas: Float64Array[] } | null = null;
+  const cv: { lambda: number; err: number }[] = [];
+  lambdas.forEach((lambda) => {
+    const L = G0.slice();
+    for (let i = 0; i < n; i += 1) L[i * n + i] += lambda;
+    try { cholesky(L, n); } catch { cv.push({ lambda, err: Infinity }); return; }
+    const alphas = targets.map((y) => cholSolve(L, n, y));
+    const Mi = lowerInverse(L, n);   // (G + lambda I)^-1 = Mi' Mi
+    let sum = 0;
+    byGroup.forEach((idx) => {
+      const m = idx.length;
+      const B = new Float64Array(m * m);
+      for (let a = 0; a < m; a += 1) {
+        for (let b = 0; b <= a; b += 1) {
+          const ia = idx[a];
+          const ib = idx[b];
+          let s = 0;
+          for (let k = Math.max(ia, ib); k < n; k += 1) s += Mi[k * n + ia] * Mi[k * n + ib];
+          B[a * m + b] = s;
+          B[b * m + a] = s;
+        }
+      }
+      const res = solveSmall(B, m, alphas.map((al) => Float64Array.from(idx, (i) => al[i])));
+      for (let a = 0; a < m; a += 1) sum += Math.hypot(...res.map((r) => r[a]));
+    });
+    const err = sum / n;
+    cv.push({ lambda, err });
+    if (!best || err < best.err) best = { lambda, err, alphas };
+  });
+  const chosen = best as { lambda: number; err: number; alphas: Float64Array[] } | null;
+  if (!chosen) return { W: ridgeDual(X, targets, lambdas[0]), lambda: lambdas[0], cv };
+  const W = chosen.alphas.map((a) => {
+    const w = new Float64Array(p);
+    for (let i = 0; i < n; i += 1) {
+      const r = X[i];
+      const ai = a[i];
+      for (let k = 0; k < p; k += 1) w[k] += ai * r[k];
+    }
+    return w;
+  });
+  return { W, lambda: chosen.lambda, cv };
+}

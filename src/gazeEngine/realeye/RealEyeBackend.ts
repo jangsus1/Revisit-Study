@@ -17,7 +17,7 @@
 import type { SlimGazeResult, CalibResult } from '../webeyetrack/types';
 import type WebcamClient from '../webeyetrack/WebcamClient';
 import { KalmanFilter2D } from '../webeyetrack/utils/filter';
-import { ridgeDual, dot } from './ridgeDual';
+import { ridgeDual, ridgeDualCV, dot } from './ridgeDual';
 
 const PKG = 'https://cdn.jsdelivr.net/npm/@realeye-io/webcam-eyetracker-light-open@1.1.0';
 // jsDelivr's ESM build resolves @mediapipe/tasks-vision 0.10.35; the library's default wasm is 0.10.18.
@@ -25,7 +25,9 @@ const WASM = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
 // Five eye-crop shifts (RealEye uses nine) keep a full refit near one second: ~9 dots + 12 pursuit
 // chunks + per-trial dots, 8 frames each, x5 rows.
 const AUGMENT: [number, number][] = [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1]];
-const LAMBDA = 1e-5;             // RealEye's ridgeLambda
+const LAMBDA = 1e-5;             // RealEye's ridgeLambda (used only when there are < 4 entries to cross-validate)
+// Candidate lambdas relative to the mean squared row norm; chosen per fit by leave-one-entry-out CV (ridgeDualCV)
+const LAMBDA_REL = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10];
 const MAX_DOT_FRAMES = 40;
 const MAX_PURSUIT_FRAMES = 900;
 const BLINK = 0.5;               // mean eyeBlink blendshape above this = eyes closed
@@ -33,7 +35,9 @@ const BLINK = 0.5;               // mean eyeBlink blendshape above this = eyes c
 // start, middle and end beat using only the latest one). To keep every refit near a second, a fit uses
 // at most FRAME_BUDGET frames (x5 augmented rows): when there is more, every entry is thinned to the
 // same evenly spaced subset of its frames, so no calibration target is ever dropped.
-const FRAME_BUDGET = 280;
+// 2026-09-30: 280 -> 140 frames (700 rows): pooled fits with 1,050-1,320 rows (near the 1,653 features)
+// doubled the fixation noise in pilots 3 and 4.
+const FRAME_BUDGET = 140;
 
 type HeadPose = { yaw: number; pitch: number; roll: number; translationX: number; translationY: number; translationZ: number };
 type Detection = {
@@ -184,20 +188,33 @@ export default class RealEyeBackend {
     const xs: number[] = [];
     const ys: number[] = [];
     const total = this.entries.reduce((a, e) => a + e.frames.length, 0);
+    const groups: number[] = [];
     const perEntry = total > FRAME_BUDGET ? Math.max(2, Math.floor(FRAME_BUDGET / this.entries.length)) : Infinity;
-    this.entries.forEach((e) => {
+    this.entries.forEach((e, gi) => {
       const n = e.frames.length;
       const keep = n <= perEntry ? e.frames : Array.from({ length: perEntry }, (_, i) => e.frames[Math.floor(((i + 0.5) * n) / perEntry)]);
-      keep.forEach((f) => f.rows.forEach((r) => { X.push(r); xs.push(f.target[0]); ys.push(f.target[1]); }));
+      keep.forEach((f) => f.rows.forEach((r) => { X.push(r); xs.push(f.target[0]); ys.push(f.target[1]); groups.push(gi); }));
     });
     this.lastFitRows = X.length;
     if (distinctTargets < 3 || X.length < 5) return;
-    this.W = ridgeDual(X, [xs, ys], LAMBDA);
+    if (this.entries.length >= 4) {
+      const scale = X.reduce((a, r) => a + dot(r as unknown as Float64Array, r), 0) / X.length;
+      const r = ridgeDualCV(X, [xs, ys], groups, LAMBDA_REL.map((c) => c * scale));
+      this.W = r.W;
+      this.lastLambda = { lambda: r.lambda, rel: r.lambda / scale, cv: r.cv.map((c) => [Math.round((c.lambda / scale) * 1e6) / 1e6, Math.round(c.err * 1e5) / 1e5]) };
+    } else {
+      this.W = ridgeDual(X, [xs, ys], LAMBDA);
+      this.lastLambda = { lambda: LAMBDA, rel: null, cv: [] };
+    }
     this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
   }
 
   /** Rows used by the last fit (after thinning). */
   lastFitRows = 0;
+
+  /** Lambda of the last fit (absolute and relative to the mean squared row norm) and the CV error per candidate
+   * ([relative lambda, mean held-out error in normalized screen units]). */
+  lastLambda: { lambda: number; rel: number | null; cv: number[][] } | null = null;
 
   private toEntry(frames: Frame[], targets: [number, number][], ptType: 'calib' | 'click'): Entry {
     return {
@@ -270,6 +287,7 @@ export default class RealEyeBackend {
     if (points) this.fit();
     return {
       ...this.stats(), points, fitMs: Math.round(performance.now() - t0), rows: this.lastFitRows,
+      lambdaRel: this.lastLambda?.rel ?? null, lambdaCV: this.lastLambda?.cv ?? [],
     };
   }
 

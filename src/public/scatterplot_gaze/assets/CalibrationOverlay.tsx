@@ -298,7 +298,7 @@ export function useDotSequence() {
     const last = results[results.length - 1];
     if (last) {
       Object.assign(last, {
-        entries: fit.entries, distinctTargets: fit.distinctTargets, affineFitted: fit.affineFitted, fitMs: fit.fitMs, rows: fit.rows, pursuit,
+        entries: fit.entries, distinctTargets: fit.distinctTargets, affineFitted: fit.affineFitted, fitMs: fit.fitMs, rows: fit.rows, lambdaRel: fit.lambdaRel, lambdaCV: fit.lambdaCV, pursuit,
       });
     }
     return results;
