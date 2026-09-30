@@ -70,25 +70,76 @@
             "nextButtonText": "I agree",
             "response": []
         },
+        "phase3_intro": {
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/IntroPage.tsx",
+            "parameters": {
+                "kicker": "Task 1 of 3",
+                "title": "Your beliefs",
+                "bullets": [
+                    "You will read **12** statements.",
+                    "Rate how strongly you believe each one, from **not at all** to **completely**.",
+                    "Answer from your **intuition**."
+                ],
+                "button": "Start"
+            },
+            "response": [],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
         "phase1_intro": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase1_intro.md",
-            "response": []
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/IntroPage.tsx",
+            "parameters": {
+                "kicker": "Task 2 of 3",
+                "title": "Estimate correlations",
+                "bullets": [
+                    "**12** scatterplots, each shown for **5 seconds** after you click it.",
+                    "Estimate the correlation from **0** (none) to **1** (perfect), then see the correct answer.",
+                    "From here on your **webcam estimates where you look**. Video never leaves your computer; nothing is recorded.",
+                    "Before each plot, look at the dot in the centre. **Keep your head still.**"
+                ],
+                "button": "Set up the camera",
+                "image": "scatterplot_gaze/assets/phase1.png"
+            },
+            "response": [],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
         },
         "phase2_intro": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase2_intro.md",
-            "response": []
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/IntroPage.tsx",
+            "parameters": {
+                "kicker": "Task 3 of 3",
+                "title": "Scatterplots with labels",
+                "bullets": [
+                    "**2** examples, then **24** plots, each shown for **5 to 11 seconds**.",
+                    "The axis labels may appear at any time, and may blur again.",
+                    "Estimate the correlation from **0** to **1**.",
+                    "Before each plot, look at the centre dot. **Keep your head still.**"
+                ],
+                "button": "Recalibrate",
+                "image": "scatterplot_gaze/assets/phase2.png"
+            },
+            "response": [],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
         },
         "phase2_examples": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase2_examples.md",
-            "response": []
-        },
-        "phase3_intro": {
-            "type": "markdown",
-            "path": "scatterplot_gaze/assets/phase3_intro.md",
-            "response": []
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/IntroPage.tsx",
+            "parameters": {
+                "kicker": "Task 3 of 3",
+                "title": "2 example tasks",
+                "bullets": [
+                    "The **24** main tasks follow right away.",
+                    "Look at the centre dot, then click the plot to start."
+                ],
+                "button": "Start the examples"
+            },
+            "response": [],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
         },
         "attentionCheck": {
             "type": "markdown",
@@ -295,6 +346,27 @@
                 {
                     "id": "calibration",
                     "prompt": "Halfway recalibration",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "reactive",
+                    "hidden": true
+                }
+            ],
+            "instructionLocation": "belowStimulus",
+            "nextButtonLocation": "belowStimulus"
+        },
+        "gazeRecalibrationTask3": {
+            "type": "react-component",
+            "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
+            "parameters": {
+                "mode": "recalibrate",
+                "acceptPctW": 0.08,
+                "title": "Short recalibration"
+            },
+            "response": [
+                {
+                    "id": "calibration",
+                    "prompt": "Recalibration before Task 3",
                     "required": true,
                     "location": "belowStimulus",
                     "type": "reactive",
@@ -106651,6 +106723,8 @@
                 ]
             },
             "phase1_intro",
+            "webcamPermission",
+            "gazeCalibration",
             {
                 "id": "phase1",
                 "order": "random",
@@ -106670,8 +106744,7 @@
                 ]
             },
             "phase2_intro",
-            "webcamPermission",
-            "gazeCalibration",
+            "gazeRecalibrationTask3",
             "phase2_examples",
             "phase2_example_1",
             "phase2_example_2",
@@ -108171,11 +108244,19 @@
         },
         "phase1": {
             "type": "react-component",
-            "path": "scatterplot_gaze/assets/phase1.jsx",
+            "path": "scatterplot_gaze/assets/phase1_gaze.jsx",
             "response": [
                 {
                     "id": "answer",
                     "prompt": "",
+                    "required": true,
+                    "location": "belowStimulus",
+                    "type": "reactive",
+                    "hidden": true
+                },
+                {
+                    "id": "gaze",
+                    "prompt": "Gaze trace",
                     "required": true,
                     "location": "belowStimulus",
                     "type": "reactive",
