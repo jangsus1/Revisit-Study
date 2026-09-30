@@ -12,7 +12,9 @@ import { StimulusParams } from '../../../store/types';
 import { gazeTracker } from './gazeTracker';
 import { PositionGuide } from './PositionGuide';
 import type { PositionState } from './PositionGuide';
-import { FullscreenGate, Panel, fullscreenStats } from './FullScreen';
+import {
+  FullscreenGate, HeadStillNotice, Panel, fullscreenStats,
+} from './FullScreen';
 import { CardCheck } from './DeviceCheck';
 import type { CardResult } from './DeviceCheck';
 
@@ -25,7 +27,9 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
   const [faceSeen, setFaceSeen] = useState(false);
   const [pos, setPos] = useState<PositionState | null>(null);
   const [canOverride, setCanOverride] = useState(false);
-  const [step, setStep] = useState<'card' | 'position'>('card');
+  const [step, setStep] = useState<'card' | 'position' | 'comfort'>('card');
+  const [adjustments, setAdjustments] = useState(0);
+  const posAtContinue = useRef<PositionState | null>(null);
   const readySince = useRef<number | null>(null);
   const submitted = useRef(false);
 
@@ -65,6 +69,7 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
     fullscreen: !!document.fullscreenElement,
     fullscreenExits: fullscreenStats.exits,
     device: gazeTracker.device,
+    comfortAdjustments: adjustments,
     // distance / position when Continue was pressed
     position: position ? {
       distanceCm: position.distanceCm === null ? null : Math.round(position.distanceCm),
@@ -76,18 +81,21 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
       const tr = gazeTracker.getStream()?.getVideoTracks()[0]?.getSettings();
       return tr ? { width: tr.width ?? null, height: tr.height ?? null, frameRate: tr.frameRate ?? null } : null;
     })(),
-  }), [faceSeen]);
+  }), [faceSeen, adjustments]);
 
   // Next stays disabled (and covered) until Continue
   useEffect(() => {
     if (!submitted.current) setAnswer({ status: false, answers: { webcamPermission: answer(null) } });
   }, [setAnswer, answer]);
 
+  // Position good -> "can you hold this for 10-15 minutes?" -> advance (or back to adjust)
+  const toComfort = () => { posAtContinue.current = pos; setStep('comfort'); };
   const next = () => {
     submitted.current = true;
+    const p = posAtContinue.current ?? pos;
     // viewing distance (lens-corrected face estimate) at Continue: used for px -> degrees
-    if (gazeTracker.device && pos?.distanceCm) gazeTracker.device.distanceCm = Math.round(pos.distanceCm * 10) / 10;
-    setAnswer({ status: true, answers: { webcamPermission: answer(pos) } });
+    if (gazeTracker.device && p?.distanceCm) gazeTracker.device.distanceCm = Math.round(p.distanceCm * 10) / 10;
+    setAnswer({ status: true, answers: { webcamPermission: answer(p) } });
     advance?.();
   };
 
@@ -124,18 +132,45 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
     );
   } else if (step === 'card') {
     body = <CardCheck onDone={onCard} />;
+  } else if (step === 'comfort') {
+    body = (
+      <Panel
+        title="Can you hold this position?"
+        actions={(
+          <>
+            <Button size="lg" onClick={next}>Yes, I can stay like this</Button>
+            <Button size="lg" variant="default" onClick={() => { setAdjustments((n) => n + 1); setStep('position'); }}>Let me adjust</Button>
+          </>
+        )}
+      >
+        The eye-tracking part takes about
+        {' '}
+        <strong>10 to 15 minutes</strong>
+        . You should be able to keep your head in this position the whole time without effort.
+        <ul style={{
+          textAlign: 'left', margin: '14px auto 0', paddingLeft: 22, display: 'flex', flexDirection: 'column', gap: 6, maxWidth: 480,
+        }}
+        >
+          <li>Sit back against your chair, shoulders relaxed.</li>
+          <li>Rest your arms; keep the mouse within easy reach.</li>
+          <li>Screen straight in front of you, at eye level if possible.</li>
+          <li>No hand under your chin; do not lean on the desk.</li>
+        </ul>
+      </Panel>
+    );
   } else {
     const ok = !!pos?.ready && faceSeen;
     body = (
       <Panel
         title="Sit at arm's length, face in the oval"
         actions={(
-          <Button size="lg" onClick={next} disabled={!ok && !(canOverride && faceSeen)}>
+          <Button size="lg" onClick={toComfort} disabled={!ok && !(canOverride && faceSeen)}>
             {ok || !canOverride ? 'Continue' : 'Continue anyway'}
           </Button>
         )}
       >
         <PositionGuide onChange={setPos} />
+        <HeadStillNotice>Find a comfortable position now (rest your arms) that you can hold for the whole study.</HeadStillNotice>
       </Panel>
     );
   }

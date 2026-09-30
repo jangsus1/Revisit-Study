@@ -8,7 +8,10 @@ import {
 } from './CalibrationOverlay';
 import type { CalibPointLog, ValidationResult } from './CalibrationOverlay';
 import { PositionGuide } from './PositionGuide';
-import { FullscreenGate, Panel, fullscreenStats } from './FullScreen';
+import { useHeadTrace } from './headTrace';
+import {
+  FullscreenGate, HeadStillNotice, Panel, fullscreenStats,
+} from './FullScreen';
 import type { PositionState } from './PositionGuide';
 
 // After this long on the guide the participant may start even if the distance never reads "good"
@@ -50,6 +53,8 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
   const {
     dot, collecting, message, setMessage, runCalibration, runValidation, fitting, pursuitOn, pursuitDotRef,
   } = useDotSequence();
+  // head position over the whole page, marked by screen (incl. right after the dots / while fitting)
+  const headLog = useHeadTrace(`${phase}${pursuitOn ? ':pursuit' : ''}${fitting ? ':fitting' : ''}${dot ? ':dots' : ''}`);
 
   const last = attempts[attempts.length - 1];
   const accepted = last?.meanErrorPctW !== null && last?.meanErrorPctW !== undefined && last.meanErrorPctW <= acceptPctW;
@@ -83,6 +88,7 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
           dpr: window.devicePixelRatio,
           inferenceHz: Math.round(gazeTracker.hz * 10) / 10,
           perAttempt: attempts,
+          ...headLog(),
           trackerError: error,
           device: gazeTracker.device,
           fullscreen: !!document.fullscreenElement,
@@ -90,7 +96,7 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
         }),
       },
     });
-  }, [phase, attempts, accepted, last, setAnswer, acceptPctW, error]);
+  }, [phase, attempts, accepted, last, setAnswer, acceptPctW, error, headLog]);
 
   // Camera is normally already on (webcamPermission page); start it here otherwise so the guide has video
   useEffect(() => { gazeTracker.init().catch(() => {}); }, []);
@@ -156,9 +162,8 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
           actions={<Button size="lg" onClick={runOnce} disabled={!pos?.ready && !canOverride}>{startLabel('Start')}</Button>}
         >
           Look at each dot, then follow the moving dot.
-          <br />
-          <strong>Keep your head still. Move only your eyes.</strong>
           <div style={{ marginTop: 22 }}><PositionGuide onChange={setPos} compact /></div>
+          <HeadStillNotice />
         </Panel>
       )}
 
@@ -167,14 +172,15 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
           title="Let's try again"
           actions={<Button size="lg" onClick={runOnce} disabled={!pos?.ready && !canOverride}>{startLabel(`Recalibrate (${attempts.length + 1}/${maxAttempts})`)}</Button>}
         >
-          Sit still and follow the dots with your eyes only.
+          Follow the dots with your eyes only.
           <div style={{ marginTop: 22 }}><PositionGuide onChange={setPos} compact /></div>
+          <HeadStillNotice />
         </Panel>
       )}
 
       {phase === 'done' && (
         <Panel title="Calibration done" actions={<Button size="lg" onClick={() => advance?.()}>Continue</Button>}>
-          Keep your head in this position until the task ends.
+          <HeadStillNotice>Stay exactly in this position. Move only your eyes.</HeadStillNotice>
         </Panel>
       )}
       <FullscreenGate />

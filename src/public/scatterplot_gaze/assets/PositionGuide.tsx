@@ -27,13 +27,15 @@ const trackerFeed: DistanceFeed = (fn) => gazeTracker.onSample((s) => {
 });
 
 export function PositionGuide({
-  onChange, stream, feed = trackerFeed, compact = false,
+  onChange, stream, feed = trackerFeed, compact = false, range,
 }: {
   onChange?: (s: PositionState) => void;
   stream?: MediaStream | null;
   feed?: DistanceFeed;
   compact?: boolean;          // meter and message only, no camera preview
+  range?: [number, number];   // target distance (cm); default MIN_CM-MAX_CM
 }) {
+  const [lo, hi] = range ?? [MIN_CM, MAX_CM];
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [state, setState] = useState<PositionState>({
     ready: false, distanceCm: null, face: false, inRangeMs: 0,
@@ -65,7 +67,7 @@ export function PositionGuide({
         recent.length = 0;
       }
       const cm = recent.length ? [...recent].sort((a, b) => a - b)[Math.floor(recent.length / 2)] : null;
-      const inRange = face && cm !== null && cm >= MIN_CM && cm <= MAX_CM;
+      const inRange = face && cm !== null && cm >= lo && cm <= hi;
       if (inRange) inRangeSince ??= now; else inRangeSince = null;
       if (now - last < 150) return;   // UI at ~7 Hz
       last = now;
@@ -77,13 +79,13 @@ export function PositionGuide({
       onChangeRef.current?.(next);
     });
     return unsub;
-  }, [feed]);
+  }, [feed, lo, hi]);
 
   const { distanceCm: cm, face } = state;
-  const inRange = face && cm !== null && cm >= MIN_CM && cm <= MAX_CM;
+  const inRange = face && cm !== null && cm >= lo && cm <= hi;
   let msg: string;
   let color: string;
-  if (!src && stream === undefined && gazeTracker.state === 'error') { msg = 'The camera could not start.'; color = '#dc2626'; } else if (!src) { msg = 'Starting the camera…'; color = '#666'; } else if (!face || cm === null) { msg = 'Face not found. Face the screen in good light.'; color = '#dc2626'; } else if (cm < MIN_CM) { msg = 'Too close. Lean back a little.'; color = '#d97706'; } else if (cm > MAX_CM) { msg = 'Too far. Move a little closer.'; color = '#d97706'; } else { msg = state.ready ? 'Good position.' : 'Good. Hold still…'; color = '#16a34a'; }
+  if (!src && stream === undefined && gazeTracker.state === 'error') { msg = 'The camera could not start.'; color = '#dc2626'; } else if (!src) { msg = 'Starting the camera…'; color = '#666'; } else if (!face || cm === null) { msg = 'Face not found. Face the screen in good light.'; color = '#dc2626'; } else if (cm < lo) { msg = 'Too close. Lean back a little.'; color = '#d97706'; } else if (cm > hi) { msg = 'Too far. Move a little closer.'; color = '#d97706'; } else { msg = state.ready ? 'Good position.' : 'Good. Hold still…'; color = '#16a34a'; }
   const pct = (v: number) => (100 * (Math.min(BAR_MAX, Math.max(BAR_MIN, v)) - BAR_MIN)) / (BAR_MAX - BAR_MIN);
   const ok = inRange ? '#16a34a' : '#f59e0b';
   const W = 320;
@@ -101,7 +103,7 @@ export function PositionGuide({
       <Text fw={600} size="lg" style={{ color }}>{msg}</Text>
       <Box pos="relative" w={W} h={30}>
         <Box pos="absolute" top={10} left={0} right={0} h={10} style={{ background: '#e5e7eb', borderRadius: 5 }} />
-        <Box pos="absolute" top={10} h={10} style={{ left: `${pct(MIN_CM)}%`, width: `${pct(MAX_CM) - pct(MIN_CM)}%`, background: '#bbf7d0', borderRadius: 5 }} />
+        <Box pos="absolute" top={10} h={10} style={{ left: `${pct(lo)}%`, width: `${pct(hi) - pct(lo)}%`, background: '#bbf7d0', borderRadius: 5 }} />
         {cm !== null && face && (
           <Box pos="absolute" top={2} w={4} h={26} style={{ left: `calc(${pct(cm)}% - 2px)`, background: ok, borderRadius: 2, transition: 'left 0.15s' }} />
         )}

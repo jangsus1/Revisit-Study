@@ -69,6 +69,20 @@ export function Panel({
   );
 }
 
+/** Amber "keep your head still" notice used on every setup / instruction screen of the gaze study. */
+export function HeadStillNotice({ children }: { children?: ReactNode }) {
+  return (
+    <div style={{
+      margin: '18px auto 0', maxWidth: 560, padding: '12px 18px', borderRadius: 10, background: '#fff4e6',
+      border: '2px solid #fd7e14', color: '#7a3e00', fontSize: 17, lineHeight: 1.45, textAlign: 'center',
+    }}
+    >
+      <div style={{ fontWeight: 700, fontSize: 18 }}>Do not move your head until the end of the task.</div>
+      {children ?? 'Move only your eyes. Moving, leaning or turning your head makes the eye tracking inaccurate.'}
+    </div>
+  );
+}
+
 export function FullscreenGate() {
   const fs = useFullscreen();
   if (fs) return null;

@@ -361,7 +361,7 @@ export function CalibrationOverlay({
         >
           <Loader size="lg" />
           <div style={{ fontSize: 22, fontWeight: 600 }}>Calibrating…</div>
-          <div style={{ fontSize: 16, color: '#666' }}>You can blink and rest your eyes. Please keep your head where it is.</div>
+          <div style={{ fontSize: 16, color: '#666' }}>Rest your eyes, but keep your head exactly where it is.</div>
         </div>
       )}
       {pursuitOn && pursuitDotRef && <PursuitDot dotRef={pursuitDotRef} />}

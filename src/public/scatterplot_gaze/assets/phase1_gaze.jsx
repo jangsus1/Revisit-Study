@@ -7,6 +7,7 @@ import { usePlotScale } from "./plotScale";
 import { CalibrationOverlay } from "./CalibrationOverlay";
 import { FullscreenGate, Panel } from "./FullScreen";
 import { useTrialGaze } from "./trialGaze";
+import HeadMovedPanel, { RecalibrateButton } from "./HeadMovedPanel";
 
 // Task 2 (training, unlabeled plots) with eye tracking: the same per-trial short calibration and gaze
 // recording as the Task 3 trials (trialGaze.jsx), so Task 2 gives a no-label gaze baseline. The plot is
@@ -32,7 +33,7 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
 
   const [view, setView] = useState("shortcalib") // shortcalib, scatter, slider, feedback
   const scale = view === "scatter" ? scatterScale : layoutScale
-  const tg = useTrialGaze({ active: view === "shortcalib", calibIndex: Math.round((correlation ?? 0) * 100), onReady: () => setView("scatter") })
+  const tg = useTrialGaze({ active: view === "shortcalib", calibIndex: Math.round((correlation ?? 0) * 100), onReady: () => setView("scatter"), view })
   const { payload } = tg
   const geometryRef = useRef(null)
   const [slider, setSlider] = useState(0)
@@ -206,6 +207,7 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
   return (
     <div>
       <FullscreenGate />
+      {tg.headWarning && <HeadMovedPanel onContinue={tg.resume} />}
       {view === "shortcalib" && (
         <CalibrationOverlay dot={tg.dot} collecting={tg.collecting} message={tg.message} fitting={tg.fitting} />
       )}
@@ -280,6 +282,7 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
               tickInterval={0.2}
             />
           </div>
+          <RecalibrateButton />
         </Panel>
       )}
 
@@ -304,6 +307,7 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
             {' '}
             <span style={{ color: Math.abs(diff) <= 0.1 ? '#2f9e44' : '#e8590c' }}>({diff > 0 ? "+" : ''}{diff.toFixed(2)})</span>
           </div>
+          <RecalibrateButton />
         </Panel>
       )}
 

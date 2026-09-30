@@ -3,14 +3,25 @@
  *  - a test-first short calibration before the plot (while `active`): centre check -> nothing / drift offset /
  *    3-5 dots, each step re-checked and reverted if worse; calls onReady() when done
  *  - gaze recording from the click (start) until stop(), and the common part of the `gaze` answer
+ * If the pre-check finds the head >= HEAD_WARN_MM away from its calibration position, the trial pauses on a
+ * "You moved your head" screen (headWarning; the trial renders it with HeadMovedPanel) and the centre check
+ * is repeated after Continue; logged as shortCalib.headWarning / checks.preBeforeWarning.
  * Samples: [t_ms_since_click, x_px, y_px, open01, raw_x_px, raw_y_px, face_x_mm, face_y_mm, face_z_mm]
  * (x/y Kalman-smoothed, raw unsmoothed; face_* = 3D face origin in the camera frame, z = distance).
  */
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { gazeTracker, normToPx, headShiftMm } from "./gazeTracker";
 import { shortCalibPoints, useDotSequence } from "./CalibrationOverlay";
+import { useHeadTrace } from "./headTrace";
 
-export function useTrialGaze({ active, calibIndex, onReady }) {
+export const HEAD_WARN_MM = 40;
+
+
+export function useTrialGaze({ active, calibIndex, onReady, view }) {
+  const headLog = useHeadTrace(view);
+  const [headWarning, setHeadWarning] = useState(false);
+  const resumeRef = useRef(null);
+  const resume = useCallback(() => { resumeRef.current?.(); }, []);
   const seq = useDotSequence();
   const { runCalibration, runValidation, setMessage } = seq;
   const shortCalibRef = useRef(null);
@@ -42,6 +53,9 @@ export function useTrialGaze({ active, calibIndex, onReady }) {
       //   3. any step whose re-check is worse than the pre-check is reverted (offset put back /
       //      calibration state restored from a snapshot), and the drift offset is tried as a fallback
       const fullCalibPresent = !!gazeTracker.fullCalib;
+      // "My head moved - recalibrate" pressed on an earlier screen: 5 dots whatever the error is
+      const userRequested = gazeTracker.userRecalRequested;
+      gazeTracker.userRecalRequested = false;
       const thresholdPx = Math.round(0.06 * window.innerWidth);
       const largePx = Math.round(0.15 * window.innerWidth);
       const prevErrorPx = gazeTracker.lastTrialErrorPx ?? null;
@@ -58,19 +72,34 @@ export function useTrialGaze({ active, calibIndex, onReady }) {
         await gazeTracker.init();
         const off0 = gazeTracker.offsetPx;
         result.offsetBeforePx = [Math.round(off0[0]), Math.round(off0[1])];
-        const pre = await check("Look at the centre dot. Keep your head still.");
+        let pre = await check("Look at the centre dot. Keep your head still.");
+        let shift = headShiftMm(pre.points[0]?.pose ?? null, gazeTracker.calibHead);
+        result.headWarning = false;
+        if (shift !== null && shift >= HEAD_WARN_MM) {
+          // Clear warning, back to the calibration position, then measure again
+          result.headWarning = true;
+          result.checks.preBeforeWarning = pre;
+          result.headShiftBeforeWarningMm = shift;
+          setHeadWarning(true);
+          await new Promise((r) => { resumeRef.current = r; });
+          resumeRef.current = null;
+          setHeadWarning(false);
+          pre = await check("Look at the centre dot. Keep your head still.");
+          shift = headShiftMm(pre.points[0]?.pose ?? null, gazeTracker.calibHead);
+        }
         result.checks.pre = pre;
         result.head = pre.points[0]?.pose ?? null;
-        result.headShiftMm = headShiftMm(result.head, gazeTracker.calibHead);
+        result.headShiftMm = shift;
         result.preErrorPx = pre.meanErrorPx;
         result.preOffsetPx = pre.meanOffsetPx ? [Math.round(pre.meanOffsetPx[0]), Math.round(pre.meanOffsetPx[1])] : null;
         result.n = pre.points[0]?.n ?? 0;
         // Offset that cancels the measured drift (gaze - target) on top of the current one
         const driftFixed = pre.meanOffsetPx ? [off0[0] - pre.meanOffsetPx[0], off0[1] - pre.meanOffsetPx[1]] : null;
-        const worse = (post, base) => post.meanErrorPx === null || post.meanErrorPx > base;
+        const worse = (post, base) => post.meanErrorPx === null || (base !== null && post.meanErrorPx > base);
 
-        if (pre.meanErrorPx !== null && pre.meanErrorPx > thresholdPx) {
-          if (pre.meanErrorPx <= largePx && driftFixed) {
+        result.userRequested = userRequested;
+        if (userRequested || (pre.meanErrorPx !== null && pre.meanErrorPx > thresholdPx)) {
+          if (!userRequested && pre.meanErrorPx <= largePx && driftFixed) {
             result.tier = "offset";
             await gazeTracker.setOffsetPx(driftFixed[0], driftFixed[1]);
             const post = await check("Look at the centre dot. Keep your head still.");
@@ -82,8 +111,8 @@ export function useTrialGaze({ active, calibIndex, onReady }) {
             }
           } else {
             const worsening = prevErrorPx !== null && pre.meanErrorPx > prevErrorPx;
-            result.tier = worsening ? "strong" : "light";
-            result.dots = worsening ? 5 : 3;
+            result.tier = userRequested ? "user" : worsening ? "strong" : "light";
+            result.dots = userRequested || worsening ? 5 : 3;
             await gazeTracker.snapshotCalibration();
             // The refit maps raw predictions straight onto the targets, so the old drift offset
             // must not be applied on top of it (the snapshot keeps it for a revert).
@@ -162,9 +191,12 @@ export function useTrialGaze({ active, calibIndex, onReady }) {
       device: gazeTracker.device,
       hz: samples.length > 1 ? Math.round((samples.length - 1) * 1000 / Math.max(1, durationMs) * 10) / 10 : 0,
       hidden: hiddenEventsRef.current,
+      ...headLog(),
       samples,
     };
-  }, []);
+  }, [headLog]);
 
-  return { ...seq, start, stop, payload, startAtRef };
+  return {
+    ...seq, start, stop, payload, startAtRef, headWarning, resume,
+  };
 }

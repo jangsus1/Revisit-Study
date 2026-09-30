@@ -227,3 +227,22 @@ Licence (AGPL or free academic commercial licence) must be settled before data c
 - **One page layout**: intro pages are `IntroPage.tsx` (text in config.py via `intro_page(...)`: "Task N of 3",
   title, bullets, image, button); belief rating, correlation sliders and Task 2 feedback are full-window `Panel`s
   with their own Next (advance). Consent, comprehension check and demographics stay reVISit pages.
+
+### Keeping the head still (2026-09-30)
+
+- **Warnings:** amber `HeadStillNotice` ("Do not move your head until the end of the task") on the camera position
+  screen, calibration / recalibration start, retry and done screens, the Task 2 / Task 3 intro and examples pages
+  (`intro_page(..., head_still=True)`) and the final check. The "Calibrating…" screen now says "Rest your eyes, but
+  keep your head exactly where it is".
+- **Comfort check:** after the position guide the camera page asks "Can you hold this position?" (10-15 minutes;
+  sit back, rest arms, no hand under the chin). "Let me adjust" returns to the guide; `comfortAdjustments` is logged.
+- **Live warning:** if a trial's centre check finds the head >= 40 mm (`HEAD_WARN_MM`) from its calibration pose,
+  the trial pauses on "You moved your head" (distance bar targets the calibration distance +-4 cm), then the check is
+  repeated (`shortCalib.headWarning`, `headShiftBeforeWarningMm`, `checks.preBeforeWarning`).
+- **Participant-requested recalibration:** the slider and feedback screens have a small "Keep your head still.
+  Moved it? Recalibrate briefly" button; the next trial then runs 5 dots regardless of the error
+  (`shortCalib.userRequested`, tier `'user'`).
+- **Head position over whole pages:** every Task 2 / Task 3 `gaze` row and the calibration rows carry `headTrace`
+  (`[t_ms_since_page_mount, x_mm, y_mm, z_mm]`, <= 5 Hz, raw MediaPipe face origin) and `headMarks`
+  (`[t_ms, screen]`: shortcalib / scatter / slider / feedback; calibration: intro / running:dots / running:pursuit /
+  running:fitting / done) to see where movement happens (e.g. right after the dots, on the slider).

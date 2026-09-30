@@ -117,6 +117,11 @@ export class GazeTracker {
     return Math.round(((2 * Math.atan(px / d.pxPerCm / 2 / d.distanceCm) * 180) / Math.PI) * 100) / 100;
   }
 
+  /** "My head moved" pressed: the next trial's check recalibrates with 5 dots (see trialGaze.jsx). */
+  userRecalRequested = false;
+
+  userRecalCount = 0;
+
   /** Halfway recalibration (pooled with the first one), when it has run. */
   midCalib?: CalibrationSummary;
 

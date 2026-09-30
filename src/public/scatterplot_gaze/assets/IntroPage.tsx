@@ -7,9 +7,9 @@ import { Button } from '@mantine/core';
 import { Fragment, useEffect } from 'react';
 import { StimulusParams } from '../../../store/types';
 import { PREFIX } from '../../../utils/Prefix';
-import { Panel } from './FullScreen';
+import { HeadStillNotice, Panel } from './FullScreen';
 
-type Params = { kicker?: string; title: string; bullets?: string[]; image?: string; button?: string };
+type Params = { kicker?: string; title: string; bullets?: string[]; image?: string; button?: string; headStill?: boolean };
 
 /** Minimal **bold** markup. */
 function Rich({ text }: { text: string }) {
@@ -26,7 +26,7 @@ function Rich({ text }: { text: string }) {
 
 function IntroPage({ parameters, setAnswer, advance }: StimulusParams<Params>) {
   const {
-    kicker, title, bullets = [], image, button = 'Continue',
+    kicker, title, bullets = [], image, button = 'Continue', headStill = false,
   } = parameters;
   useEffect(() => { setAnswer({ status: true, answers: {} }); }, [setAnswer]);
 
@@ -43,6 +43,7 @@ function IntroPage({ parameters, setAnswer, advance }: StimulusParams<Params>) {
       >
         {bullets.map((b) => <li key={b}><Rich text={b} /></li>)}
       </ul>
+      {headStill && <HeadStillNotice />}
       {image && (
         <img
           src={image.startsWith('http') ? image : `${PREFIX}${image}`}

@@ -4,6 +4,7 @@ import React from "react";
 import { NormalSlider } from "./Slider";
 import { CalibrationOverlay } from "./CalibrationOverlay";
 import { useTrialGaze } from "./trialGaze";
+import HeadMovedPanel, { RecalibrateButton } from "./HeadMovedPanel";
 import { FullscreenGate, Panel } from "./FullScreen";
 import { Button } from "@mantine/core";
 import { usePlotScale } from "./plotScale";
@@ -42,7 +43,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
   const [labelsVisible, setLabelsVisible] = useState(false);
 
   // ---- gaze: short calibration before the plot, recording from the click (see trialGaze.jsx) ----
-  const tg = useTrialGaze({ active: view === "shortcalib", calibIndex: label_idx, onReady: () => setView("scatter") });
+  const tg = useTrialGaze({ active: view === "shortcalib", calibIndex: label_idx, onReady: () => setView("scatter"), view });
   const { dot, collecting, message, fitting } = tg;
   const labelRevealAtRef = useRef(null);
   const labelHideAtRef = useRef(null);
@@ -278,6 +279,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
   return (
     <div>
       <FullscreenGate />
+      {tg.headWarning && <HeadMovedPanel onContinue={tg.resume} />}
       {view === "shortcalib" && (
         <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={fitting} />
       )}
@@ -348,6 +350,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
               tickInterval={0.2}
             />
           </div>
+          <RecalibrateButton />
         </Panel>
       )}
     </div>

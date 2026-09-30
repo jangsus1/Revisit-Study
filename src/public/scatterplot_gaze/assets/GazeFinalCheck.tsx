@@ -11,7 +11,9 @@ import {
   CalibrationOverlay, FULL_GRID, useDotSequence,
 } from './CalibrationOverlay';
 import type { ValidationResult } from './CalibrationOverlay';
-import { FullscreenGate, Panel, fullscreenStats } from './FullScreen';
+import {
+  FullscreenGate, HeadStillNotice, Panel, fullscreenStats,
+} from './FullScreen';
 
 type Phase = 'intro' | 'running' | 'done';
 
@@ -72,8 +74,7 @@ function GazeFinalCheck({ setAnswer, advance }: StimulusParams<undefined>) {
       {phase === 'intro' && (
         <Panel title="Last accuracy check" actions={<Button size="lg" onClick={run}>Start</Button>}>
           Look at each dot. About 15 seconds.
-          <br />
-          <strong>Keep your head still.</strong>
+          <HeadStillNotice>Move only your eyes.</HeadStillNotice>
         </Panel>
       )}
       {phase === 'done' && <Panel title="Thank you" />}
