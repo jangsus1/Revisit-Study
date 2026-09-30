@@ -8,6 +8,7 @@ import HeadMovedPanel, { RecalibrateButton } from "./HeadMovedPanel";
 import { FullscreenGate, Panel } from "./FullScreen";
 import { Button } from "@mantine/core";
 import { usePlotScale } from "./plotScale";
+import { TASK_RESERVED, TASK_SIZE } from "./taskLayout";
 
 // Trial of the timing design (labels visible during [label_start, label_end) seconds after the click,
 // plot shown for `seconds`; label_start = label_end = seconds means never shown) with (1) a test-first
@@ -26,9 +27,11 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
   }), [plotMargin, labelSpace]);
 
   const dotPadding = 10;
-  const fixedSize = { width: 600 + 110, height: 600 };
-  // Shown larger than the 600-px design size (viewBox); the trial screen is a full-window overlay
-  const scale = usePlotScale(fixedSize.width, fixedSize.height, 40, 40);
+  // 710x600 frame (label strip + plot), must match taskLayout.ts (TASK_MARGIN = the margin above), where the
+  // calibration dots for the plot and labels are placed. Shown larger than the design size (viewBox); the
+  // trial screen is a full-window overlay.
+  const fixedSize = TASK_SIZE;
+  const scale = usePlotScale(fixedSize.width, fixedSize.height, TASK_RESERVED[0], TASK_RESERVED[1]);
 
   const ref = useRef(null);
   const { coordinates, example, seconds, label_seconds, label_start, label_end, correlation, label, X, Y, label_idx } = parameters;
@@ -43,7 +46,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
   const [labelsVisible, setLabelsVisible] = useState(false);
 
   // ---- gaze: short calibration before the plot, recording from the click (see trialGaze.jsx) ----
-  const tg = useTrialGaze({ active: view === "shortcalib", calibIndex: label_idx, onReady: () => setView("scatter"), view });
+  const tg = useTrialGaze({ active: view === "shortcalib", onReady: () => setView("scatter"), view });
   const { dot, collecting, message, fitting } = tg;
   const labelRevealAtRef = useRef(null);
   const labelHideAtRef = useRef(null);

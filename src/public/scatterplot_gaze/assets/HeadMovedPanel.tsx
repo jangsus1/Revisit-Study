@@ -27,7 +27,7 @@ export default function HeadMovedPanel({ onContinue }: { onContinue: () => void 
 
 /**
  * Small "my head moved" control for the between-plot screens (slider, feedback): the participant can ask
- * for a short recalibration, which the next trial's check then runs (5 dots) before the plot.
+ * for a short recalibration, which the next trial's check then runs (7 dots: plot centre, labels, plot quadrants) before the plot.
  */
 export function RecalibrateButton() {
   const [asked, setAsked] = useState(gazeTracker.userRecalRequested);

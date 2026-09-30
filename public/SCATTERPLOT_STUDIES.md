@@ -240,9 +240,29 @@ Licence (AGPL or free academic commercial licence) must be settled before data c
   the trial pauses on "You moved your head" (distance bar targets the calibration distance +-4 cm), then the check is
   repeated (`shortCalib.headWarning`, `headShiftBeforeWarningMm`, `checks.preBeforeWarning`).
 - **Participant-requested recalibration:** the slider and feedback screens have a small "Keep your head still.
-  Moved it? Recalibrate briefly" button; the next trial then runs 5 dots regardless of the error
+  Moved it? Recalibrate briefly" button; the next trial then runs 7 task dots and refits regardless of the error
   (`shortCalib.userRequested`, tier `'user'`).
 - **Head position over whole pages:** every Task 2 / Task 3 `gaze` row and the calibration rows carry `headTrace`
   (`[t_ms_since_page_mount, x_mm, y_mm, z_mm]`, <= 5 Hz, raw MediaPipe face origin) and `headMarks`
   (`[t_ms, screen]`: shortcalib / scatter / slider / feedback; calibration: intro / running:dots / running:pursuit /
-  running:fitting / done) to see where movement happens (e.g. right after the dots, on the slider).
+  running:fitting / done; pursuit removed 2026-09-30) to see where movement happens (e.g. right after the dots, on the slider).
+
+### Task-region calibration dots, 3-dot per-trial check, no pursuit (2026-09-30)
+
+- **`taskLayout.ts`** is the single source of the trial plot geometry (710x600 frame = 110 px y-label strip +
+  600 px plot, margin left 170, scaled by `plotScale(710, 600, 40, 40)`, centred) and turns design-space targets into
+  normalized screen positions at the current window size: `plot` (plot centre), `xLabel`, `yLabel`, `q1..q4` (plot
+  quadrant centres at 1/4 and 3/4 of the plot frame). Task 2 (`phase1_gaze`) now draws its plot in the same frame
+  (empty label strip), so both tasks put the plot at the same screen position; its feedback panel keeps 600x600.
+- **Full calibration / halfway / Task 3 recalibration:** 9 grid dots + 6 task dots (y label, 4 quadrants, x label),
+  1.8 s each, fitted on the "Calibrating…" screen. **Smooth pursuit dropped** from the study (still on the bench).
+  Validation unchanged (5 dots at centre / +-30 %). `calib[]` entries carry `target` for the task dots.
+- **Per-trial check (`trialGaze.jsx`, `shortCalib.method = 'task3'`):** 3 dots at the plot centre, x label and y
+  label (1.3 s each). Each dot measures the current error *and* collects calibration frames (deferred). Then
+  mean error <= 6 % of width -> `tier 'none'` (frames dropped via snapshot restore); <= 15 % with the three errors
+  pointing the same way (`spreadPx` <= 6 %) -> `'offset'` (drift offset = mean gaze - target, frames dropped);
+  otherwise `'refit'` (frames pooled and fitted, then a plot-centre re-check `checks.post`; reverted to the snapshot
+  and the drift offset tried if worse). "Recalibrate briefly" -> 7 dots (+ 4 quadrants), always refit (`'user'`).
+  `checks.pre` holds the 3 per-dot errors / offsets / traces (accuracy at the plot and labels before every trial);
+  `points` = `[nx, ny, target]`; `errorPx` = dots' mean error (or the re-check after a kept refit).
+- Bench: layout "15: 3x3 grid + 6 on the trial plot (study now)" is the default.

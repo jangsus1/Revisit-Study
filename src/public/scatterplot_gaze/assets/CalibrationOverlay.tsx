@@ -63,15 +63,74 @@ export const FULL_GRID: NormPoint[] = [-0.4, 0, 0.4].flatMap((ny) => [-0.4, 0, 0
 export const VALIDATION_POINTS: NormPoint[] = [
   { nx: 0, ny: 0 }, { nx: -0.3, ny: -0.3 }, { nx: 0.3, ny: -0.3 }, { nx: -0.3, ny: 0.3 }, { nx: 0.3, ny: 0.3 },
 ];
-// Eight outer grid points; a short calibration picks three of them, rotated per trial.
-const OUTER: NormPoint[] = [
-  { nx: -0.35, ny: -0.35 }, { nx: 0, ny: -0.35 }, { nx: 0.35, ny: -0.35 }, { nx: 0.35, ny: 0 },
-  { nx: 0.35, ny: 0.35 }, { nx: 0, ny: 0.35 }, { nx: -0.35, ny: 0.35 }, { nx: -0.35, ny: 0 },
-];
-export function shortCalibPoints(trialIndex: number, count = 3): NormPoint[] {
-  const start = ((trialIndex % 8) + 8) % 8;
-  const step = count >= 8 ? 1 : Math.max(1, Math.round(8 / count));
-  return Array.from({ length: Math.min(count, 8) }, (_, i) => OUTER[(start + i * step) % 8]);
+/** Mean of per-dot head poses (reference pose for head-shift checks). */
+export function meanPose(points: { pose: HeadPose | null }[]): HeadPose | null {
+  const ps = points.map((p) => p.pose).filter((p): p is HeadPose => !!p);
+  if (!ps.length) return null;
+  const m = (f: (p: HeadPose) => number, d: number) => Math.round((ps.reduce((a, p) => a + f(p), 0) / ps.length) * d) / d;
+  return {
+    origin: [m((p) => p.origin[0], 10), m((p) => p.origin[1], 10), m((p) => p.origin[2], 10)],
+    head: [m((p) => p.head[0], 1000), m((p) => p.head[1], 1000), m((p) => p.head[2], 1000)],
+    n: ps.reduce((a, p) => a + p.n, 0),
+  };
+}
+
+/**
+ * Measure the gaze error at `pt` over the next `collectMs` (no adaptation). Uses the raw (un-smoothed)
+ * estimate: the Kalman output lags large saccades by several hundred ms and would inflate the error right
+ * after a dot jump. Median of the most recent half of the window: robust to a late-arriving fixation.
+ */
+function measureAt(pt: NormPoint, dwellMs: number, collectMs: number): Promise<ValidationPoint> {
+  const [tx, ty] = normToPx(pt.nx, pt.ny);
+  return new Promise<ValidationPoint>((resolve) => {
+    const errors: number[] = [];
+    const dxs: number[] = [];
+    const dys: number[] = [];
+    const unsub = gazeTracker.onSample((s: GazeSample) => {
+      if (!s.open || !s.face) return;
+      const [gx, gy] = normToPx(s.rx, s.ry);
+      errors.push(Math.hypot(gx - tx, gy - ty));
+      dxs.push(gx - tx);
+      dys.push(gy - ty);
+    });
+    setTimeout(() => {
+      unsub();
+      const keep = Math.max(3, Math.floor(errors.length / 2));
+      const med = (arr: number[]) => {
+        const recent = arr.slice(-keep).sort((a, b) => a - b);
+        return recent.length ? recent[Math.floor(recent.length / 2)] : null;
+      };
+      const mdx = med(dxs);
+      const mdy = med(dys);
+      resolve({
+        ...pt,
+        n: errors.length,
+        errorPx: med(errors),
+        offsetPx: mdx === null || mdy === null ? null : [mdx, mdy],
+        dwellMs,
+        collectMs,
+        trace: [],
+        pose: null,
+      });
+    }, collectMs);
+  });
+}
+
+function summarize(out: ValidationPoint[]): ValidationResult {
+  const valid = out.filter((p) => p.errorPx !== null) as (ValidationPoint & { errorPx: number })[];
+  const meanErrorPx = valid.length ? valid.reduce((a, p) => a + p.errorPx, 0) / valid.length : null;
+  const withOff = out.filter((p) => p.offsetPx !== null) as (ValidationPoint & { offsetPx: [number, number] })[];
+  const meanOffsetPx: [number, number] | null = withOff.length
+    ? [withOff.reduce((a, p) => a + p.offsetPx[0], 0) / withOff.length, withOff.reduce((a, p) => a + p.offsetPx[1], 0) / withOff.length]
+    : null;
+  return {
+    points: out,
+    meanErrorPx,
+    meanErrorPctW: meanErrorPx === null ? null : meanErrorPx / window.innerWidth,
+    meanOffsetPx,
+    viewport: [window.innerWidth, window.innerHeight],
+    hz: gazeTracker.hz,
+  };
 }
 
 const sleep = (ms: number) => new Promise<void>((resolve) => { setTimeout(resolve, ms); });
@@ -196,6 +255,18 @@ export function useDotSequence() {
     };
   }, []);
 
+  /** Fit everything collected with defer=true on the "Calibrating…" rest screen (no dot on screen). */
+  const fitPending = useCallback(async () => {
+    setMessage('');
+    setFitting(true);
+    await nextPaint();
+    try {
+      return await gazeTracker.flushCalibration();
+    } finally {
+      setFitting(false);
+    }
+  }, []);
+
   /**
    * Show each point and collect eye samples during its last `collectMs` (optionally followed by
    * `pursuitMs` of smooth pursuit); the tracker adapts to all of it only afterwards, on a
@@ -223,22 +294,15 @@ export function useDotSequence() {
     setDot(null);
     setCollecting(false);
     const pursuit = pursuitMs > 0 && !cancelled.current ? await runPursuit(pursuitMs) : undefined;
-    setMessage('');
-    setFitting(true);
-    await nextPaint();
-    try {
-      const fit = await gazeTracker.flushCalibration();
-      const last = results[results.length - 1];
-      if (last) {
-        Object.assign(last, {
-          entries: fit.entries, distinctTargets: fit.distinctTargets, affineFitted: fit.affineFitted, fitMs: fit.fitMs, rows: fit.rows, pursuit,
-        });
-      }
-    } finally {
-      setFitting(false);
+    const fit = await fitPending();
+    const last = results[results.length - 1];
+    if (last) {
+      Object.assign(last, {
+        entries: fit.entries, distinctTargets: fit.distinctTargets, affineFitted: fit.affineFitted, fitMs: fit.fitMs, rows: fit.rows, pursuit,
+      });
     }
     return results;
-  }, [showDot, runPursuit]);
+  }, [showDot, runPursuit, fitPending]);
 
   /** Show each point; during the last `collectMs` measure the gaze error (no adaptation). */
   const runValidation = useCallback(async (
@@ -251,65 +315,50 @@ export function useDotSequence() {
     for (let i = 0; i < points.length; i += 1) {
       if (cancelled.current) break;
       setMessage(points.length > 1 ? `${label} (${i + 1} / ${points.length})` : label);
-      const [tx, ty] = normToPx(points[i].nx, points[i].ny);
       // eslint-disable-next-line no-await-in-loop
-      const r = await showDot(points[i], dwellMs, collectMs, () => new Promise<ValidationPoint>((resolve) => {
-        // Use the raw (affine-corrected, un-smoothed) estimate: the Kalman output lags large
-        // saccades by several hundred ms and would inflate the error right after a dot jump.
-        const errors: number[] = [];
-        const dxs: number[] = [];
-        const dys: number[] = [];
-        const unsub = gazeTracker.onSample((s: GazeSample) => {
-          if (!s.open || !s.face) return;
-          const [gx, gy] = normToPx(s.rx, s.ry);
-          errors.push(Math.hypot(gx - tx, gy - ty));
-          dxs.push(gx - tx);
-          dys.push(gy - ty);
-        });
-        setTimeout(() => {
-          unsub();
-          // Median of the most recent half of the window: robust to a late-arriving fixation
-          const keep = Math.max(3, Math.floor(errors.length / 2));
-          const med = (arr: number[]) => {
-            const recent = arr.slice(-keep).sort((a, b) => a - b);
-            return recent.length ? recent[Math.floor(recent.length / 2)] : null;
-          };
-          const median = med(errors);
-          const mdx = med(dxs);
-          const mdy = med(dys);
-          resolve({
-            ...points[i],
-            n: errors.length,
-            errorPx: median,
-            offsetPx: mdx === null || mdy === null ? null : [mdx, mdy],
-            dwellMs,
-            collectMs,
-            trace: [],
-            pose: null,
-          });
-        }, collectMs);
-      }));
+      const r = await showDot(points[i], dwellMs, collectMs, () => measureAt(points[i], dwellMs, collectMs));
       if (r) out.push({ ...(r.result as ValidationPoint), trace: r.trace, pose: r.pose });
     }
     setDot(null);
-    const valid = out.filter((p) => p.errorPx !== null) as (ValidationPoint & { errorPx: number })[];
-    const meanErrorPx = valid.length ? valid.reduce((a, p) => a + p.errorPx, 0) / valid.length : null;
-    const withOff = out.filter((p) => p.offsetPx !== null) as (ValidationPoint & { offsetPx: [number, number] })[];
-    const meanOffsetPx: [number, number] | null = withOff.length
-      ? [withOff.reduce((a, p) => a + p.offsetPx[0], 0) / withOff.length, withOff.reduce((a, p) => a + p.offsetPx[1], 0) / withOff.length]
-      : null;
-    return {
-      points: out,
-      meanErrorPx,
-      meanErrorPctW: meanErrorPx === null ? null : meanErrorPx / window.innerWidth,
-      meanOffsetPx,
-      viewport: [window.innerWidth, window.innerHeight],
-      hz: gazeTracker.hz,
-    };
+    return summarize(out);
+  }, [showDot]);
+
+  /**
+   * Per-trial task-dot check: at each dot, measure the error of the current model (as runValidation) and at
+   * the same time collect calibration frames (deferred, ptType 'click'). The caller then decides: drop the
+   * frames (snapshot restore), apply a drift offset, or fit them into the pooled calibration (fitPending).
+   */
+  const runTaskCheck = useCallback(async (
+    points: NormPoint[],
+    dwellMs = 1300,
+    collectMs = 700,
+    label = 'Look at each dot',
+  ): Promise<ValidationResult & { calib: CalibPointLog[] }> => {
+    const out: ValidationPoint[] = [];
+    const calib: CalibPointLog[] = [];
+    for (let i = 0; i < points.length; i += 1) {
+      if (cancelled.current) break;
+      setMessage(points.length > 1 ? `${label} (${i + 1} / ${points.length})` : label);
+      const pt = points[i];
+      // eslint-disable-next-line no-await-in-loop
+      const r = await showDot(pt, dwellMs, collectMs, () => Promise.all([
+        measureAt(pt, dwellMs, collectMs),
+        gazeTracker.calibrate(pt.nx, pt.ny, collectMs, 'click', true),
+      ]));
+      if (r) {
+        const [v, c] = r.result as [ValidationPoint, CalibResult];
+        out.push({ ...v, trace: r.trace, pose: r.pose });
+        calib.push({
+          ...c, ...pt, dwellMs, collectMs, trace: [], pose: r.pose,
+        });
+      }
+    }
+    setDot(null);
+    return { ...summarize(out), calib };
   }, [showDot]);
 
   return {
-    dot, collecting, message, setMessage, runCalibration, runValidation, fitting, pursuitOn, pursuitDotRef,
+    dot, collecting, message, setMessage, runCalibration, runValidation, runTaskCheck, fitPending, fitting, pursuitOn, pursuitDotRef,
   };
 }
 

@@ -98,7 +98,7 @@
                     "**12** scatterplots, each shown for **5 seconds** after you click it.",
                     "Estimate the correlation from **0** (none) to **1** (perfect), then see the correct answer.",
                     "From here on your **webcam estimates where you look**. Video never leaves your computer; nothing is recorded.",
-                    "Before each plot, look at the dot in the centre. **Keep your head still.**"
+                    "Before each plot, look at **3 dots**, one after another. **Keep your head still.**"
                 ],
                 "button": "Set up the camera",
                 "headStill": true,
@@ -118,7 +118,7 @@
                     "**2** examples, then **24** plots, each shown for **5 to 11 seconds**.",
                     "The axis labels may appear at any time, and may blur again.",
                     "Estimate the correlation from **0** to **1**.",
-                    "Before each plot, look at the centre dot. **Keep your head still.**"
+                    "Before each plot, look at the **3 dots**. **Keep your head still.**"
                 ],
                 "button": "Recalibrate",
                 "headStill": true,
@@ -136,7 +136,7 @@
                 "title": "2 example tasks",
                 "bullets": [
                     "The **24** main tasks follow right away.",
-                    "Look at the centre dot, then click the plot to start."
+                    "Look at the 3 dots, then click the plot to start."
                 ],
                 "button": "Start the examples",
                 "headStill": true

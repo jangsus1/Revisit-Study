@@ -4,6 +4,7 @@ import { Box, Button } from "@mantine/core"
 import React from "react"
 import { NormalSlider } from "./Slider"
 import { usePlotScale } from "./plotScale";
+import { TASK_MARGIN, TASK_RESERVED, TASK_SIZE } from "./taskLayout";
 import { CalibrationOverlay } from "./CalibrationOverlay";
 import { FullscreenGate, Panel } from "./FullScreen";
 import { useTrialGaze } from "./trialGaze";
@@ -18,22 +19,22 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
   const ref = useRef(null)
   const { coordinates, example, correlation, seconds, label_seconds } = parameters
   
-  // Margins for axes
-  const margin = { top: 40, right: 40, bottom: 60, left: 60 }
+  const [view, setView] = useState("shortcalib") // shortcalib, scatter, slider, feedback
+  // While viewing, the plot uses the Task 3 frame (taskLayout.ts: 110-px empty label strip on the left), so it
+  // sits at the same screen position as the Task 3 plots and under the per-trial calibration dots. The
+  // feedback screen keeps the plain 600x600 plot.
+  const taskFrame = view !== "feedback"
+  const margin = taskFrame ? TASK_MARGIN : { top: 40, right: 40, bottom: 60, left: 60 }
   const dotPadding = 10 // Padding around dots
-  
-  // Fixed size for everything
-  const fixedSize = { width: 600, height: 600 }
-  // Shown larger than the 600-px design size (viewBox): full window while viewing, inside the platform
-  // layout (header, padding, feedback text) on the feedback screen
-  const scatterScale = usePlotScale(fixedSize.width, fixedSize.height, 40, 40)
-  // feedback screen: plot + result lines + button in one window (may shrink below the design size)
-  const layoutScale = usePlotScale(fixedSize.width, fixedSize.height, 80, 300, 1.2, 0.7)
+  const fixedSize = taskFrame ? TASK_SIZE : { width: 600, height: 600 }
+  // Shown larger than the design size (viewBox): full window while viewing, inside the feedback panel
+  // (plot + result lines + button in one window, may shrink below the design size) afterwards
+  const scatterScale = usePlotScale(TASK_SIZE.width, TASK_SIZE.height, TASK_RESERVED[0], TASK_RESERVED[1])
+  const layoutScale = usePlotScale(600, 600, 80, 300, 1.2, 0.7)
   const [answered, setAnswered] = useState(false)
 
-  const [view, setView] = useState("shortcalib") // shortcalib, scatter, slider, feedback
   const scale = view === "scatter" ? scatterScale : layoutScale
-  const tg = useTrialGaze({ active: view === "shortcalib", calibIndex: Math.round((correlation ?? 0) * 100), onReady: () => setView("scatter"), view })
+  const tg = useTrialGaze({ active: view === "shortcalib", onReady: () => setView("scatter"), view })
   const { payload } = tg
   const geometryRef = useRef(null)
   const [slider, setSlider] = useState(0)

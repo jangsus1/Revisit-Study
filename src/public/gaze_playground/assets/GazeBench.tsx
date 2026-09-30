@@ -18,6 +18,7 @@ import { GazeTracker, gazeTracker, normToPx } from '../../scatterplot_gaze/asset
 import {
   CalibrationOverlay, FULL_GRID, PURSUIT_LAG_MS, PURSUIT_MS, PURSUIT_SKIP_MS, VALIDATION_POINTS, animatePursuit, lissajous, nextPaint,
 } from '../../scatterplot_gaze/assets/CalibrationOverlay';
+import { taskCalibPoints } from '../../scatterplot_gaze/assets/taskLayout';
 import type { NormPoint } from '../../scatterplot_gaze/assets/CalibrationOverlay';
 import { PositionGuide } from '../../scatterplot_gaze/assets/PositionGuide';
 import type { DistanceFeed } from '../../scatterplot_gaze/assets/PositionGuide';
@@ -38,7 +39,12 @@ const g = (xs: number[], ys: number[]) => ys.flatMap((ny) => xs.map((nx) => ({ n
 // Task region = plot + axis labels of the scatterplot_gaze trial, measured on the 1512x862 pilot
 // (plot x -0.12..0.21, y -0.30..0.28 of the viewport; y label at x -0.22..-0.12; x label at y ~0.31).
 const PATTERNS: Record<string, { label: string; points: NormPoint[] }> = {
-  grid9: { label: '9: 3x3 grid at 10/50/90 % (study now)', points: FULL_GRID },
+  study15: {
+    label: '15: 3x3 grid + 6 on the trial plot (study now)',
+    // y label, 4 plot quadrants, x label at the current window size (scatterplot_gaze taskLayout.ts)
+    get points() { return [...FULL_GRID, ...taskCalibPoints()]; },
+  },
+  grid9: { label: '9: 3x3 grid at 10/50/90 %', points: FULL_GRID },
   grid13: { label: '13: 3x3 grid + 4 inner points', points: [...FULL_GRID, ...g([-0.2, 0.2], [-0.2, 0.2])] },
   grid17: { label: '17: 4x4 grid at 5/35/65/95 % + centre (RealEye)', points: [...g([-0.45, -0.15, 0.15, 0.45], [-0.45, -0.15, 0.15, 0.45]), { nx: 0, ny: 0 }] },
   task13: { label: '13: 3x3 over the plot + labels, 4 outer corners', points: [...g([-0.2, 0, 0.2], [-0.3, 0, 0.3]), ...g([-0.42, 0.42], [-0.42, 0.42])] },
@@ -89,7 +95,7 @@ function GazeBench({ setAnswer }: StimulusParams<Record<string, never>>) {
   const [collecting, setCollecting] = useState(false);
   const [message, setMessage] = useState('');
   const [showLive, setShowLive] = useState(true);
-  const [pattern, setPattern] = useState('grid9');
+  const [pattern, setPattern] = useState('study15');
   const [method, setMethod] = useState<Method>('dots');
   const [pursuitOn, setPursuitOn] = useState(false);
   const [relax, setRelax] = useState(false);

@@ -197,19 +197,19 @@ def create_default_components(fail_link):
             ["**12** scatterplots, each shown for **5 seconds** after you click it.",
              "Estimate the correlation from **0** (none) to **1** (perfect), then see the correct answer.",
              "From here on your **webcam estimates where you look**. Video never leaves your computer; nothing is recorded.",
-             "Before each plot, look at the dot in the centre. **Keep your head still.**"],
+             "Before each plot, look at **3 dots**, one after another. **Keep your head still.**"],
             image="scatterplot_gaze/assets/phase1.png", button="Set up the camera", head_still=True),
         "phase2_intro": intro_page(
             "Task 3 of 3", "Scatterplots with labels",
             ["**2** examples, then **24** plots, each shown for **5 to 11 seconds**.",
              "The axis labels may appear at any time, and may blur again.",
              "Estimate the correlation from **0** to **1**.",
-             "Before each plot, look at the centre dot. **Keep your head still.**"],
+             "Before each plot, look at the **3 dots**. **Keep your head still.**"],
             image="scatterplot_gaze/assets/phase2.png", button="Recalibrate", head_still=True),
         "phase2_examples": intro_page(
             "Task 3 of 3", "2 example tasks",
             ["The **24** main tasks follow right away.",
-             "Look at the centre dot, then click the plot to start."],
+             "Look at the 3 dots, then click the plot to start."],
             button="Start the examples", head_still=True),
         "attentionCheck": {
             # Reading text + four comprehension questions on one page. reVISit training mode:
@@ -683,7 +683,7 @@ def sequence_generator(phase1_components, phase2_components, phase2_example_comp
                 break
         else:
             raise RuntimeError(f"could not separate pairs in scheme {si}")
-        # halfway recalibration (dots + pursuit, pooled with the first calibration) after trial 12
+        # halfway recalibration (9 grid + 6 task dots, pooled with the first calibration) after trial 12
         order = order[:12] + ["gazeRecalibration"] + order[12:]
         schemes.append({"id": f"scheme_{si}", "order": "fixed", "components": order})
 
@@ -771,7 +771,7 @@ def create_gaze_components(fail_link):
             "nextButtonLocation": "belowStimulus"
         },
         "gazeRecalibration": {
-            # after trial 12 of 24: one more dots + pursuit calibration, pooled with the first
+            # after trial 12 of 24: one more 15-dot calibration, pooled with the first
             # (Saxena et al., 2024: pooling calibrations over the session beats the first one alone)
             "type": "react-component",
             "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
@@ -781,7 +781,7 @@ def create_gaze_components(fail_link):
             "nextButtonLocation": "belowStimulus"
         },
         "gazeRecalibrationTask3": {
-            # before Task 3 (after the intro page): dots + pursuit, pooled with the earlier calibration
+            # before Task 3 (after the intro page): 15 dots, pooled with the earlier calibration
             "type": "react-component",
             "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
             "parameters": {"mode": "recalibrate", "acceptPctW": 0.08, "title": "Short recalibration"},
