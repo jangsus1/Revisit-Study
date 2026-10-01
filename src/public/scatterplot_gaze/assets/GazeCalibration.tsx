@@ -1,5 +1,7 @@
 import { Button } from '@mantine/core';
-import { useCallback, useEffect, useState } from 'react';
+import {
+  useCallback, useEffect, useRef, useState,
+} from 'react';
 import { StimulusParams } from '../../../store/types';
 import { gazeTracker } from './gazeTracker';
 import type { HeadPose } from './gazeTracker';
@@ -47,7 +49,13 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
   // head position over the whole page, marked by screen (incl. right after the dots / while fitting)
   const headLog = useHeadTrace(`${phase}${fitting ? ':fitting' : ''}${dot ? ':dots' : ''}`);
 
-  const last = attempts[attempts.length - 1];
+  // The model in use at the end is the best-validated attempt (a later, worse attempt no longer replaces a
+  // better one; 2026-09-30). usedIdx = index of that attempt; `last` below is that attempt.
+  const [usedIdx, setUsedIdx] = useState<number | null>(null);
+  const [rolledBack, setRolledBack] = useState(false);
+  const attemptsRef = useRef<Attempt[]>([]);
+  const bestRef = useRef<{ idx: number; err: number; state: unknown; offset: [number, number] } | null>(null);
+  const last = attempts[usedIdx ?? attempts.length - 1];
   const accepted = last?.meanErrorPctW !== null && last?.meanErrorPctW !== undefined && last.meanErrorPctW <= acceptPctW;
 
   // Block Next until the calibration procedure has finished (accepted or attempts exhausted)
@@ -65,6 +73,8 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
     };
     if (finished) {
       if (recal) gazeTracker.midCalib = summary; else gazeTracker.fullCalib = summary;
+      // a "Recalibrate briefly" request is served by this calibration
+      gazeTracker.userRecalRequested = false;
       // head-shift reference = pose at the latest full calibration
       gazeTracker.calibHead = last?.head ?? gazeTracker.calibHead ?? null;
     }
@@ -79,6 +89,10 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
           dpr: window.devicePixelRatio,
           inferenceHz: Math.round(gazeTracker.hz * 10) / 10,
           perAttempt: attempts,
+          usedAttempt: usedIdx === null ? null : usedIdx + 1,
+          rolledBack,
+          frameErrors: gazeTracker.frameErrors,
+          cameraLostCount: gazeTracker.cameraLostCount,
           ...headLog(),
           trackerError: error,
           device: gazeTracker.device,
@@ -87,7 +101,7 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
         }),
       },
     });
-  }, [phase, attempts, accepted, last, setAnswer, acceptPctW, error, headLog]);
+  }, [phase, attempts, accepted, last, setAnswer, acceptPctW, error, headLog, usedIdx, rolledBack]);
 
   // Camera is normally already on (webcamPermission page); start it here otherwise so the guide has video
   useEffect(() => { gazeTracker.init().catch(() => {}); }, []);
@@ -110,8 +124,37 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
     };
     setPhase('running');
     setError(null);
+    const idx = attemptsRef.current.length;
+    let before: { state: unknown; offset: [number, number] } | null = null;
+    const finish = (result: Attempt) => {
+      const next = [...attemptsRef.current, result];
+      attemptsRef.current = next;
+      const err = result.meanErrorPx;
+      if (!recal && err !== null && (!bestRef.current || err < bestRef.current.err)) {
+        bestRef.current = {
+          idx, err, state: gazeTracker.getCalibState(), offset: [...gazeTracker.offset] as [number, number],
+        };
+      }
+      const ok = result.meanErrorPctW !== null && result.meanErrorPctW <= acceptPctW;
+      const done = ok || next.length >= maxAttempts;
+      let used = idx;
+      if (done && !recal && bestRef.current && bestRef.current.idx !== idx) {
+        // keep the best attempt's model, not the last one
+        gazeTracker.setCalibState(bestRef.current.state, bestRef.current.offset);
+        used = bestRef.current.idx;
+      }
+      if (done && recal && err === null && before) {
+        // the halfway recalibration produced nothing usable: go back to the model before it
+        gazeTracker.setCalibState(before.state, before.offset);
+        setRolledBack(true);
+      }
+      setAttempts(next);
+      setUsedIdx(used);
+      setPhase(done ? 'done' : 'retry');
+    };
     try {
       await gazeTracker.init();
+      if (recal) before = { state: gazeTracker.getCalibState(), offset: [...gazeTracker.offset] as [number, number] };
       // Full calibration starts from scratch; the halfway one adds to (pools with) what is there. Either
       // way the drift offset goes: the refit maps raw estimates straight onto the targets.
       if (recal) await gazeTracker.setOffsetPx(0, 0); else await gazeTracker.resetCalibration();
@@ -119,22 +162,13 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
       // 9 grid dots + 6 task-region dots; the tracker fits all of it on the "Calibrating…" screen
       const calib = await runCalibration([...FULL_GRID, ...taskCalibPoints()], 'calib', 1800, 1000);
       const validation = await runValidation(VALIDATION_POINTS, 1500, 800, 'Checking accuracy');
-      const result: Attempt = {
+      finish({
         ...validation, calib, head: meanPose(validation.points), position,
-      };
-      setAttempts((prev) => {
-        const next = [...prev, result];
-        const ok = result.meanErrorPctW !== null && result.meanErrorPctW <= acceptPctW;
-        setPhase(ok || next.length >= maxAttempts ? 'done' : 'retry');
-        return next;
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setAttempts((prev) => {
-        setPhase(prev.length + 1 >= maxAttempts ? 'done' : 'retry');
-        return [...prev, {
-          points: [], meanErrorPx: null, meanErrorPctW: null, meanOffsetPx: null, viewport: [window.innerWidth, window.innerHeight], hz: 0, position,
-        }];
+      finish({
+        points: [], meanErrorPx: null, meanErrorPctW: null, meanOffsetPx: null, viewport: [window.innerWidth, window.innerHeight], hz: 0, position,
       });
     }
   }, [acceptPctW, maxAttempts, runCalibration, runValidation, setMessage, pos, guideSince, recal]);

@@ -125,7 +125,8 @@ export function DeviceWarning({
   }
 
   return (
-    <Modal opened onClose={() => {}} fullScreen withCloseButton={false}>
+    // zIndex above study overlays (scatterplot_gaze full-window panels use 2000-5000) so the countdown is never hidden
+    <Modal opened onClose={() => {}} fullScreen withCloseButton={false} zIndex={6000}>
       <Stack align="center" justify="center">
         <IconAlertTriangle size={64} color="orange" />
         <Title order={3}>{warningTitle}</Title>

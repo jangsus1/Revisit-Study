@@ -8,7 +8,7 @@ import { TASK_MARGIN, TASK_RESERVED, TASK_SIZE } from "./taskLayout";
 import { CalibrationOverlay } from "./CalibrationOverlay";
 import { FullscreenGate, Panel } from "./FullScreen";
 import { useTrialGaze } from "./trialGaze";
-import HeadMovedPanel, { RecalibrateButton } from "./HeadMovedPanel";
+import HeadMovedPanel, { RecalibrateButton, SetupAgainPanel } from "./HeadMovedPanel";
 
 // Task 2 (training, unlabeled plots) with eye tracking: the same per-trial short calibration and gaze
 // recording as the Task 3 trials (trialGaze.jsx), so Task 2 gives a no-label gaze baseline. The plot is
@@ -208,7 +208,8 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
   return (
     <div>
       <FullscreenGate />
-      {tg.headWarning && <HeadMovedPanel onContinue={tg.resume} />}
+      {tg.headWarning && <HeadMovedPanel kind={tg.headWarning} onContinue={tg.resume} />}
+      {tg.setupNeeded && <SetupAgainPanel onStart={tg.resume} />}
       {view === "shortcalib" && (
         <CalibrationOverlay dot={tg.dot} collecting={tg.collecting} message={tg.message} fitting={tg.fitting} />
       )}
@@ -216,7 +217,7 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
         // Full-viewport plain screen (hides the platform header / Next), same frame as the dots
         <div style={{
           position: "fixed", inset: 0, zIndex: 2000, background: "#ffffff",
-          display: "flex", justifyContent: "center", alignItems: "center"
+          display: "flex", justifyContent: "center", alignItems: "center", cursor: isBlurred ? "pointer" : "none"
         }}>
           <div 
             style={{ 
@@ -233,8 +234,7 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
               style={{ 
                 display: 'block', 
                 filter: isBlurred ? 'blur(50px)' : 'none',
-                transition: 'filter 0.1s',
-                cursor: isBlurred ? 'pointer' : 'default'
+                cursor: isBlurred ? 'pointer' : 'none'
               }}
               onClick={handleClick}
             />
@@ -275,6 +275,7 @@ function Phase1Gaze({ parameters, setAnswer, advance }) {
                 setSlider(value);
                 setSliderInteracted(true);
               }}
+              onClick={() => setSliderInteracted(true)}
               leftLabel="None (0)"
               rightLabel="Perfect (1)"
               min={0}

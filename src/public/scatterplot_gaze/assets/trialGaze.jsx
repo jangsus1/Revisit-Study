@@ -20,14 +20,20 @@
  * If the dots find the head >= HEAD_WARN_MM away from its calibration position, the trial pauses on a
  * "You moved your head" screen (headWarning; the trial renders it with HeadMovedPanel) and the dots are
  * repeated after Continue; logged as shortCalib.headWarning / checks.preBeforeWarning.
+ * If the dots give no usable samples (face lost / eyes closed), the same pause is shown once ("We lost your face";
+ * shortCalib.noFaceWarning) and the dots are repeated.
+ * After a page reload the tracker has no model: the trial first asks for and runs the 15-dot calibration
+ * (shortCalib.reloadCalibration), so the remaining trials are not recorded uncalibrated.
+ * Head shift is compared in lens-corrected mm (x distanceScale), the same scale as the on-screen guide.
  * Samples: [t_ms_since_click, x_px, y_px, open01, raw_x_px, raw_y_px, face_x_mm, face_y_mm, face_z_mm]
  * (x/y Kalman-smoothed, raw unsmoothed; face_* = 3D face origin in the camera frame, z = distance).
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { gazeTracker, normToPx, headShiftMm } from "./gazeTracker";
-import { meanPose, useDotSequence } from "./CalibrationOverlay";
+import { FULL_GRID, meanPose, useDotSequence } from "./CalibrationOverlay";
+import { fullscreenStats } from "./FullScreen";
 import { useHeadTrace } from "./headTrace";
-import { taskPoint, trialCheckPoints } from "./taskLayout";
+import { taskCalibPoints, taskPoint, trialCheckPoints } from "./taskLayout";
 
 export const HEAD_WARN_MM = 40;
 
@@ -35,11 +41,13 @@ const round2 = (v) => (v ? [Math.round(v[0]), Math.round(v[1])] : null);
 
 export function useTrialGaze({ active, onReady, view }) {
   const headLog = useHeadTrace(view);
-  const [headWarning, setHeadWarning] = useState(false);
+  const [headWarning, setHeadWarning] = useState(false);   // false | "moved" | "noFace"
+  const [setupNeeded, setSetupNeeded] = useState(false);
   const resumeRef = useRef(null);
   const resume = useCallback(() => { resumeRef.current?.(); }, []);
   const seq = useDotSequence();
-  const { runTaskCheck, runValidation, fitPending } = seq;
+  const { runTaskCheck, runValidation, fitPending, runCalibration, setMessage } = seq;
+  const fsExitsAtMount = useRef(fullscreenStats.exits);
   const shortCalibRef = useRef(null);
   const samplesRef = useRef([]);
   const startAtRef = useRef(null);
@@ -81,27 +89,60 @@ export function useTrialGaze({ active, onReady, view }) {
       const DWELL = 1000;
       const COLLECT = 500;
       const GAIN = 0.5;   // share of the measured drift corrected by the offset
+      let snapshotTaken = false;
+      const pause = async (kind) => {
+        setHeadWarning(kind);
+        await new Promise((r) => { resumeRef.current = r; });
+        resumeRef.current = null;
+        setHeadWarning(false);
+      };
       try {
+        setMessage("Starting the camera…");
         await gazeTracker.init();
+        setMessage("");
+        if (!gazeTracker.calibrated) {
+          // page reloaded (or no calibration succeeded): calibrate before measuring anything
+          setSetupNeeded(true);
+          await new Promise((r) => { resumeRef.current = r; });
+          resumeRef.current = null;
+          setSetupNeeded(false);
+          const calib = await runCalibration([...FULL_GRID, ...taskCalibPoints()], "calib", 1800, 1000);
+          const last = calib[calib.length - 1];
+          result.reloadCalibration = { dots: calib.length, fitMs: last?.fitMs ?? null, calibrated: gazeTracker.calibrated };
+          gazeTracker.calibHead = meanPose(calib) ?? gazeTracker.calibHead;
+        }
         const off0 = gazeTracker.offsetPx;
         result.offsetBeforePx = round2(off0);
         // snapshot first: restoring it drops the frames collected at the dots (and any refit / offset)
         await gazeTracker.snapshotCalibration();
+        snapshotTaken = true;
+        // head shift in lens-corrected mm (raw MediaPipe origin x distanceScale), as in the position guide
+        const shiftOf = (check) => {
+          const raw = headShiftMm(meanPose(check.points), gazeTracker.calibHead);
+          return raw === null ? null : Math.round(raw * gazeTracker.distanceScale);
+        };
         let pre = await runTaskCheck(points, DWELL, COLLECT, msg);
-        let shift = headShiftMm(meanPose(pre.points), gazeTracker.calibHead);
+        let shift = shiftOf(pre);
         if (shift !== null && shift >= HEAD_WARN_MM) {
           // Clear warning, back to the calibration position, then the dots again
           await gazeTracker.restoreCalibration();
           result.headWarning = true;
           result.checks.preBeforeWarning = pre;
           result.headShiftBeforeWarningMm = shift;
-          setHeadWarning(true);
-          await new Promise((r) => { resumeRef.current = r; });
-          resumeRef.current = null;
-          setHeadWarning(false);
+          await pause("moved");
           await gazeTracker.snapshotCalibration();
           pre = await runTaskCheck(points, DWELL, COLLECT, msg);
-          shift = headShiftMm(meanPose(pre.points), gazeTracker.calibHead);
+          shift = shiftOf(pre);
+        }
+        if (pre.meanErrorPx === null) {
+          // no usable samples at any dot (face lost, eyes closed): ask once, then repeat the dots
+          await gazeTracker.restoreCalibration();
+          result.noFaceWarning = true;
+          result.checks.preBeforeNoFace = pre;
+          await pause("noFace");
+          await gazeTracker.snapshotCalibration();
+          pre = await runTaskCheck(points, DWELL, COLLECT, msg);
+          shift = shiftOf(pre);
         }
         result.checks.pre = pre;
         result.head = meanPose(pre.points);
@@ -152,11 +193,13 @@ export function useTrialGaze({ active, onReady, view }) {
         gazeTracker.lastTrialErrorPx = result.errorPx;
       } catch (err) {
         result.error = err instanceof Error ? err.message : String(err);
+        // leave the calibration as it was before this check (no half-applied refit / lost drift offset)
+        if (snapshotTaken) await gazeTracker.restoreCalibration().catch(() => undefined);
       }
       shortCalibRef.current = { ...result, fullCalibPresent, hz: Math.round(gazeTracker.hz * 10) / 10 };
       if (mountedRef.current) onReadyRef.current?.();
     })();
-  }, [active, runTaskCheck, runValidation, fitPending]);
+  }, [active, runTaskCheck, runValidation, fitPending, runCalibration, setMessage]);
 
   const stop = useCallback(() => {
     if (unsubRef.current) { unsubRef.current(); unsubRef.current = null; }
@@ -198,12 +241,18 @@ export function useTrialGaze({ active, onReady, view }) {
       device: gazeTracker.device,
       hz: samples.length > 1 ? Math.round((samples.length - 1) * 1000 / Math.max(1, durationMs) * 10) / 10 : 0,
       hidden: hiddenEventsRef.current,
+      // full-screen exits on this page (the plot keeps running behind the "return to full screen" screen)
+      fullscreenExits: fullscreenStats.exits - fsExitsAtMount.current,
+      fullscreenNow: !!document.fullscreenElement,
+      frameErrors: gazeTracker.frameErrors,
+      cameraLostCount: gazeTracker.cameraLostCount,
+      userRecalCount: gazeTracker.userRecalCount,
       ...headLog(),
       samples,
     };
   }, [headLog]);
 
   return {
-    ...seq, start, stop, payload, startAtRef, headWarning, resume,
+    ...seq, start, stop, payload, startAtRef, headWarning, resume, setupNeeded,
   };
 }

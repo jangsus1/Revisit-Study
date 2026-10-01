@@ -23,6 +23,10 @@ type Backend = {
   setOffset(dx: number, dy: number): Promise<{ offset: [number, number] }>;
   resetCalib(): Promise<void>;
   dispose(): void;
+  hasFit?(): boolean;
+  getState?(): unknown;
+  setState?(st: unknown): void;
+  frameErrors?: number;
 };
 
 export type GazeSample = {
@@ -192,8 +196,58 @@ export class GazeTracker {
     }
     this.proxy.onGazeResults = (r: SlimGazeResult) => this.handleResult(r);
     await this.proxy.start();
+    this.watchTrack();
     this.state = 'ready';
     this.notify();
+  }
+
+  /**
+   * The camera stream ended (unplugged, permission revoked, OS camera switch): frames stop for good.
+   * FullscreenGate shows a "camera stopped" screen; restartCamera() reopens it and keeps the calibration.
+   */
+  cameraLost = false;
+
+  cameraLostCount = 0;
+
+  private watchTrack() {
+    this.getStream()?.getVideoTracks().forEach((track) => {
+      track.addEventListener('ended', () => {
+        if (this.state !== 'ready') return;
+        this.cameraLost = true;
+        this.cameraLostCount += 1;
+        this.notify();
+      }, { once: true });
+    });
+  }
+
+  async restartCamera(): Promise<void> {
+    if (!this.cam) throw new Error('tracker not started');
+    this.cam.stopWebcam();
+    await this.cam.startWebcam();
+    this.watchTrack();
+    this.cameraLost = false;
+    this.notify();
+  }
+
+  /** A gaze model has been fitted in this page session (false after a reload until a calibration runs). */
+  get calibrated(): boolean {
+    return this.proxy?.hasFit?.() ?? false;
+  }
+
+  /** Frames whose processing threw (camera loop + feature extraction), for the data. */
+  get frameErrors(): number {
+    return (this.cam?.frameErrors ?? 0) + (this.proxy?.frameErrors ?? 0);
+  }
+
+  /** Whole calibration state (keep the best calibration attempt); undefined for engines without it. */
+  getCalibState(): unknown {
+    return this.proxy?.getState?.();
+  }
+
+  setCalibState(st: unknown, offset: [number, number]): void {
+    if (st === undefined || !this.proxy?.setState) return;
+    this.proxy.setState(st);
+    this.offset = offset;
   }
 
   private handleResult(r: SlimGazeResult) {
@@ -212,7 +266,9 @@ export class GazeTracker {
     this.sampleCount += 1;
     this.recentTimes.push(r.capturedAt);
     if (this.recentTimes.length > 60) this.recentTimes.shift();
-    this.listeners.forEach((fn) => fn(sample));
+    this.listeners.forEach((fn) => {
+      try { fn(sample); } catch (err) { console.warn('[gazeTracker] listener', err); }
+    });
   }
 
   /** Approximate current sampling rate in Hz over the last ~60 frames. */
@@ -310,6 +366,7 @@ export class GazeTracker {
   }
 
   stop(): void {
+    this.cameraLost = false;
     this.teardown();
     this.state = 'idle';
     this.initPromise = undefined;

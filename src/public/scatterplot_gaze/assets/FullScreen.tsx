@@ -14,6 +14,7 @@ import {
 } from 'react';
 import { StimulusParams } from '../../../store/types';
 import { StudyProgress } from './StudyProgress';
+import { gazeTracker } from './gazeTracker';
 
 export const canFullscreen = () => typeof document !== 'undefined' && typeof document.documentElement?.requestFullscreen === 'function';
 export const isFullscreen = () => !canFullscreen() || !!document.fullscreenElement;
@@ -85,8 +86,42 @@ export function HeadStillNotice({ children }: { children?: ReactNode }) {
   );
 }
 
+/** Re-render when the tracker's state changes (camera lost / restarted). */
+function useTrackerState() {
+  const [, bump] = useState(0);
+  useEffect(() => gazeTracker.onStateChange(() => bump((n) => n + 1)), []);
+  return gazeTracker;
+}
+
+/** "The camera stopped" screen (the stream ended: unplugged, permission revoked, camera switched off). */
+function CameraLostPanel() {
+  const [busy, setBusy] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const retry = () => {
+    setBusy(true);
+    setFailed(false);
+    gazeTracker.restartCamera().catch(() => setFailed(true)).finally(() => setBusy(false));
+  };
+  return (
+    <Panel
+      zIndex={5500}
+      title="The camera stopped"
+      actions={<Button size="lg" loading={busy} onClick={retry}>Turn the camera back on</Button>}
+    >
+      Please allow the camera again and keep your head where it was.
+      {failed && (
+        <div style={{ fontSize: 15, color: '#c92a2a', marginTop: 10 }}>
+          The camera could not be started. Close other apps that use it and try again.
+        </div>
+      )}
+    </Panel>
+  );
+}
+
 export function FullscreenGate() {
   const fs = useFullscreen();
+  const tracker = useTrackerState();
+  if (tracker.cameraLost) return <CameraLostPanel />;
   if (fs) return null;
   return (
     <Panel

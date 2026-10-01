@@ -6,9 +6,10 @@
  */
 import { Button, Loader } from '@mantine/core';
 import {
-  useCallback, useEffect, useRef, useState,
+  useCallback, useEffect, useRef, useState, ReactNode, MouseEvent,
 } from 'react';
 import { StimulusParams } from '../../../store/types';
+import { useStorageEngine } from '../../../storage/storageEngineHooks';
 import { gazeTracker } from './gazeTracker';
 import { PositionGuide } from './PositionGuide';
 import type { PositionState } from './PositionGuide';
@@ -21,6 +22,26 @@ import type { CardResult } from './DeviceCheck';
 type Params = { failLink?: string };
 
 const OVERRIDE_MS = 30000;
+// No way forward without a camera / face: after this long, offer the Prolific screen-out
+const STUCK_MS = 60000;
+const STARTING_SLOW_MS = 30000;
+
+/**
+ * Screen-out link: rejects the participant in reVISit first (frees their Latin-square row for the next
+ * participant), then goes to Prolific with the screen-out code.
+ */
+export function ScreenOutLink({ href, reason, children }: { href: string; reason: string; children: ReactNode }) {
+  const { storageEngine } = useStorageEngine();
+  const go = (e: MouseEvent) => {
+    e.preventDefault();
+    const leave = () => { window.location.href = href; };
+    const t = setTimeout(leave, 3000);   // never wait long for the storage call
+    (storageEngine?.rejectCurrentParticipant(reason) ?? Promise.resolve())
+      .catch(() => undefined)
+      .finally(() => { clearTimeout(t); leave(); });
+  };
+  return <a href={href} onClick={go}>{children}</a>;
+}
 
 function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Params>) {
   const [, bump] = useState(0);
@@ -32,6 +53,8 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
   const posAtContinue = useRef<PositionState | null>(null);
   const readySince = useRef<number | null>(null);
   const submitted = useRef(false);
+  const [stuck, setStuck] = useState(false);          // position step, no face for STUCK_MS
+  const [slowStart, setSlowStart] = useState(false);  // camera still starting after STARTING_SLOW_MS
 
   useEffect(() => gazeTracker.onStateChange(() => bump((n) => n + 1)), []);
   const { state, error } = gazeTracker;
@@ -47,6 +70,18 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
     };
     setStep('position');
   };
+
+  useEffect(() => {
+    if (state !== 'starting') { setSlowStart(false); return undefined; }
+    const t = setTimeout(() => setSlowStart(true), STARTING_SLOW_MS);
+    return () => clearTimeout(t);
+  }, [state]);
+
+  useEffect(() => {
+    if (state !== 'ready' || step !== 'position' || faceSeen) { setStuck(false); return undefined; }
+    const t = setTimeout(() => setStuck(true), STUCK_MS);
+    return () => clearTimeout(t);
+  }, [state, step, faceSeen]);
 
   useEffect(() => {
     if (state !== 'ready' || step !== 'position') return undefined;
@@ -114,7 +149,23 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
       </Panel>
     );
   } else if (state === 'starting') {
-    body = <Panel title="Camera"><Loader /></Panel>;
+    body = (
+      <Panel title="Camera">
+        <Loader />
+        {slowStart && (
+          <div style={{ fontSize: 15, marginTop: 14 }}>
+            This is taking long. Check that no other app uses the camera, then reload this page.
+            {parameters?.failLink && (
+              <div style={{ marginTop: 8 }}>
+                Still not working?
+                {' '}
+                <ScreenOutLink href={parameters.failLink} reason="Camera did not start">Leave the study (Prolific)</ScreenOutLink>
+              </div>
+            )}
+          </div>
+        )}
+      </Panel>
+    );
   } else if (state === 'error') {
     body = (
       <Panel
@@ -126,7 +177,7 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
           <div style={{ fontSize: 15, marginTop: 10 }}>
             No camera?
             {' '}
-            <a href={parameters.failLink}>Return the study on Prolific</a>
+            <ScreenOutLink href={parameters.failLink} reason="No camera">Leave the study (Prolific)</ScreenOutLink>
           </div>
         )}
         <div style={{ fontSize: 12, color: '#999', marginTop: 8 }}>{error}</div>
@@ -172,6 +223,18 @@ function WebcamPermission({ parameters, setAnswer, advance }: StimulusParams<Par
         )}
       >
         <PositionGuide onChange={setPos} />
+        {stuck && (
+          <div style={{ fontSize: 15, color: '#8a5a00', marginTop: 12 }}>
+            We cannot see your face. Turn on a light in front of you and look straight at the screen.
+            {parameters?.failLink && (
+              <div style={{ marginTop: 6 }}>
+                Still not working?
+                {' '}
+                <ScreenOutLink href={parameters.failLink} reason="Face not detected">Leave the study (Prolific)</ScreenOutLink>
+              </div>
+            )}
+          </div>
+        )}
         <HeadStillNotice>Find a comfortable position now (rest your arms) that you can hold for the whole study.</HeadStillNotice>
       </Panel>
     );

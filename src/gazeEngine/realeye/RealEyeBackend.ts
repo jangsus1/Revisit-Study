@@ -30,6 +30,7 @@ const LAMBDA = 1e-5;             // RealEye's ridgeLambda (used only when there 
 const LAMBDA_REL = [1e-5, 1e-4, 1e-3, 1e-2, 1e-1, 1, 10];
 const MAX_DOT_FRAMES = 40;
 const MAX_PURSUIT_FRAMES = 900;
+const SETTLE_MS = 150;           // calibration frames from the first 150 ms of a collection window are not used
 const BLINK = 0.5;               // mean eyeBlink blendshape above this = eyes closed
 // Calibration data is pooled over the whole session (Saxena et al., 2024: pooling calibrations from the
 // start, middle and end beat using only the latest one). To keep every refit near a second, a fit uses
@@ -76,7 +77,7 @@ export default class RealEyeBackend {
 
   private disposed = false;
 
-  private collecting: { x: number; y: number; pursuit: boolean; buf: Frame[] } | null = null;
+  private collecting: { x: number; y: number; pursuit: boolean; buf: Frame[]; t0: number } | null = null;
 
   private pending: Entry[] = [];
 
@@ -116,7 +117,6 @@ export default class RealEyeBackend {
     const capturedAt = performance.now();
     const t0 = capturedAt;
     const tracker = this.tracker!;
-    const fx = this.fx!;
     let det: Detection | null = null;
     try { det = tracker.detectFace(img); } catch (e) { console.warn('[RealEyeBackend] detect', e); }
     const t1 = performance.now();
@@ -128,6 +128,23 @@ export default class RealEyeBackend {
     }
     const bs = det.blendshapes ?? {};
     const open = ((bs.eyeBlinkLeft ?? 0) + (bs.eyeBlinkRight ?? 0)) / 2 < BLINK;
+    try {
+      this.stepFeatures(img, det, open, capturedAt, t0, t1);
+    } catch (e) {
+      // e.g. RealEye's cropImage throws when an eye box leaves the camera image (leaning out of view)
+      this.frameErrors += 1;
+      this.onGazeResults({
+        normPog: [0, 0], rawPog: [0, 0], gazeState: 'closed', faceDetected: true, head: null, origin: null, capturedAt, durations: { detect: t1 - t0 },
+      });
+      if (this.frameErrors <= 3) console.warn('[RealEyeBackend] features', e);
+    }
+  }
+
+  /** Frames whose feature extraction threw (logged by the study). */
+  frameErrors = 0;
+
+  private stepFeatures(img: ImageData, det: Detection, open: boolean, capturedAt: number, t0: number, t1: number) {
+    const fx = this.fx!;
     const hp = det.headPose;
     const args = [det.boundingBox, det.keypoints] as const;
     const [ew, eh] = this.eye;
@@ -173,7 +190,8 @@ export default class RealEyeBackend {
     const ttl = (this.opts.clickTTL ?? 0) * 1000;   // 0 = per-trial dots never expire
     const now = Date.now();
     if (ttl > 0) this.entries = this.entries.filter((e) => e.ptType !== 'click' || now - e.ts <= ttl);
-    const max = this.opts.maxPoints ?? 500;
+    // never more entries than frames in the budget, so a fit stays <= FRAME_BUDGET frames (1 per entry at worst)
+    const max = Math.min(this.opts.maxPoints ?? 500, FRAME_BUDGET);
     while (this.entries.length > max) {
       const i = this.entries.findIndex((e) => e.ptType === 'click');
       this.entries.splice(i >= 0 ? i : 0, 1);
@@ -189,7 +207,7 @@ export default class RealEyeBackend {
     const ys: number[] = [];
     const total = this.entries.reduce((a, e) => a + e.frames.length, 0);
     const groups: number[] = [];
-    const perEntry = total > FRAME_BUDGET ? Math.max(2, Math.floor(FRAME_BUDGET / this.entries.length)) : Infinity;
+    const perEntry = total > FRAME_BUDGET ? Math.max(1, Math.floor(FRAME_BUDGET / this.entries.length)) : Infinity;
     this.entries.forEach((e, gi) => {
       const n = e.frames.length;
       const keep = n <= perEntry ? e.frames : Array.from({ length: perEntry }, (_, i) => e.frames[Math.floor(((i + 0.5) * n) / perEntry)]);
@@ -229,7 +247,7 @@ export default class RealEyeBackend {
 
   async calibStart(x: number, y: number, pursuit = false): Promise<void> {
     this.collecting = {
-      x, y, pursuit, buf: [],
+      x, y, pursuit, buf: [], t0: performance.now(),
     };
   }
 
@@ -237,7 +255,10 @@ export default class RealEyeBackend {
     const c = this.collecting;
     this.collecting = null;
     if (!c) return { ...this.stats(), n: 0 };
-    const frames = c.buf.slice(-maxSamples);
+    // drop frames from the first SETTLE_MS of the window (the eye may still be landing on the dot), unless that
+    // would leave fewer than 3 frames
+    const settled = c.buf.filter((f) => f.t >= c.t0 + SETTLE_MS);
+    const frames = (settled.length >= 3 ? settled : c.buf).slice(-maxSamples);
     if (frames.length) {
       const e = this.toEntry(frames, frames.map(() => [c.x, c.y] as [number, number]), ptType);
       if (defer) this.pending.push(e);
@@ -304,6 +325,25 @@ export default class RealEyeBackend {
     this.offset = this.snap.offset;
     this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
     return { restored: true, ...this.stats() };
+  }
+
+  /** Whole calibration state (entries, weights, offset), for keeping the best of several attempts. */
+  getState(): { entries: Entry[]; W: Float64Array[] | null; offset: [number, number] } {
+    return { entries: [...this.entries], W: this.W, offset: [...this.offset] as [number, number] };
+  }
+
+  setState(st: { entries: Entry[]; W: Float64Array[] | null; offset: [number, number] }): void {
+    this.collecting = null;
+    this.pending = [];
+    this.entries = [...st.entries];
+    this.W = st.W;
+    this.offset = [...st.offset] as [number, number];
+    this.snap = undefined;
+    this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
+  }
+
+  hasFit(): boolean {
+    return this.W !== null;
   }
 
   async setOffset(dx: number, dy: number): Promise<{ offset: [number, number] }> {

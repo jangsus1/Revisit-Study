@@ -4,7 +4,7 @@ import React from "react";
 import { NormalSlider } from "./Slider";
 import { CalibrationOverlay } from "./CalibrationOverlay";
 import { useTrialGaze } from "./trialGaze";
-import HeadMovedPanel, { RecalibrateButton } from "./HeadMovedPanel";
+import HeadMovedPanel, { RecalibrateButton, SetupAgainPanel } from "./HeadMovedPanel";
 import { FullscreenGate, Panel } from "./FullScreen";
 import { Button } from "@mantine/core";
 import { usePlotScale } from "./plotScale";
@@ -54,8 +54,11 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
 
   const plotWidth = fixedSize.width - margin.left - margin.right;
   const plotHeight = fixedSize.height - margin.top - margin.bottom;
-  const xScale = d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + plotWidth]);
-  const yScale = d3.scaleLinear().domain([0, 1]).range([margin.top + plotHeight - dotPadding, margin.top]);
+  // memoized: the draw effect depends on them and must not redraw (re-blurring the labels) on every render
+  const xScale = React.useMemo(() => d3.scaleLinear().domain([0, 1]).range([margin.left + dotPadding, margin.left + plotWidth]), [margin, plotWidth]);
+  const yScale = React.useMemo(() => d3.scaleLinear().domain([0, 1]).range([margin.top + plotHeight - dotPadding, margin.top]), [margin, plotHeight]);
+  // current label blur, read by the draw effect so a redraw (e.g. resize) keeps visible labels visible
+  const labelBlurRef = useRef(true);
 
 
 
@@ -80,16 +83,17 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
     }
     const since = () => performance.now() - tg.startAtRef.current;
     const timers = [];
+    const afterPaint = (fn) => requestAnimationFrame(() => requestAnimationFrame(fn));
     const show = () => {
       setLabelsVisible(true);
-      labelRevealAtRef.current = Math.round(since());
+      afterPaint(() => { labelRevealAtRef.current = Math.round(since()); });
     };
     if (showAt <= 0) show();
     else timers.push(setTimeout(show, Math.max(0, showAt * 1000 - since())));
     if (hideAt < seconds) {
       timers.push(setTimeout(() => {
         setLabelsVisible(false);
-        labelHideAtRef.current = Math.round(since());
+        afterPaint(() => { labelHideAtRef.current = Math.round(since()); });
       }, Math.max(0, hideAt * 1000 - since())));
     }
     return () => timers.forEach(clearTimeout);
@@ -203,8 +207,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
       .attr('font-size', '20px')
       .attr('font-weight', 'bold')
       .text(X)
-      .style('filter', 'blur(50px)')
-      .style('transition', 'filter 0.1s');
+      .style('filter', labelBlurRef.current ? 'blur(50px)' : 'none');
 
     const yLabelWidth = 150;
     const yLabelHeight = Math.abs(yScale.range()[1] - yScale.range()[0]);
@@ -228,8 +231,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
         text-align: center;
         word-wrap: break-word;
         overflow-wrap: break-word;
-        filter: blur(50px);
-        transition: filter 0.1s;
+        filter: ${labelBlurRef.current ? 'blur(50px)' : 'none'};
       ">${Y}</div>
     `);
 
@@ -259,6 +261,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
     if (!ref.current) return;
     const svg = d3.select(ref.current);
     const shouldBlur = isBlurred || !labelsVisible;
+    labelBlurRef.current = shouldBlur;
     const filterValue = shouldBlur ? 'blur(50px)' : 'none';
     svg.select('.x-label').style('filter', filterValue);
     const yLabelDiv = svg.select('.y-label-group foreignObject').node();
@@ -282,7 +285,8 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
   return (
     <div>
       <FullscreenGate />
-      {tg.headWarning && <HeadMovedPanel onContinue={tg.resume} />}
+      {tg.headWarning && <HeadMovedPanel kind={tg.headWarning} onContinue={tg.resume} />}
+      {tg.setupNeeded && <SetupAgainPanel onStart={tg.resume} />}
       {view === "shortcalib" && (
         <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={fitting} />
       )}
@@ -306,8 +310,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
               style={{
                 display: 'block',
                 filter: isBlurred ? 'blur(50px)' : 'none',
-                transition: 'filter 0.1s',
-                cursor: isBlurred ? 'pointer' : 'default'
+                cursor: isBlurred ? 'pointer' : 'none'
               }}
               onClick={handleClick}
             />
@@ -345,6 +348,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
             <NormalSlider
               value={corrAfter}
               setValue={answerCallback}
+              onClick={(e) => answerCallback(parseFloat(e.target.value))}
               leftLabel="None (0)"
               rightLabel="Perfect (1)"
               min={0}

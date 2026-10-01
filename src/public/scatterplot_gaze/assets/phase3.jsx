@@ -2,7 +2,7 @@ import { useState, useCallback } from "react";
 import React from "react";
 import { Button } from "@mantine/core";
 import { NormalSlider } from "./Slider";
-import { Panel } from "./FullScreen";
+import { FullscreenGate, Panel } from "./FullScreen";
 
 // Task 1: belief rating for one statement, in the study's single page layout (Panel). The answer is
 // saved when the slider is moved; Next (enabled after that) advances.
@@ -28,6 +28,8 @@ function Phase3({ parameters, setAnswer, advance }) {
   }, [setAnswer, label, X, Y]);
 
   return (
+    <>
+    <FullscreenGate />
     <Panel
       kicker="Task 1 of 3"
       title="How much do you believe this statement?"
@@ -39,6 +41,7 @@ function Phase3({ parameters, setAnswer, advance }) {
         <NormalSlider
           value={belief}
           setValue={answerCallback}
+          onClick={(e) => answerCallback(parseFloat(e.target.value))}
           leftLabel="Not at all"
           rightLabel="Completely"
           min={0}
@@ -48,6 +51,7 @@ function Phase3({ parameters, setAnswer, advance }) {
         />
       </div>
     </Panel>
+    </>
   );
 }
 

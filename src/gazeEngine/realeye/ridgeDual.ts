@@ -166,10 +166,14 @@ export function ridgeDualCV(X: Float32Array[], targets: number[][], groups: numb
     });
     const err = sum / n;
     cv.push({ lambda, err });
-    if (!best || err < best.err) best = { lambda, err, alphas };
+    if (Number.isFinite(err) && (!best || err < best.err)) best = { lambda, err, alphas };
   });
   const chosen = best as { lambda: number; err: number; alphas: Float64Array[] } | null;
-  if (!chosen) return { W: ridgeDual(X, targets, lambdas[0]), lambda: lambdas[0], cv };
+  if (!chosen) {
+    // every candidate failed (non-finite error or factorization): the strongest regularization is the safest
+    const lam = Math.max(...lambdas);
+    return { W: ridgeDual(X, targets, lam), lambda: lam, cv };
+  }
   const W = chosen.alphas.map((a) => {
     const w = new Float64Array(p);
     for (let i = 0; i < n; i += 1) {
