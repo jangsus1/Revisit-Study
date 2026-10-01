@@ -886,6 +886,14 @@ if 'prolificRedirection' in locals():
     config['uiConfig'][
         'studyEndMsg'] = f"**Thank you for completing the study. You may click this link and return to Prolific**: [{prolificRedirection}]({prolificRedirection})"
 
+# Minimum window size (2026-09-30): reVISit rejects participants whose window stays below it for 60 s. The gaze
+# pages run in full screen (>= 768 px tall on common laptops); 1024x700 rejected maximised-but-not-full-screen
+# windows on 1366x768 / 150 %-scaled laptops, where the plot still fits (plotScale >= 1 down to 750x640).
+config.setdefault('studyRules', {})['display'] = {
+    "minWidth": 900, "minHeight": 550,
+    "blockedMessage": "Please make your browser window larger (full screen works best).",
+}
+
 # Write the updated config
 with open(os.path.join(current_dir, "config.json"), "w") as f:
     json.dump(config, f, indent=4)

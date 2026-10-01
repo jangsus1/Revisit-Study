@@ -281,3 +281,34 @@ Licence (AGPL or free academic commercial licence) must be settled before data c
   again (`device.screenInches`, `device.confirmedImplausible`).
 - **Progress:** every `Panel` shows a thin bar and "N % done · About N min left" (`StudyProgress.tsx`, weighted by
   expected seconds per page); hidden on dot and plot screens.
+
+### Pre-launch robustness pass (2026-10-01)
+
+Fixed after a code review (failure cases found by reading the code, verified headless with a stubbed face):
+- **Window size / rejection:** `studyRules.display` lowered to 900x550 (set in config.py); "Eye tracking finished"
+  no longer leaves full screen; reVISit's device-warning modal sits above the study overlays (`zIndex` 6000 in
+  `DeviceWarning.tsx`), so its 60 s rejection countdown is never hidden; intro and belief pages have the full-screen gate.
+- **Frame loop:** a throwing frame (e.g. RealEye's eye crop leaving the camera image) no longer stops tracking
+  (`WebcamClient` try/finally, `RealEyeBackend.stepFeatures` try/catch, guarded sample listeners); counted as
+  `frameErrors` in every gaze/calibration row.
+- **Camera lost:** a stream that ends (unplugged, permission revoked) shows "The camera stopped" with a restart
+  button that keeps the calibration (`gazeTracker.restartCamera`); `cameraLostCount` logged.
+- **Reload mid-task:** a trial whose tracker has no model asks for and runs the 15-dot calibration first
+  (`shortCalib.reloadCalibration`).
+- **Camera page:** no face for 60 s or the camera still starting after 30 s -> help text + screen-out link; the
+  screen-out link rejects the participant in reVISit first (frees the Latin-square row).
+- **Calibration:** the best-validated of the 3 attempts is kept (`usedAttempt`); a halfway recalibration with no usable
+  validation is rolled back (`rolledBack`); a "Recalibrate briefly" request is cleared by a calibration.
+- **Per-trial check:** no usable samples at the dots -> "We lost your face" once, then the dots again
+  (`noFaceWarning`); an error restores the snapshot; head shift compared in lens-corrected mm.
+- **Fit:** at most 140 entries (oldest per-trial entries dropped), >= 1 frame per entry; the first 150 ms of a dot's
+  collection window are not used; CV ignores non-finite errors and falls back to the largest lambda.
+- **Trials:** cursor hidden while a plot is shown (both tasks); scales memoized and the current label blur applied on
+  redraw (resize no longer re-blurs visible labels); no blur transitions; `labelRevealAt`/`labelHideAt` measured after
+  the change is painted; clicking the slider at its start value counts as an answer; the recalibrate button only shows
+  when the next page is a trial; gaze rows log `fullscreenExits`, `fullscreenNow`, `userRecalCount`.
+
+Not changed (would risk new bugs or need a decision): pausing/repeating dots and plots on full-screen exit (exits are
+logged instead), a frame-timing stall watchdog (the fit blocks the main thread ~1 s), a hard camera-start timeout,
+an early camera check, self-hosting the RealEye bundle, screening out failed calibrations, Prolific codes / consent
+text, Firefox.

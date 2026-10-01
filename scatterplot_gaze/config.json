@@ -41,9 +41,9 @@
             "blockedMessage": "This study requires a mouse or trackpad."
         },
         "display": {
-            "minWidth": 1024,
-            "minHeight": 700,
-            "blockedMessage": "Please maximise your browser window (at least 1024 x 700 pixels)."
+            "minWidth": 900,
+            "minHeight": 550,
+            "blockedMessage": "Please make your browser window larger (full screen works best)."
         },
         "browsers": {
             "allowed": [
