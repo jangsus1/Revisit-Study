@@ -17,16 +17,25 @@ export const GENERATOR_CONFIG = {
   INTER: 100,
   /** Dot radius in source px (MATLAB `radius_clusterDots`); 20 px diameter before scaling. */
   RDOT: 10,
-  /** Between-cluster spacing multiplier (MATLAB `customizedRatio`). */
-  RATIO: 1.2,
+  /**
+   * Proximity cue: the edge-to-edge gap between neighbouring clusters, in multiples of the
+   * within-cluster pitch `INTER`, horizontally and vertically (the even layout of every other cue
+   * uses 1). Replaces the MATLAB `customizedRatio` of 1.2, whose gaps were as small as 0.87 pitch
+   * (median 1.4) once jitter and the halved height of 5- and 6-dot clusters were applied.
+   */
+  PROXIMITY_GAP: 2,
   /** Smallest per-seed jitter amplitude in source px (inclusive). */
   JITTER_MIN: 3,
   /** Largest per-seed jitter amplitude in source px (inclusive). */
   JITTER_MAX: 15,
   /** The single scale factor from source px to canvas px (0.6 before the single-location redesign). */
   SCALE: 0.9,
-  /** Canvas size in css px; both stimuli use exactly this frame, shown at one screen location. */
-  CANVAS: { width: 720, height: 540 },
+  /**
+   * Canvas size in css px; both stimuli use exactly this frame, shown at one screen location.
+   * 800 x 640 holds the widest and tallest proximity layout (744 x 632 including the margin) and
+   * the tallest even layout, so no cluster-size draw is rejected for leaving the canvas.
+   */
+  CANVAS: { width: 800, height: 640 },
   /** Keep-out border in canvas px: no dot edge may come closer than this to the frame. */
   CANVAS_MARGIN: 16,
   /**
@@ -35,11 +44,18 @@ export const GENERATOR_CONFIG = {
    */
   BACKGROUND: '#FFFFFF',
   /**
-   * CIELAB lightness shared by every node colour. The colour cue samples a hue circle at this L*
-   * (see `palette.ts`), and the default grey below sits at the same L*, so a colour display and a
-   * grey display differ in hue only.
+   * The colour cue's ellipse in CIELAB (see `palette.ts`): a planar slice through the colour solid
+   * that is tilted out of the a*b* plane, so hue, chroma and lightness all vary around it. `centre`
+   * is (L*, a*, b*); the major axis lies in the a*b* plane at hue angle `axisHue` (degrees) with
+   * radius `major`; the minor axis is perpendicular to it in a*b*, tilted by `tilt` degrees towards
+   * +L*, with radius `minor`. Chosen by a seeded search that maximises the smallest CIEDE2000
+   * difference between any two of six samples spaced evenly along the ellipse, over every
+   * rotation, subject to the whole ellipse staying inside sRGB and L* in [30, 80]: the worst pair
+   * is about 28 CIEDE2000 apart, against about 17.5 on the best fixed-L*, fixed-chroma circle.
    */
-  LAB_L: 50,
+  COLOR_ELLIPSE: {
+    centre: [56, 4.3, 4.1], major: 60, minor: 40.5, axisHue: 154.5, tilt: 36,
+  },
   /** Default node colour: neutral grey at L* = 50 (sRGB 119 119 119). */
   DOT_FILL: '#777777',
   /** Page colour around the canvas during a trial (surround, fixation and prompt page). */
@@ -78,16 +94,18 @@ export const GENERATOR_CONFIG = {
    */
   BETWEEN_DASH: { dash: 5.45, gap: 14.55 },
   /**
-   * The three marks of the shape cue, one from each mark class (filled area, hollow outline,
-   * open strokes); each is used by exactly two clusters.
+   * The six marks of the shape cue: circle, square and triangle, each filled and outlined. Every
+   * cluster of A gets its own mark. The filled circle comes first because it is the default node.
    */
-  SHAPES: ['circle', 'hollowSquare', 'cross'] as const,
-  /** Outline width of the hollow square, in source px (0.25 x RDOT). */
+  SHAPES: ['circle', 'square', 'triangle', 'hollowCircle', 'hollowSquare', 'hollowTriangle'] as const,
+  /** Outline width of the hollow marks, in source px (0.25 x RDOT), drawn inside the footprint. */
   HOLLOW_STROKE: 2.5,
-  /** Stroke width of the two cross bars, in source px (0.25 x RDOT). */
-  CROSS_STROKE: 2.5,
-  /** Half-length of each cross bar (centre to bar end), in source px (1.1 x RDOT). */
-  CROSS_ARM: 11,
+  /**
+   * Circumradius of the (upward) triangle in multiples of RDOT. An equal-area triangle would
+   * reach 1.56 RDOT and its tip would touch the arrowheads, which stop at 1.4 RDOT; 1.35 keeps
+   * the tip clear at three quarters of the circle's area.
+   */
+  TRIANGLE_R: 1.35,
   /** How many derived seeds `generateDisplay` may try before giving up on the invariants. */
   MAX_SEED_ATTEMPTS: 200,
   /** Rejection-sampling budget for placing all stimulus B dots; exceeding it reseeds. */
@@ -105,13 +123,14 @@ export const GENERATOR_CONFIG = {
   /**
    * Stimulus B: how many nearest already-placed dots a new node may attach to. Among those that
    * clear every other dot, the one whose length best meets the remaining link-length budget wins.
-   * Tuned (from 6) so the longer links needed to match the rect cue's outline ink are reachable;
-   * for the other cues the budget asks for short links and the extra candidates are not used.
+   * Raised from 6 when B also made up for the rect cue's outline ink; that is gone (SPEC deviation
+   * 19), and since the budget now asks for links as short as A's the extra candidates are rarely
+   * chosen. Kept at 10 so B's geometry stays as tested.
    */
   B_ATTACH_CANDIDATES: 10,
   /**
    * Stimulus B with a link budget: a node already carrying this many links is passed over while
-   * another candidate is usable, so long budgeted links (rect) spread out instead of forming hubs.
+   * another candidate is usable, so long budgeted links spread out instead of forming hubs.
    * A's nodes carry at most about four links.
    */
   B_MAX_DEGREE: 4,

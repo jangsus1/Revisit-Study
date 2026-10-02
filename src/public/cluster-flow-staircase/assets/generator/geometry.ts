@@ -30,22 +30,42 @@ export const DASH_ARRAY = `${DASH_ON} ${DASH_OFF}`;
 export const DASH_DUTY = (DASH_ON + LINK_W) / DASH_PERIOD;
 
 /**
- * Outer side of the hollow square. Its outline encloses the same area as the circle
- * (side = r * sqrt(pi)), so the three marks have equal footprints.
+ * Outer side of the squares. A square of side r * sqrt(pi) covers the same area as the circle.
  */
-export const HOLLOW_SIDE = DOT_R * Math.sqrt(Math.PI);
-/** Outline width of the hollow square; the outline is drawn inside the outer side. */
+export const SQUARE_SIDE = DOT_R * Math.sqrt(Math.PI);
+/** Circumradius of the upward equilateral triangles (see `TRIANGLE_R`). */
+export const TRIANGLE_R = C.TRIANGLE_R * DOT_R;
+/** Outline width of the hollow marks; the outline is drawn inside the outer footprint. */
 export const HOLLOW_STROKE = C.HOLLOW_STROKE * C.SCALE;
-/** Cross bar width and half-length (centre to the butt end of a bar). */
-export const CROSS_STROKE = C.CROSS_STROKE * C.SCALE;
-export const CROSS_ARM = C.CROSS_ARM * C.SCALE;
 
-/** Ink area of one node mark. */
+/** Area of an equilateral triangle with circumradius `r`. */
+function triangleArea(r: number): number {
+  return (3 * Math.sqrt(3) * r * r) / 4;
+}
+
+/**
+ * The three vertices of the upward equilateral triangle with circumradius `r` centred (on its
+ * centroid) at the origin, top vertex first.
+ */
+export function trianglePoints(r: number): [number, number][] {
+  return [0, 1, 2].map((k) => {
+    const a = -Math.PI / 2 + (2 * Math.PI * k) / 3;
+    return [r * Math.cos(a), r * Math.sin(a)];
+  });
+}
+
+/**
+ * Ink area of one node mark. A hollow mark is its filled footprint minus the footprint shrunk by
+ * the stroke width (the inradius of a triangle is half its circumradius, so insetting it by w
+ * shrinks the circumradius by 2w).
+ */
 export const NODE_INK = {
   circle: Math.PI * DOT_R * DOT_R,
-  hollowSquare: HOLLOW_SIDE * HOLLOW_SIDE - (HOLLOW_SIDE - 2 * HOLLOW_STROKE) ** 2,
-  // two bars of 2 * arm by stroke, minus the square where they overlap
-  cross: 2 * (2 * CROSS_ARM * CROSS_STROKE) - CROSS_STROKE * CROSS_STROKE,
+  square: SQUARE_SIDE * SQUARE_SIDE,
+  triangle: triangleArea(TRIANGLE_R),
+  hollowCircle: Math.PI * (DOT_R * DOT_R - (DOT_R - HOLLOW_STROKE) ** 2),
+  hollowSquare: SQUARE_SIDE * SQUARE_SIDE - (SQUARE_SIDE - 2 * HOLLOW_STROKE) ** 2,
+  hollowTriangle: triangleArea(TRIANGLE_R) - triangleArea(TRIANGLE_R - 2 * HOLLOW_STROKE),
 } as const;
 
 /** Rect cue outline width. */

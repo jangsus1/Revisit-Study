@@ -1,10 +1,13 @@
 /**
- * The colour-cue palette: six colours sampled from a circle in CIELAB at fixed lightness and fixed
- * chroma, 60 degrees apart, as in the colour-wheel method of Zhang & Luck (2008) and Luck & Vogel.
- * Here the circle is centred on the neutral axis (a* = b* = 0) and its radius is the largest one
- * whose every hue fits inside the sRGB gamut, so the colours differ in hue only: equal L*, equal
- * chroma, equal CIELAB distance between neighbours. The default grey node (`DOT_FILL`) sits at the
- * same L*. The circle is rotated per participant (`hueOffset`) so no hue is tied to a cluster size.
+ * The colour-cue palette: six colours on an ellipse in CIELAB. The colour-wheel method of Zhang &
+ * Luck (2008) and Luck & Vogel samples a circle at fixed lightness and chroma, which inside sRGB
+ * caps the chroma at about 29 at L* 50 and leaves neighbouring colours only about 17.5 CIEDE2000
+ * apart. Here the circle is replaced by a planar slice through the colour solid that is tilted out
+ * of the a*b* plane (`COLOR_ELLIPSE`), so lightness, chroma and hue all change around it and the
+ * colours are further apart (worst pair about 28 CIEDE2000) while the whole ellipse stays in sRGB.
+ * The six samples are spaced evenly by arc length in CIELAB, so neighbours are about equally far
+ * apart, and the ellipse is rotated per participant (`hueOffset`, degrees of the full perimeter;
+ * 60 degrees moves every colour on to the next) so no colour is tied to a cluster size.
  */
 import { GENERATOR_CONFIG as C } from './config';
 
@@ -91,58 +94,135 @@ function toHex(v: number): string {
   return Math.round(v * 255).toString(16).padStart(2, '0').toUpperCase();
 }
 
+/** CIELAB to `#RRGGBB` (clamped to sRGB). */
+export function labToHex(L: number, a: number, b: number): string {
+  const { r, g, b: bl } = labToSrgb(L, a, b);
+  return `#${toHex(r)}${toHex(g)}${toHex(bl)}`;
+}
+
 /** The colour at lightness L, chroma c and hue angle h (degrees) as `#RRGGBB`. */
 export function lchToHex(L: number, c: number, h: number): string {
   const rad = (h * Math.PI) / 180;
-  const { r, g, b } = labToSrgb(L, c * Math.cos(rad), c * Math.sin(rad));
-  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+  return labToHex(L, c * Math.cos(rad), c * Math.sin(rad));
 }
 
-function allHuesInGamut(L: number, c: number): boolean {
-  for (let h = 0; h < 360; h += 1) {
-    const rad = (h * Math.PI) / 180;
-    if (!labToSrgb(L, c * Math.cos(rad), c * Math.sin(rad)).inGamut) return false;
-  }
-  return true;
-}
-
-const chromaCache = new Map<number, number>();
+export interface Lab { L: number; a: number; b: number }
 
 /**
- * The largest chroma at which every hue (checked at 1 degree steps) of the CIELAB circle at
- * lightness `L` is inside the sRGB gamut. Binary search to 0.01; memoised per L.
+ * CIEDE2000 colour difference (Sharma, Wu & Dalal 2005, kL = kC = kH = 1). Used to choose and to
+ * test the ellipse, and for the gallery readout.
  */
-export function maxInGamutChroma(L: number): number {
-  const cached = chromaCache.get(L);
-  if (cached !== undefined) return cached;
+export function deltaE2000(p: Lab, q: Lab): number {
+  const deg = Math.PI / 180;
+  const c1 = Math.hypot(p.a, p.b);
+  const c2 = Math.hypot(q.a, q.b);
+  const cBar7 = ((c1 + c2) / 2) ** 7;
+  const g = 0.5 * (1 - Math.sqrt(cBar7 / (cBar7 + 25 ** 7)));
+  const a1 = (1 + g) * p.a;
+  const a2 = (1 + g) * q.a;
+  const c1p = Math.hypot(a1, p.b);
+  const c2p = Math.hypot(a2, q.b);
+  const hue = (b: number, a: number) => ((Math.atan2(b, a) / deg) + 360) % 360;
+  const h1 = hue(p.b, a1);
+  const h2 = hue(q.b, a2);
+  const zero = c1p * c2p === 0;
+  let dh = zero ? 0 : h2 - h1;
+  if (dh > 180) dh -= 360; else if (dh < -180) dh += 360;
+  const dL = q.L - p.L;
+  const dC = c2p - c1p;
+  const dH = 2 * Math.sqrt(c1p * c2p) * Math.sin((dh / 2) * deg);
+  const lBar = (p.L + q.L) / 2;
+  const cBarP = (c1p + c2p) / 2;
+  let hBar = h1 + h2;
+  if (!zero) {
+    if (Math.abs(h1 - h2) > 180) hBar += h1 + h2 < 360 ? 360 : -360;
+    hBar /= 2;
+  }
+  const t = 1 - 0.17 * Math.cos((hBar - 30) * deg) + 0.24 * Math.cos(2 * hBar * deg)
+    + 0.32 * Math.cos((3 * hBar + 6) * deg) - 0.2 * Math.cos((4 * hBar - 63) * deg);
+  const dTheta = 30 * Math.exp(-(((hBar - 275) / 25) ** 2));
+  const rc = 2 * Math.sqrt(cBarP ** 7 / (cBarP ** 7 + 25 ** 7));
+  const sl = 1 + (0.015 * (lBar - 50) ** 2) / Math.sqrt(20 + (lBar - 50) ** 2);
+  const sc = 1 + 0.045 * cBarP;
+  const sh = 1 + 0.015 * cBarP * t;
+  const rt = -Math.sin(2 * dTheta * deg) * rc;
+  return Math.sqrt((dL / sl) ** 2 + (dC / sc) ** 2 + (dH / sh) ** 2 + rt * (dC / sc) * (dH / sh));
+}
+
+/** The point of `COLOR_ELLIPSE` at parameter angle `t` (radians). */
+export function ellipsePoint(t: number): Lab {
+  const {
+    centre, major, minor, axisHue, tilt,
+  } = C.COLOR_ELLIPSE;
+  const h = (axisHue * Math.PI) / 180;
+  const k = (tilt * Math.PI) / 180;
+  // major axis in the a*b* plane; minor axis perpendicular to it in a*b*, tilted towards +L*
+  const u = { L: 0, a: Math.cos(h), b: Math.sin(h) };
+  const v = { L: Math.sin(k), a: -Math.sin(h) * Math.cos(k), b: Math.cos(h) * Math.cos(k) };
+  const cu = major * Math.cos(t);
+  const cv = minor * Math.sin(t);
+  return {
+    L: centre[0] + cu * u.L + cv * v.L,
+    a: centre[1] + cu * u.a + cv * v.a,
+    b: centre[2] + cu * u.b + cv * v.b,
+  };
+}
+
+/** Samples of the ellipse used for the arc-length table and the gamut tests. */
+export const ELLIPSE_STEPS = 3600;
+
+const arcTable: { t: number[]; s: number[] } = (() => {
+  const t: number[] = [];
+  const s: number[] = [0];
+  let prev = ellipsePoint(0);
+  for (let i = 0; i <= ELLIPSE_STEPS; i += 1) {
+    const ti = (2 * Math.PI * i) / ELLIPSE_STEPS;
+    t.push(ti);
+    if (i > 0) {
+      const p = ellipsePoint(ti);
+      s.push(s[i - 1] + Math.hypot(p.L - prev.L, p.a - prev.a, p.b - prev.b));
+      prev = p;
+    }
+  }
+  return { t, s };
+})();
+
+/** The ellipse's perimeter in CIELAB units. */
+export const ELLIPSE_PERIMETER = arcTable.s[ELLIPSE_STEPS];
+
+/** The point a fraction `f` (any real; wrapped into [0, 1)) of the perimeter along the ellipse. */
+export function ellipseAtArc(f: number): Lab {
+  const target = (((f % 1) + 1) % 1) * ELLIPSE_PERIMETER;
   let lo = 0;
-  let hi = 150;
-  while (hi - lo > 0.01) {
-    const mid = (lo + hi) / 2;
-    if (allHuesInGamut(L, mid)) lo = mid; else hi = mid;
+  let hi = ELLIPSE_STEPS;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1; // eslint-disable-line no-bitwise
+    if (arcTable.s[mid] <= target) lo = mid; else hi = mid;
   }
-  chromaCache.set(L, lo);
-  return lo;
+  const w = (target - arcTable.s[lo]) / Math.max(1e-12, arcTable.s[hi] - arcTable.s[lo]);
+  return ellipsePoint(arcTable.t[lo] + w * (arcTable.t[hi] - arcTable.t[lo]));
 }
 
-/**
- * The chroma the palette uses: the in-gamut maximum at `LAB_L`, rounded down to a whole unit so
- * hues between the 1 degree test steps (any `hueOffset`) stay in gamut too.
- */
-export const PALETTE_CHROMA = Math.floor(maxInGamutChroma(C.LAB_L));
-
-/** Number of hues on the wheel; one per cluster. */
+/** Number of colours; one per cluster. */
 export const PALETTE_SIZE = 6;
 
-/** The hue angles (degrees, in [0, 360)) of the palette for one rotation. */
-export function paletteHues(hueOffset = 0): number[] {
+/**
+ * The positions of the six colours along the ellipse, in degrees of the perimeter (in [0, 360)),
+ * for one rotation: `hueOffset + 60 k`.
+ */
+export function palettePositions(hueOffset = 0): number[] {
   return Array.from({ length: PALETTE_SIZE }, (_, k) => {
-    const h = (hueOffset + (360 / PALETTE_SIZE) * k) % 360;
-    return h < 0 ? h + 360 : h;
+    const d = (hueOffset + (360 / PALETTE_SIZE) * k) % 360;
+    return d < 0 ? d + 360 : d;
   });
 }
 
-/** Six `#RRGGBB` colours at hue angles `hueOffset + 60 k`, fixed `LAB_L` and `PALETTE_CHROMA`. */
+/** The six palette colours in CIELAB for one rotation. */
+export function paletteLab(hueOffset = 0): Lab[] {
+  return palettePositions(hueOffset).map((d) => ellipseAtArc(d / 360));
+}
+
+/** The six palette colours as `#RRGGBB` for one rotation. */
 export function makePalette(hueOffset = 0): string[] {
-  return paletteHues(hueOffset).map((h) => lchToHex(C.LAB_L, PALETTE_CHROMA, h));
+  return paletteLab(hueOffset).map((p) => labToHex(p.L, p.a, p.b));
 }

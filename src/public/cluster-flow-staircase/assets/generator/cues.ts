@@ -31,14 +31,14 @@ function paddedRect(display: Display, cluster: DisplayCluster): Rect {
 
 /**
  * Mutates `display` so it carries the visual encoding of `cue`, and returns it.
- * `rng` supplies the seeded colour permutation and the seeded shape triple; `palette` is the
- * participant's six CIELAB colours (`makePalette(hueOffset)`).
+ * `rng` supplies the seeded colour and shape permutations; `palette` is the participant's six
+ * CIELAB colours (`makePalette(hueOffset)`).
  *
  * - `proximity`: nothing; the gapped layout is the cue.
  * - `rect`: a padded bounding rectangle per cluster.
  * - `color`: one palette colour per cluster, seeded permutation.
- * - `shape`: filled circle, hollow square, open cross, each on two clusters, cycled along the
- *   traversal order so clusters adjacent in the flow never share a shape.
+ * - `shape`: one of the six marks per cluster (circle, square, triangle, filled and outlined),
+ *   seeded permutation, so no two clusters share a mark.
  * - `edge`: between-cluster links dashed, within-cluster links solid.
  */
 export function applyCue(display: Display, cue: Cue, rng: Rng, palette: readonly string[]): Display {
@@ -57,13 +57,8 @@ export function applyCue(display: Display, cue: Cue, rng: Rng, palette: readonly
     });
   } else if (cue === 'shape') {
     const perm = randperm(rng, C.SHAPES.length);
-    const shapes = perm.map((i) => C.SHAPES[i] as NodeShape);
-    const byCluster = new Map<number, NodeShape>();
-    display.clusters.forEach((cluster) => {
-      byCluster.set(cluster.index, shapes[cluster.orderPos % shapes.length]);
-    });
     display.nodes.forEach((node) => {
-      node.shape = byCluster.get(node.cluster) ?? 'circle';
+      node.shape = C.SHAPES[perm[node.cluster % C.SHAPES.length]] as NodeShape;
     });
   }
   return display;

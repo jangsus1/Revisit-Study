@@ -1,7 +1,9 @@
 /**
- * Cluster templates, jitter, extents, gaps and the cluster centres, either the ADJUSTED MATLAB
- * centres (SPEC sections 4 and 5b, `grouped`) or the gap-free `even` centres, followed by the
- * single scale into canvas coordinates.
+ * Cluster templates, jitter, extents and the cluster centres, followed by the single scale into
+ * canvas coordinates. The MATLAB templates and jitter are kept (SPEC section 4); the centres put a
+ * fixed edge-to-edge gap between neighbouring clusters: `PROXIMITY_GAP` pitches for the
+ * `grouped` layout of the proximity cue, one pitch for the `even` layout of every other cue
+ * (SPEC deviations 10 and 17).
  */
 import { GENERATOR_CONFIG as C } from './config';
 import { Rng, randi, uj } from './prng';
@@ -53,10 +55,6 @@ export function template(rng: Rng, n: number, s: number): LayoutPoint[] {
   throw new Error(`unsupported cluster size ${n}`);
 }
 
-function span(values: number[]): number {
-  return Math.max(...values) - Math.min(...values);
-}
-
 function mean(values: number[]): number {
   return values.reduce((a, b) => a + b, 0) / values.length;
 }
@@ -84,43 +82,26 @@ function extent(pts: LayoutPoint[]): Extent {
 }
 
 /**
- * The MATLAB gapped layout (SPEC 5 and 5b): centroid spacing from `RATIO` and the cluster
- * extents, one shared baseline per row, each row centred on its own midpoint.
+ * The edge-to-edge gap between neighbouring clusters for a layout mode, in source px: one pitch
+ * for `even` (position does not group) and `PROXIMITY_GAP` pitches for `grouped`.
  */
-function groupedCentres(raw: LayoutPoint[][], sizes: number[]) {
-  const mdx = raw.map((pts) => span(pts.map((p) => p.x)));
-  const mry = raw.map((pts) => span(pts.map((p) => p.y)));
-  const mdy = raw.map((pts, i) => (sizes[i] > 4 ? mry[i] / 2 : mry[i]));
-
-  const gap = (a: number, b: number) => Math.round(Math.max(mdx[a], mdx[b]) * C.RATIO + (mdx[a] + mdx[b]) / 2);
-  const gapX = [gap(0, 1), gap(1, 2), gap(3, 4), gap(4, 5)];
-  const gapY = [0, 1, 2].map((c) => Math.round(Math.max(mdy[c], mdy[c + 3]) * C.RATIO + (mry[c] + mry[c + 3]) / 2));
-
-  const rowGap = Math.max(...gapY);
-  const top = [0, gapX[0], gapX[0] + gapX[1]];
-  const bot = [0, gapX[2], gapX[2] + gapX[3]];
-  const topMid = (top[0] + top[2]) / 2;
-  const botMid = (bot[0] + bot[2]) / 2;
-  const centres: LayoutPoint[] = [
-    ...top.map((x) => ({ x: x - topMid, y: 0 })),
-    ...bot.map((x) => ({ x: x - botMid, y: rowGap })),
-  ];
-  return { centres, gapX, gapY };
+export function clusterGap(mode: LayoutMode): number {
+  return (mode === 'grouped' ? C.PROXIMITY_GAP : 1) * C.INTER;
 }
 
 /**
- * The even layout: every pair of neighbouring clusters is placed so that the gap between their
- * facing extreme dots equals the within-cluster pitch `INTER`, horizontally and vertically.
- * Horizontal centroid distance is `(maxX - meanX)_a + INTER + (meanX - minX)_b`; each column is
- * placed on its own so that `(maxY - meanY)_top + INTER + (meanY - minY)_bottom` holds in every
- * column (the top row's bottom edges share one line, the bottom row's top edges another). Rows
- * are centred on their own midpoints as in the grouped layout.
+ * The cluster centres: every pair of neighbouring clusters is placed so that the gap between
+ * their facing extreme dots is exactly `gap`, horizontally and vertically. Horizontal centroid
+ * distance is `(maxX - meanX)_a + gap + (meanX - minX)_b`; each column is placed on its own so
+ * that `(maxY - meanY)_top + gap + (meanY - minY)_bottom` holds in every column (the top row's
+ * bottom edges share one line, the bottom row's top edges another). Rows are centred on their
+ * own midpoints.
  */
-function evenCentres(raw: LayoutPoint[][]) {
+function centresWithGap(raw: LayoutPoint[][], g: number) {
   const ext = raw.map(extent);
-  const gap = (a: number, b: number) => (ext[a].maxX - ext[a].meanX) + C.INTER + (ext[b].meanX - ext[b].minX);
+  const gap = (a: number, b: number) => (ext[a].maxX - ext[a].meanX) + g + (ext[b].meanX - ext[b].minX);
   const gapX = [gap(0, 1), gap(1, 2), gap(3, 4), gap(4, 5)];
-  const gapY = [0, 1, 2].map((c) => (ext[c].maxY - ext[c].meanY) + C.INTER + (ext[c + 3].meanY - ext[c + 3].minY));
+  const gapY = [0, 1, 2].map((c) => (ext[c].maxY - ext[c].meanY) + g + (ext[c + 3].meanY - ext[c + 3].minY));
 
   const top = [0, gapX[0], gapX[0] + gapX[1]];
   const bot = [0, gapX[2], gapX[2] + gapX[3]];
@@ -128,7 +109,7 @@ function evenCentres(raw: LayoutPoint[][]) {
   const botMid = (bot[0] + bot[2]) / 2;
   const centres: LayoutPoint[] = [
     ...top.map((x, c) => ({ x: x - topMid, y: -(ext[c].maxY - ext[c].meanY) })),
-    ...bot.map((x, c) => ({ x: x - botMid, y: C.INTER + (ext[c + 3].meanY - ext[c + 3].minY) })),
+    ...bot.map((x, c) => ({ x: x - botMid, y: g + (ext[c + 3].meanY - ext[c + 3].minY) })),
   ];
   return { centres, gapX, gapY };
 }
@@ -150,7 +131,7 @@ export function buildLayout(rng: Rng, sizes: number[], jitter: number, mode: Lay
   });
 
   // 5. / 5b. cluster centres
-  const { centres, gapX, gapY } = mode === 'even' ? evenCentres(raw) : groupedCentres(raw, sizes);
+  const { centres, gapX, gapY } = centresWithGap(raw, clusterGap(mode));
 
   // translate each cluster so its centroid sits on its centre
   const placed = raw.map((pts, i) => {

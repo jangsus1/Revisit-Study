@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
 import {
-  PALETTE_CHROMA, PALETTE_SIZE, hexToLab, labToSrgb, lchToHex, makePalette, maxInGamutChroma, paletteHues,
+  ELLIPSE_PERIMETER, ELLIPSE_STEPS, Lab, PALETTE_SIZE, deltaE2000, ellipseAtArc, ellipsePoint, hexToLab, labToSrgb,
+  lchToHex, makePalette, paletteLab, palettePositions,
 } from '../palette';
 
-const deltaE = (p: { L: number, a: number, b: number }, q: { L: number, a: number, b: number }) => Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b);
+const deltaE76 = (p: Lab, q: Lab) => Math.hypot(p.L - q.L, p.a - q.a, p.b - q.b);
+const chroma = (p: Lab) => Math.hypot(p.a, p.b);
 
 describe('labToSrgb', () => {
   test('maps the reference points of CIELAB', () => {
@@ -30,61 +32,99 @@ describe('labToSrgb', () => {
   });
 });
 
-describe('maxInGamutChroma', () => {
-  test('is the edge of the gamut at every hue', () => {
-    const cMax = maxInGamutChroma(C.LAB_L);
-    expect(cMax).toBeGreaterThan(20);
-    // just above the maximum, at least one hue leaves the gamut
-    const outside = Array.from({ length: 360 }, (_, h) => h)
-      .some((h) => !labToSrgb(C.LAB_L, (cMax + 0.5) * Math.cos((h * Math.PI) / 180), (cMax + 0.5) * Math.sin((h * Math.PI) / 180)).inGamut);
-    expect(outside).toBe(true);
+describe('deltaE2000', () => {
+  // Sharma, Wu & Dalal (2005), Table 1, pairs 1, 7, 13 and 25
+  test.each([
+    [{ L: 50, a: 2.6772, b: -79.7751 }, { L: 50, a: 0, b: -82.7485 }, 2.0425],
+    [{ L: 50, a: 0, b: 0 }, { L: 50, a: -1, b: 2 }, 2.3669],
+    [{ L: 50, a: 2.5, b: 0 }, { L: 56, a: -27, b: -3 }, 31.903],
+    [{ L: 60.2574, a: -34.0099, b: 36.2677 }, { L: 60.4626, a: -34.1751, b: 39.4387 }, 1.2644],
+  ])('matches the published test pair %#', (p, q, expected) => {
+    expect(deltaE2000(p, q)).toBeCloseTo(expected, 3);
   });
 
-  test('is memoised', () => {
-    expect(maxInGamutChroma(C.LAB_L)).toBe(maxInGamutChroma(C.LAB_L));
+  test('is symmetric and zero for identical colours', () => {
+    const p = { L: 40, a: 20, b: -30 };
+    const q = { L: 70, a: -10, b: 25 };
+    expect(deltaE2000(p, q)).toBeCloseTo(deltaE2000(q, p), 9);
+    expect(deltaE2000(p, p)).toBe(0);
+  });
+});
+
+describe('colour ellipse', () => {
+  const points = Array.from({ length: ELLIPSE_STEPS }, (_, i) => ellipsePoint((2 * Math.PI * i) / ELLIPSE_STEPS));
+
+  test('lies entirely inside sRGB, with L* in [30, 80]', () => {
+    points.forEach((p) => {
+      expect(labToSrgb(p.L, p.a, p.b).inGamut).toBe(true);
+      expect(p.L).toBeGreaterThanOrEqual(30);
+      expect(p.L).toBeLessThanOrEqual(80);
+    });
+  });
+
+  test('varies lightness, chroma and hue', () => {
+    const Ls = points.map((p) => p.L);
+    const Cs = points.map(chroma);
+    expect(Math.max(...Ls) - Math.min(...Ls)).toBeGreaterThan(30);
+    expect(Math.max(...Cs) - Math.min(...Cs)).toBeGreaterThan(20);
+    // the ellipse winds once around the neutral axis, so every hue is visited
+    const hues = points.map((p) => ((Math.atan2(p.b, p.a) * 180) / Math.PI + 360) % 360);
+    const buckets = new Set(hues.map((h) => Math.floor(h / 30)));
+    expect(buckets.size).toBe(12);
+  });
+
+  test('ellipseAtArc walks the perimeter at constant speed', () => {
+    // over short steps the chord equals the arc, so equal arc fractions give equal chords
+    const n = 720;
+    const steps = Array.from({ length: n }, (_, k) => deltaE76(ellipseAtArc(k / n), ellipseAtArc((k + 1) / n)));
+    steps.forEach((d) => expect(Math.abs(d - ELLIPSE_PERIMETER / n)).toBeLessThan(0.01 * (ELLIPSE_PERIMETER / n)));
+    expect(steps.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(ELLIPSE_PERIMETER);
+    expect(ellipseAtArc(1.25)).toEqual(ellipseAtArc(0.25));
+    expect(ellipseAtArc(-0.75)).toEqual(ellipseAtArc(0.25));
   });
 });
 
 describe('makePalette', () => {
-  test('every hue of the wheel is in gamut at the palette chroma, including fractional ones', () => {
-    for (let h = 0; h < 360; h += 0.25) {
-      const rad = (h * Math.PI) / 180;
-      expect(labToSrgb(C.LAB_L, PALETTE_CHROMA * Math.cos(rad), PALETTE_CHROMA * Math.sin(rad)).inGamut).toBe(true);
-    }
-  });
-
-  test('gives six distinct colours at constant L* and chroma, equally spaced in CIELAB', () => {
-    [0, 17, 45.5].forEach((offset) => {
+  test('gives six distinct, well separated colours for every rotation', () => {
+    for (let offset = 0; offset < 60; offset += 0.5) {
       const palette = makePalette(offset);
       expect(palette).toHaveLength(PALETTE_SIZE);
       expect(new Set(palette).size).toBe(PALETTE_SIZE);
       const labs = palette.map(hexToLab);
-      labs.forEach((lab) => {
-        expect(Math.abs(lab.L - C.LAB_L)).toBeLessThanOrEqual(0.5);
-        expect(Math.abs(Math.hypot(lab.a, lab.b) - PALETTE_CHROMA)).toBeLessThanOrEqual(0.75);
-      });
-      // on a circle, six hues 60 degrees apart are one radius apart
-      labs.forEach((lab, k) => {
-        expect(Math.abs(deltaE(lab, labs[(k + 1) % labs.length]) - PALETTE_CHROMA)).toBeLessThanOrEqual(1);
-      });
+      for (let i = 0; i < labs.length; i += 1) {
+        for (let j = i + 1; j < labs.length; j += 1) {
+          // the best fixed-L*, fixed-chroma circle in sRGB manages about 17.5
+          expect(deltaE2000(labs[i], labs[j])).toBeGreaterThan(27);
+        }
+      }
+    }
+  });
+
+  test('neighbours are about equally far apart in CIELAB (equal arcs; chords differ with curvature)', () => {
+    [0, 17, 45.5].forEach((offset) => {
+      const labs = paletteLab(offset);
+      const d = labs.map((p, k) => deltaE76(p, labs[(k + 1) % labs.length]));
+      expect(Math.min(...d)).toBeGreaterThan(0.8 * Math.max(...d));
     });
   });
 
-  test('rotates with the hue offset', () => {
-    expect(paletteHues(0)).toEqual([0, 60, 120, 180, 240, 300]);
-    expect(paletteHues(30)).toEqual([30, 90, 150, 210, 270, 330]);
-    expect(paletteHues(-10)[0]).toBe(350);
-    expect(makePalette(60)).toEqual([...makePalette(0).slice(1), makePalette(0)[0]]);
-    const hue = (hex: string) => {
-      const { a, b } = hexToLab(hex);
-      return ((Math.atan2(b, a) * 180) / Math.PI + 360) % 360;
-    };
-    expect(hue(makePalette(25)[0])).toBeCloseTo(25, 0);
+  test('the hex colours are the CIELAB samples, rounded to 8 bits', () => {
+    paletteLab(13).forEach((p, k) => {
+      expect(deltaE76(hexToLab(makePalette(13)[k]), p)).toBeLessThan(1);
+    });
   });
 
-  test('the default grey sits at the same L*', () => {
+  test('rotates with the offset; 60 degrees moves every colour on to the next', () => {
+    expect(palettePositions(0)).toEqual([0, 60, 120, 180, 240, 300]);
+    expect(palettePositions(30)).toEqual([30, 90, 150, 210, 270, 330]);
+    expect(palettePositions(-10)[0]).toBe(350);
+    expect(makePalette(60)).toEqual([...makePalette(0).slice(1), makePalette(0)[0]]);
+    expect(makePalette(20)).not.toEqual(makePalette(0));
+  });
+
+  test('the default grey is a neutral at L* 50', () => {
     const grey = hexToLab(C.DOT_FILL);
-    expect(Math.abs(grey.L - C.LAB_L)).toBeLessThanOrEqual(0.5);
+    expect(Math.abs(grey.L - 50)).toBeLessThanOrEqual(0.5);
     expect(Math.hypot(grey.a, grey.b)).toBeLessThan(0.01);
   });
 });

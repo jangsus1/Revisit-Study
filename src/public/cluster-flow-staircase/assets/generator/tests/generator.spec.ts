@@ -141,7 +141,7 @@ describe('generateTrialPair', () => {
               density,
               nB,
               field: nodeBounds(displayA),
-              inkTarget: { linkLength: metricsA.linkLength, outlineInk: metricsA.outlineInk, edges: displayA.edges.length },
+              inkTarget: { linkLength: metricsA.linkLength, edges: displayA.edges.length },
             });
             attempts.push(displayB.attempts);
           }
@@ -185,11 +185,12 @@ describe('generateTrialPair', () => {
       });
     }, 60000);
 
-    test('the rect budget lengthens B\'s links to make up for A\'s outline ink', () => {
+    test('rect B ignores A\'s outline ink and is built like the colour B', () => {
       // colour shares the even layout with rect but has no outlines
       const plain = pairs('color').map(({ b }) => b.linkLength);
-      const rect = pairs('rect').map(({ b }) => b.linkLength);
-      expect(mean(rect)).toBeGreaterThan(1.5 * mean(plain));
+      const rect = pairs('rect').map(({ a, b }) => ({ a: a.linkLength, b: b.linkLength }));
+      expect(mean(rect.map(({ b }) => b))).toBeCloseTo(mean(plain), 6);
+      expect(mean(rect.map(({ b }) => b)) / mean(rect.map(({ a }) => a))).toBeLessThan(1.1);
     }, 60000);
   });
 });

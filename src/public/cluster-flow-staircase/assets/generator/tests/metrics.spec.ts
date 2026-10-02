@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
 import {
-  CROSS_ARM, CROSS_STROKE, DASH_DUTY, DOT_R, HEAD_AREA, HEAD_LEN, HOLLOW_SIDE, HOLLOW_STROKE, LINK_W, TRIM,
+  DASH_DUTY, DOT_R, HEAD_AREA, HEAD_LEN, HOLLOW_STROKE, LINK_W, SQUARE_SIDE, TRIANGLE_R, TRIM,
   visibleLinkLength,
 } from '../geometry';
 import { measureDisplay } from '../metrics';
@@ -38,11 +38,15 @@ const link = (dashed: boolean): DisplayEdge => ({
 });
 
 describe('geometry', () => {
-  test('the hollow square encloses the circle\'s area and the strokes are a quarter radius', () => {
-    expect(HOLLOW_SIDE * HOLLOW_SIDE).toBeCloseTo(Math.PI * DOT_R * DOT_R, 9);
+  test('the square covers the circle\'s area, the outlines are a quarter radius', () => {
+    expect(SQUARE_SIDE * SQUARE_SIDE).toBeCloseTo(Math.PI * DOT_R * DOT_R, 9);
     expect(HOLLOW_STROKE).toBeCloseTo(0.25 * DOT_R, 9);
-    expect(CROSS_STROKE).toBeCloseTo(0.25 * DOT_R, 9);
-    expect(CROSS_ARM).toBeCloseTo(1.1 * DOT_R, 9);
+  });
+
+  test('no mark reaches the trimmed link ends, so arrowheads never touch a node', () => {
+    expect(TRIANGLE_R).toBeLessThan(TRIM);
+    expect((SQUARE_SIDE / 2) * Math.SQRT2).toBeLessThan(TRIM);
+    expect(DOT_R).toBeLessThan(TRIM);
   });
 
   test('visibleLinkLength trims both ends and removes the arrowhead', () => {
@@ -56,18 +60,19 @@ describe('geometry', () => {
 });
 
 describe('measureDisplay', () => {
-  test('ink of a single circle, hollow square and cross', () => {
+  test('ink of each of the six marks', () => {
     const r = C.RDOT * C.SCALE;
-    expect(measureDisplay(display([node(0, 100, 100, 'circle')])).nodeInk).toBeCloseTo(Math.PI * r * r, 6);
-
+    const w = 0.25 * r;
     const side = r * Math.sqrt(Math.PI);
-    const s = 0.25 * r;
-    expect(measureDisplay(display([node(0, 100, 100, 'hollowSquare')])).nodeInk)
-      .toBeCloseTo(side * side - (side - 2 * s) ** 2, 6);
-
-    const arm = 1.1 * r;
-    expect(measureDisplay(display([node(0, 100, 100, 'cross')])).nodeInk)
-      .toBeCloseTo(2 * (2 * arm * s) - s * s, 6);
+    const R = C.TRIANGLE_R * r;
+    const tri = (cr: number) => (3 * Math.sqrt(3) * cr * cr) / 4;
+    const ink = (shape: NodeShape) => measureDisplay(display([node(0, 100, 100, shape)])).nodeInk;
+    expect(ink('circle')).toBeCloseTo(Math.PI * r * r, 6);
+    expect(ink('square')).toBeCloseTo(side * side, 6);
+    expect(ink('triangle')).toBeCloseTo(tri(R), 6);
+    expect(ink('hollowCircle')).toBeCloseTo(Math.PI * (r * r - (r - w) ** 2), 6);
+    expect(ink('hollowSquare')).toBeCloseTo(side * side - (side - 2 * w) ** 2, 6);
+    expect(ink('hollowTriangle')).toBeCloseTo(tri(R) - tri(R - 2 * w), 6);
   });
 
   test('a lone node has no neighbours, no links and no hull', () => {

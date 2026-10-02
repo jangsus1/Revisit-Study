@@ -1,13 +1,15 @@
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
 import {
-  ARROW_CLEARANCE, DOT_RADIUS, MIN_CENTRE_DISTANCE, checkInvariants, linkIsClear, pointSegmentDistance,
+  ARROW_CLEARANCE, DOT_RADIUS, MARK_MARGIN, MIN_CENTRE_DISTANCE, checkInvariants, linkIsClear, pointSegmentDistance,
+  segmentMarkDistance, segmentSegmentDistance,
 } from '../invariants';
+import { SQUARE_SIDE } from '../geometry';
 import { Display, DisplayNode } from '../types';
 
-function node(id: number, x: number, y: number): DisplayNode {
+function node(id: number, x: number, y: number, shape: DisplayNode['shape'] = 'circle'): DisplayNode {
   return {
-    id, x, y, cluster: -1, rank: id, shape: 'circle', fill: C.DOT_FILL,
+    id, x, y, cluster: -1, rank: id, shape, fill: C.DOT_FILL,
   };
 }
 
@@ -68,6 +70,42 @@ describe('checkInvariants', () => {
       }],
     ));
     expect(violations.some((v) => v.includes('passes'))).toBe(true);
+  });
+
+  test('segmentSegmentDistance', () => {
+    expect(segmentSegmentDistance([0, 0], [10, 10], [0, 10], [10, 0])).toBe(0);
+    expect(segmentSegmentDistance([0, 0], [10, 0], [0, 3], [10, 3])).toBeCloseTo(3, 9);
+    expect(segmentSegmentDistance([0, 0], [10, 0], [13, 4], [20, 4])).toBeCloseTo(5, 9);
+  });
+
+  test('segmentMarkDistance measures to the mark outline, not the centre', () => {
+    // circles: centre distance minus the radius, the original rule
+    expect(segmentMarkDistance(node(0, 0, 0), -50, 20, 50, 20)).toBeCloseTo(20 - DOT_RADIUS, 9);
+    expect(MARK_MARGIN + DOT_RADIUS).toBeCloseTo(ARROW_CLEARANCE, 9);
+    // a horizontal line just above an upward triangle meets its tip; just below, its base
+    const tri = node(0, 0, 0, 'triangle');
+    const tip = segmentMarkDistance(tri, -50, -20, 50, -20);
+    const base = segmentMarkDistance(tri, -50, 20, 50, 20);
+    expect(tip).toBeLessThan(base);
+    expect(segmentMarkDistance(tri, -50, 0, 50, 0)).toBe(0);
+    // squares: distance to the nearest side
+    const sq = node(0, 0, 0, 'hollowSquare');
+    expect(segmentMarkDistance(sq, SQUARE_SIDE / 2 + 3, -50, SQUARE_SIDE / 2 + 3, 50)).toBeCloseTo(3, 9);
+    expect(segmentMarkDistance(sq, -50, 0, 50, 0)).toBe(0);
+  });
+
+  test('2. a link that clears a circle can still graze a triangle tip', () => {
+    // a horizontal link above the node, between a circle's top and a triangle's tip
+    const y = 100 - DOT_RADIUS - MARK_MARGIN - 1;
+    const edges = [{
+      source: 0, target: 1, kind: 'within' as const, dashed: false, extra: false,
+    }];
+    expect(checkInvariants(display([node(0, 100, y), node(1, 300, y), node(2, 200, 100)], edges))).toEqual([]);
+    expect(checkInvariants(display([node(0, 100, y), node(1, 300, y), node(2, 200, 100, 'triangle')], edges))).toHaveLength(1);
+    expect(linkIsClear(node(0, 100, y), node(1, 300, y), [node(2, 200, 100, 'hollowTriangle')])).toBe(false);
+    // the same distance below the node clears the triangle's flat base
+    const below = 100 + DOT_RADIUS + MARK_MARGIN + 1;
+    expect(linkIsClear(node(0, 100, below), node(1, 300, below), [node(2, 200, 100, 'triangle')])).toBe(true);
   });
 
   test('2. accepts a link that only comes close to its own endpoints', () => {

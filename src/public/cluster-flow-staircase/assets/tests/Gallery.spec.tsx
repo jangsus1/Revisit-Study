@@ -90,7 +90,7 @@ describe('Gallery', () => {
 
   test('shows the palette strip and the static noise mask', () => {
     render(<MantineProvider><Gallery /></MantineProvider>);
-    expect(screen.getByText(/Colour cue palette: CIELAB L\* 50, chroma \d+/)).toBeTruthy();
+    expect(screen.getByText(/Colour cue palette: tilted CIELAB ellipse .* closest pair [\d.]+ CIEDE2000/)).toBeTruthy();
     expect(within(screen.getByTestId('palette-strip')).getAllByText(/^#[0-9A-F]{6}$/)).toHaveLength(6);
     expect(screen.getAllByTestId('noise-mask')).toHaveLength(1);
   });

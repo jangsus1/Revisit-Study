@@ -5,36 +5,46 @@
 import { ReactNode } from 'react';
 import { GENERATOR_CONFIG as C } from '../generator/config';
 import {
-  CROSS_ARM, CROSS_STROKE, DASH_ARRAY, DOT_R, HEAD_LEN, HEAD_W, HOLLOW_SIDE, HOLLOW_STROKE, LINK_W, TRIM,
+  DASH_ARRAY, DOT_R, HEAD_LEN, HEAD_W, HOLLOW_STROKE, LINK_W, SQUARE_SIDE, TRIANGLE_R, TRIM, trianglePoints,
 } from '../generator/geometry';
 import { Display, DisplayNode } from '../generator/types';
 
+function trianglePath(x: number, y: number, r: number): string {
+  return trianglePoints(r).map(([dx, dy]) => `${x + dx},${y + dy}`).join(' ');
+}
+
+/**
+ * One node mark. Hollow marks draw their outline inside the filled mark's footprint: the stroke
+ * is centred on the footprint shrunk by half the stroke width (for the triangle, whose inradius is
+ * half its circumradius, by a whole stroke width of circumradius).
+ */
 function nodeMark(node: DisplayNode) {
-  if (node.shape === 'hollowSquare') {
-    // the outline sits inside the outer side, so the mark's footprint is HOLLOW_SIDE square
-    const inner = HOLLOW_SIDE - HOLLOW_STROKE;
-    return (
-      <rect
-        key={node.id}
-        x={node.x - inner / 2}
-        y={node.y - inner / 2}
-        width={inner}
-        height={inner}
-        fill="none"
-        stroke={node.fill}
-        strokeWidth={HOLLOW_STROKE}
-      />
-    );
+  const { id, x, y, fill } = node;
+  switch (node.shape) {
+    case 'square':
+      return <rect key={id} x={x - SQUARE_SIDE / 2} y={y - SQUARE_SIDE / 2} width={SQUARE_SIDE} height={SQUARE_SIDE} fill={fill} />;
+    case 'triangle':
+      return <polygon key={id} points={trianglePath(x, y, TRIANGLE_R)} fill={fill} />;
+    case 'hollowCircle':
+      return <circle key={id} cx={x} cy={y} r={DOT_R - HOLLOW_STROKE / 2} fill="none" stroke={fill} strokeWidth={HOLLOW_STROKE} />;
+    case 'hollowSquare': {
+      const inner = SQUARE_SIDE - HOLLOW_STROKE;
+      return <rect key={id} x={x - inner / 2} y={y - inner / 2} width={inner} height={inner} fill="none" stroke={fill} strokeWidth={HOLLOW_STROKE} />;
+    }
+    case 'hollowTriangle':
+      return (
+        <polygon
+          key={id}
+          points={trianglePath(x, y, TRIANGLE_R - HOLLOW_STROKE)}
+          fill="none"
+          stroke={fill}
+          strokeWidth={HOLLOW_STROKE}
+          strokeLinejoin="miter"
+        />
+      );
+    default:
+      return <circle key={id} cx={x} cy={y} r={DOT_R} fill={fill} />;
   }
-  if (node.shape === 'cross') {
-    return (
-      <g key={node.id} stroke={node.fill} strokeWidth={CROSS_STROKE} strokeLinecap="butt">
-        <line x1={node.x - CROSS_ARM} y1={node.y} x2={node.x + CROSS_ARM} y2={node.y} />
-        <line x1={node.x} y1={node.y - CROSS_ARM} x2={node.x} y2={node.y + CROSS_ARM} />
-      </g>
-    );
-  }
-  return <circle key={node.id} cx={node.x} cy={node.y} r={DOT_R} fill={node.fill} />;
 }
 
 /** The stimulus itself: an SVG of exactly `display.width` x `display.height` canvas px. */

@@ -6,4 +6,4 @@ export {
 } from './generator';
 export { GENERATOR_CONFIG } from './config';
 export { measureDisplay } from './metrics';
-export { makePalette, paletteHues, PALETTE_CHROMA } from './palette';
+export { makePalette, paletteLab, palettePositions } from './palette';

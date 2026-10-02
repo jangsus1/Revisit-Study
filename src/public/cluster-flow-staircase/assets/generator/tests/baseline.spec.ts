@@ -4,7 +4,7 @@ import {
 } from '../baseline';
 import { GENERATOR_CONFIG as C } from '../config';
 import { generateDisplay } from '../generator';
-import { DOT_R, LINK_W } from '../geometry';
+import { DOT_R } from '../geometry';
 import { MIN_CENTRE_DISTANCE, checkInvariants } from '../invariants';
 import { measureDisplay } from '../metrics';
 import { makePalette } from '../palette';
@@ -102,10 +102,10 @@ describe('baselineSpacing', () => {
 });
 
 describe('linkBudget', () => {
-  test('adds the outline ink as link length and scales by the link counts', () => {
-    expect(linkBudget({ linkLength: 1000, outlineInk: 0, edges: 20 }, 40)).toBeCloseTo(2000, 9);
-    expect(linkBudget({ linkLength: 1000, outlineInk: 10 * LINK_W, edges: 10 }, 10)).toBeCloseTo(1010, 9);
-    expect(linkBudget({ linkLength: 1000, outlineInk: 0, edges: 0 }, 10)).toBe(0);
+  test('scales A\'s link length by the link counts', () => {
+    expect(linkBudget({ linkLength: 1000, edges: 20 }, 40)).toBeCloseTo(2000, 9);
+    expect(linkBudget({ linkLength: 1000, edges: 10 }, 10)).toBeCloseTo(1000, 9);
+    expect(linkBudget({ linkLength: 1000, edges: 0 }, 10)).toBe(0);
   });
 });
 
@@ -201,22 +201,22 @@ describe('buildBaseline', () => {
   });
 
   test('with a target, the total link length follows the budget and records it', () => {
-    const target = { linkLength: 23 * 60, outlineInk: 0, edges: 23 };
+    const target = { linkLength: 23 * 60, edges: 23 };
     const d = buildBaseline(5, 24, 'proximity', 'sparse', { field: FIELD, target }) as Display;
     expect(d.meta.linkTarget).toBeCloseTo(linkBudget(target, 23), 9);
     const { linkLength } = measureDisplay(d);
     expect(linkLength / (d.meta.linkTarget as number)).toBeGreaterThan(0.8);
     expect(linkLength / (d.meta.linkTarget as number)).toBeLessThan(1.2);
 
-    // a larger budget (A's rectangle outlines) makes B's links longer
+    // a larger budget makes B's links longer
     const longer = buildBaseline(5, 24, 'proximity', 'sparse', {
-      field: FIELD, target: { ...target, outlineInk: 3000 },
+      field: FIELD, target: { ...target, linkLength: 23 * 120 },
     }) as Display;
     expect(measureDisplay(longer).linkLength).toBeGreaterThan(linkLength * 1.3);
   });
 
   test('long budgeted links spread over many nodes instead of forming a hub', () => {
-    const target = { linkLength: 23 * 60, outlineInk: 6000, edges: 23 };
+    const target = { linkLength: 23 * 180, edges: 23 };
     for (let seed = 1; seed <= 20; seed += 1) {
       const d = buildBaseline(seed, 24, 'rect', 'sparse', { field: FIELD, target }) as Display;
       const degree = new Map<number, number>();
@@ -240,7 +240,7 @@ describe('buildBaseline', () => {
 
     const shape = buildBaseline(5, 30, 'shape', 'sparse', { field: FIELD }) as Display;
     expect(shape.nodes.every((n) => (C.SHAPES as readonly string[]).includes(n.shape))).toBe(true);
-    expect(new Set(shape.nodes.map((n) => n.shape)).size).toBe(3);
+    expect(new Set(shape.nodes.map((n) => n.shape)).size).toBe(C.SHAPES.length);
 
     const edge = buildBaseline(5, 30, 'edge', 'sparse', { field: FIELD }) as Display;
     const dashed = edge.edges.filter((e) => e.dashed).length;

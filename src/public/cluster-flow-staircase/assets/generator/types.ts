@@ -7,12 +7,12 @@
 export type Cue = 'proximity' | 'rect' | 'color' | 'shape' | 'edge';
 export type Density = 'sparse' | 'dense';
 export type StimulusKind = 'A' | 'B';
-export type NodeShape = 'circle' | 'hollowSquare' | 'cross';
+export type NodeShape = 'circle' | 'square' | 'triangle' | 'hollowCircle' | 'hollowSquare' | 'hollowTriangle';
 export type StaircaseId = 'above' | 'below' | 'catch' | 'practice';
 /**
- * How stimulus A places its clusters. `grouped` is the gapped MATLAB layout (proximity grouping);
- * `even` closes the gaps so every edge-to-edge distance between neighbouring clusters equals the
- * within-cluster pitch, and only the cue groups.
+ * How stimulus A places its clusters. `grouped` (proximity) puts `PROXIMITY_GAP` within-cluster
+ * pitches between the facing edges of neighbouring clusters; `even` puts exactly one pitch there,
+ * so position does not group and only the cue does.
  */
 export type LayoutMode = 'grouped' | 'even';
 
@@ -109,8 +109,6 @@ export interface Display {
 export interface InkTarget {
   /** A's total visible link length, canvas px */
   linkLength: number;
-  /** A's rectangle-outline ink, canvas px^2 (0 unless the cue is rect) */
-  outlineInk: number;
   /** A's number of links */
   edges: number;
 }
@@ -138,7 +136,7 @@ export interface GenerateOptions {
   density: Density;
   /** node count for stimulus B; ignored for A (always 24) */
   nB?: number;
-  /** rotation of the colour-cue hue circle in degrees; default 0 */
+  /** rotation of the colour-cue ellipse, degrees of its perimeter (60 = one colour); default 0 */
   hueOffset?: number;
   /** B only: sample the dots inside this rectangle (A's dot-centre bounding box); default the canvas */
   field?: Rect;
@@ -157,7 +155,7 @@ export interface TrialParams {
   staircaseId: StaircaseId;
   /** true when stimulus A is shown in the first interval and B in the second; drawn per trial */
   aFirst: boolean;
-  /** the participant's colour-wheel rotation in degrees, drawn once per session */
+  /** the participant's colour-ellipse rotation in degrees of its perimeter, drawn once per session */
   hueOffset: number;
   /** the participant's staircase starting levels for this cell; null for practice trials */
   starts: { above: number; below: number } | null;

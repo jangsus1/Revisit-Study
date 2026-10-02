@@ -4,7 +4,7 @@ import {
 } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../../generator/config';
 import {
-  CROSS_ARM, CROSS_STROKE, DOT_R, HOLLOW_SIDE, HOLLOW_STROKE,
+  DOT_R, HOLLOW_STROKE, SQUARE_SIDE, TRIANGLE_R,
 } from '../../generator/geometry';
 import { Display, DisplayNode } from '../../generator/types';
 import { StimulusFrame, StimulusSVG } from '../StimulusSVG';
@@ -22,11 +22,14 @@ const display: Display = {
   seed: 1,
   cue: 'shape',
   density: 'sparse',
-  n: 3,
+  n: 6,
   width: C.CANVAS.width,
   height: C.CANVAS.height,
   background: C.BACKGROUND,
-  nodes: [node(0, 100, 'circle'), node(1, 250, 'hollowSquare'), node(2, 400, 'cross')],
+  nodes: [
+    node(0, 100, 'circle'), node(1, 200, 'square'), node(2, 300, 'triangle'),
+    node(3, 400, 'hollowCircle'), node(4, 500, 'hollowSquare'), node(5, 600, 'hollowTriangle'),
+  ],
   edges: [
     {
       source: 0, target: 1, kind: 'within', dashed: false, extra: false,
@@ -37,7 +40,7 @@ const display: Display = {
   ],
   clusters: [{
     index: 0,
-    nodeIds: [0, 1, 2],
+    nodeIds: [0, 1, 2, 3, 4, 5],
     cx: 250,
     cy: 100,
     orderPos: 0,
@@ -57,23 +60,27 @@ describe('StimulusSVG', () => {
     expect(svg.getAttribute('height')).toBe(String(C.CANVAS.height));
   });
 
-  test('draws a filled circle, a hollow square and an open cross in the node colour', () => {
+  test('draws the six marks in the node colour, outlines inside the filled footprint', () => {
     const { container } = render(<StimulusSVG display={display} />);
-    const circle = container.querySelector('circle') as SVGCircleElement;
+    const marks = [...container.querySelectorAll('[fill="#123456"], [stroke="#123456"]')];
+    expect(marks).toHaveLength(6);
+    const [circle, square, triangle, ring, box, outline] = marks;
+
+    expect(circle.tagName).toBe('circle');
     expect(Number(circle.getAttribute('r'))).toBeCloseTo(DOT_R, 9);
-    expect(circle.getAttribute('fill')).toBe('#123456');
+    expect(square.tagName).toBe('rect');
+    expect(Number(square.getAttribute('width'))).toBeCloseTo(SQUARE_SIDE, 9);
+    expect(triangle.tagName).toBe('polygon');
+    // top vertex TRIANGLE_R above the centre
+    expect(Number((triangle.getAttribute('points') as string).split(' ')[0].split(',')[1])).toBeCloseTo(100 - TRIANGLE_R, 9);
 
-    const square = [...container.querySelectorAll('rect')].find((r) => r.getAttribute('stroke') === '#123456') as SVGRectElement;
-    expect(square.getAttribute('fill')).toBe('none');
-    expect(Number(square.getAttribute('stroke-width'))).toBeCloseTo(HOLLOW_STROKE, 9);
-    // the outline's outer edge is HOLLOW_SIDE wide
-    expect(Number(square.getAttribute('width')) + HOLLOW_STROKE).toBeCloseTo(HOLLOW_SIDE, 9);
-
-    const cross = container.querySelector('g[stroke="#123456"]') as SVGGElement;
-    const bars = cross.querySelectorAll('line');
-    expect(bars).toHaveLength(2);
-    expect(Number(cross.getAttribute('stroke-width'))).toBeCloseTo(CROSS_STROKE, 9);
-    expect(Number(bars[0].getAttribute('x2')) - Number(bars[0].getAttribute('x1'))).toBeCloseTo(2 * CROSS_ARM, 9);
+    [ring, box, outline].forEach((m) => {
+      expect(m.getAttribute('fill')).toBe('none');
+      expect(Number(m.getAttribute('stroke-width'))).toBeCloseTo(HOLLOW_STROKE, 9);
+    });
+    expect(Number(ring.getAttribute('r')) + HOLLOW_STROKE / 2).toBeCloseTo(DOT_R, 9);
+    expect(Number(box.getAttribute('width')) + HOLLOW_STROKE).toBeCloseTo(SQUARE_SIDE, 9);
+    expect(Number((outline.getAttribute('points') as string).split(' ')[0].split(',')[1])).toBeCloseTo(100 - (TRIANGLE_R - HOLLOW_STROKE), 9);
   });
 
   test('dashes only the dashed link, with round caps and the Sterzik level-3 pattern', () => {
@@ -90,7 +97,7 @@ describe('StimulusSVG', () => {
     const { container } = render(<StimulusSVG display={display} />);
     const outline = [...container.querySelectorAll('rect')].find((r) => r.getAttribute('stroke') === C.HULL_STROKE) as SVGRectElement;
     expect(outline.getAttribute('width')).toBe('340');
-    expect(container.querySelector('polygon[stroke]')).toBeNull();
+    expect(container.querySelector(`polygon[stroke="${C.HULL_STROKE}"]`)).toBeNull();
   });
 });
 

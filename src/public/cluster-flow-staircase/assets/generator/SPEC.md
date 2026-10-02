@@ -155,7 +155,8 @@ for i = 0 .. 4:
 3. No spring relaxation and no slot reassignment (the README's section 9 is dropped): only
    adjustments that can be stated in one sentence in a paper are used.
 4. Displays failing occlusion invariants (dot centres < 2.4*RDOT apart, an arrow passing within
-   RDOT+2 px of a non-endpoint dot, layout not fitting the canvas) are discarded and the next
+   RDOT+2 px of a non-endpoint dot, layout not fitting the canvas; the link clearance is widened
+   for larger marks by 20) are discarded and the next
    derived seed is tried; the attempt count is recorded.
 5. The whole layout is scaled into the canvas for single-fixation viewing. *Superseded by 16:*
    originally 0.6 into 480 x 360 px.
@@ -174,13 +175,14 @@ for i = 0 .. 4:
     `(maxY - meanY)_top + INTER + (meanY - minY)_bottom` (the planned `rowGap = max` over columns
     left up to 1.3 INTER of extra gap in columns of short clusters, i.e. proximity grouping, so the
     rows are aligned on their facing edges instead). Templates and jitter are those of the grouped
-    layout of the same seed. `proximity` keeps sections 5 and 5b.
-11. **Palette.** Six colours on a CIELAB circle centred on the neutral axis: L* = 50, chroma 29
+    layout of the same seed. `proximity` keeps sections 5 and 5b. *The proximity layout is
+    superseded by 17.*
+11. *Superseded by 18.* **Palette.** Six colours on a CIELAB circle centred on the neutral axis: L* = 50, chroma 29
     (the largest whole chroma at which every hue is inside sRGB), hues `hueOffset + 60 k`, as in the
     colour-wheel method of Zhang & Luck (2008). `hueOffset` is drawn once per participant in
     [0, 60). The default node grey is #777777 (L* = 50), so colour and grey displays differ in hue
     only.
-12. **Shapes and lines.** Shape cue marks: filled circle (r = RDOT), hollow square (outer side
+12. *Shapes superseded by 20; lines kept.* **Shapes and lines.** Shape cue marks: filled circle (r = RDOT), hollow square (outer side
     r * sqrt(pi), outline 0.25 r inside it) and open cross (bars 2 x 1.1 r long, 0.25 r wide), one
     of each mark class, each on two clusters. Edge cue: between-cluster links dashed with Sterzik
     et al. (IEEE TVCG 2024, Table 4) asynchronous dashing level 3 of 13 (dash 10.9 of a 40 px
@@ -189,14 +191,46 @@ for i = 0 .. 4:
     the canvas margin) with minimum spacing `min(B_MAX_SPACING, B_SPACING_FACTOR * sqrt(area / N_B))`,
     never below the invariant floor (factor 0.8, cap 67.5 px). The tree grows outward from a random
     point of the field so every joining node has placed neighbours nearby.
-14. **B ink targeting.** B's total visible link length aims at `(A_linkLength + A_outlineInk /
-    linkWidth) * E_B / E_A`: each link goes to the one of the 10 nearest usable candidates whose
+14. **B ink targeting.** *The outline term is dropped by 19.* B's total visible link length aims at
+    `(A_linkLength + A_outlineInk / linkWidth) * E_B / E_A`: each link goes to the one of the 10 nearest usable candidates whose
     length best meets the remaining budget per remaining link, skipping nodes that already carry 4
     links while others are usable. Without an A (stand-alone B) links go to a random one of the 3
     nearest usable dots. B must therefore always be regenerated with its A (`generateTrialPair`).
 15. **Metrics.** `measureDisplay` reports node, link (dash duty cycle and arrowheads included) and
     outline ink, visible link length, nearest-neighbour and pairwise distances and convex-hull area,
     from the same geometry the renderer draws (`geometry.ts`).
-16. **Larger single-location canvas.** SCALE 0.9 into a 720 x 540 px canvas; A and B are shown one
+16. **Larger single-location canvas.** SCALE 0.9 into a 720 x 540 px canvas (*800 x 640 since
+    17*); A and B are shown one
     after the other at the same place, separated by a 150 ms white-noise mask (3 px grey blocks,
     seeded by `hashSeed(seedA, seedB, 'mask')`).
+17. **Proximity gap.** The `proximity` cue uses the same centre placement as the even layout (10)
+    with an edge-to-edge gap of `PROXIMITY_GAP` = 2 pitches instead of one, horizontally and in
+    every column. Sections 5 and 5b (`customizedRatio` 1.2) gave gaps as small as 0.87 pitch
+    (median 1.4) once jitter and the halved height of 5- and 6-dot clusters were applied, so the
+    groups were not clearly separated. The canvas grows to 800 x 640 px, which holds the widest and
+    tallest proximity layout (744 x 632 px with the margin) and the tallest even layout, so no
+    cluster-size draw is rejected for leaving the canvas.
+18. **Colour ellipse.** The colour cue samples six colours from an ellipse in CIELAB: a planar
+    slice through the colour solid tilted out of the a*b* plane, centre (L* 56, a* 4.3, b* 4.1),
+    major radius 60 in the a*b* plane at hue angle 154.5 degrees, minor radius 40.5 perpendicular
+    to it and tilted 36 degrees towards +L*. Lightness (32 to 80), chroma (about 27 to 63) and hue
+    all change around it. The parameters come from a seeded search that maximises the smallest
+    CIEDE2000 difference between any two of six samples spaced evenly along the ellipse, over every
+    rotation, with the whole ellipse inside sRGB and L* in [30, 80]: the worst pair is about 28
+    CIEDE2000 apart, against about 17.5 on the best fixed-L*, fixed-chroma circle (11). The six
+    samples sit at equal arc lengths (in CIELAB) from `hueOffset`, now in degrees of the perimeter
+    (60 moves every colour on to the next), still drawn once per participant in [0, 60). The grey
+    node stays #777777 (L* 50).
+19. **No outline ink in B.** B's link budget is A's visible link length scaled by the link counts,
+    without A's rect outlines: making up for them took B's links 2.4 times as long as A's, so they
+    crossed and B looked cluttered. Rect B is now built exactly like proximity B (grey circles,
+    local links), and rect A carries about 1.5 times B's ink (B/A ink 0.66 sparse, 0.72 dense).
+20. **Six shapes.** The shape cue gives every cluster its own mark from a seeded permutation of
+    six: circle, square and triangle, each filled and outlined. The square has the circle's area
+    (side r * sqrt(pi)); the upward equilateral triangle has circumradius 1.35 r, three quarters
+    of the circle's area, because an equal-area triangle (1.56 r) would reach the arrowheads, which
+    stop 1.4 r from the centre. Outlines are 0.25 r wide, drawn inside the filled footprint. The
+    link-clearance invariant (4) is measured from the link's centre line to the outline of each
+    mark (not its centre), with the circle's margin of 0.2 r, so a link never grazes a triangle tip
+    or a square corner; for circles the rule is unchanged. B draws its marks before its links so its
+    tree respects the same rule.

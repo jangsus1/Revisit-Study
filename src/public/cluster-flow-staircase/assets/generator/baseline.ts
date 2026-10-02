@@ -8,7 +8,7 @@
  * matches A's spacing, extent, ink and feature statistics roughly but carries no grouping.
  */
 import { GENERATOR_CONFIG as C } from './config';
-import { LINK_W, visibleLinkLength } from './geometry';
+import { visibleLinkLength } from './geometry';
 import { MIN_CENTRE_DISTANCE, linkIsClear } from './invariants';
 import { makePalette } from './palette';
 import { Rng, mulberry32, randperm } from './prng';
@@ -60,12 +60,13 @@ export function baselineSpacing(n: number, field: Rect): number {
 }
 
 /**
- * The total visible link length B aims for: A's link length plus A's rect-outline ink expressed
- * as link length, scaled from A's link count to B's.
+ * The total visible link length B aims for: A's link length scaled from A's link count to B's.
+ * A's rect outlines are deliberately left out (SPEC deviation 19): making up for them took links
+ * 2.4 times as long, which crossed and cluttered B, so rect B is built like every other B.
  */
 export function linkBudget(target: InkTarget, edgesB: number): number {
   if (target.edges <= 0) return 0;
-  return ((target.linkLength + target.outlineInk / LINK_W) * edgesB) / target.edges;
+  return (target.linkLength * edgesB) / target.edges;
 }
 
 function placeNodes(rng: Rng, n: number, field: Rect, spacing: number): { x: number; y: number }[] | null {
@@ -128,14 +129,23 @@ export function buildBaseline(
     return true;
   };
 
-  const dots = pts.map((p, id) => ({ id, x: p.x, y: p.y }));
+  // the shape cue's marks are drawn before the links, so the tree keeps clear of each mark's reach
+  const shapes: NodeShape[] = pts.map(() => 'circle');
+  if (cue === 'shape') {
+    shapes.forEach((_, id) => {
+      shapes[id] = C.SHAPES[Math.floor(rng() * C.SHAPES.length)] as NodeShape;
+    });
+  }
+  const dots = pts.map((p, id) => ({
+    id, x: p.x, y: p.y, shape: shapes[id],
+  }));
   const dist = (a: number, b: number) => Math.hypot(dots[a].x - dots[b].x, dots[a].y - dots[b].y);
   const byDistance = (from: number, candidates: number[]) => [...candidates]
     .sort((a, b) => dist(a, from) - dist(b, from));
 
   // Link-length budget. Each link goes to the one of the few nearest usable candidates whose
   // visible length is closest to what is left of the budget per link still to draw, so B's total
-  // link length tracks A's (plus A's outline ink when A has rectangles) while its links stay local.
+  // link length tracks A's while its links stay local.
   const totalEdges = plannedEdgeCount(nB, density);
   const budget = options.target ? linkBudget(options.target, totalEdges) : null;
   let remaining = budget ?? 0;
@@ -209,7 +219,7 @@ export function buildBaseline(
     y: p.y,
     cluster: -1,
     rank: rank[id],
-    shape: 'circle' as NodeShape,
+    shape: shapes[id],
     fill: C.DOT_FILL,
   }));
 
@@ -217,10 +227,6 @@ export function buildBaseline(
   if (cue === 'color') {
     nodes.forEach((node) => {
       node.fill = palette[Math.floor(rng() * palette.length)];
-    });
-  } else if (cue === 'shape') {
-    nodes.forEach((node) => {
-      node.shape = C.SHAPES[Math.floor(rng() * C.SHAPES.length)] as NodeShape;
     });
   } else if (cue === 'edge') {
     const dashCount = Math.round(edges.length * C.B_DASH_PROPORTION[density]);

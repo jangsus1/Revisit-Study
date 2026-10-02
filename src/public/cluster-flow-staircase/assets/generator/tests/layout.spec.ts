@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
-import { buildLayout, drawJitter, template } from '../layout';
+import {
+  buildLayout, clusterGap, drawJitter, template,
+} from '../layout';
 import { jitterRng, mulberry32 } from '../prng';
 
 describe('template', () => {
@@ -57,15 +59,12 @@ describe('buildLayout', () => {
     expect(buildLayout(mulberry32(3), sizes, 9)).toEqual(buildLayout(mulberry32(3), sizes, 9));
   });
 
-  test('the centroid of each cluster is its centre, and the two rows share one baseline', () => {
+  test('the top row\'s bottom edges share one line, the bottom row\'s top edges another', () => {
     const layout = buildLayout(mulberry32(21), [3, 5, 4, 6, 3, 3], 7);
-    const cy = layout.clusters.map((c) => c.cy);
-    expect(cy[0]).toBeCloseTo(cy[1], 6);
-    expect(cy[1]).toBeCloseTo(cy[2], 6);
-    expect(cy[3]).toBeCloseTo(cy[4], 6);
-    expect(cy[4]).toBeCloseTo(cy[5], 6);
-    // the row separation is the largest of the three column gaps, scaled once
-    expect(cy[3] - cy[0]).toBeCloseTo(Math.max(...layout.gapY) * C.SCALE, 6);
+    const bottoms = layout.clusters.slice(0, 3).map((c) => Math.max(...c.points.map((p) => p.y)));
+    const tops = layout.clusters.slice(3).map((c) => Math.min(...c.points.map((p) => p.y)));
+    bottoms.forEach((y) => expect(y).toBeCloseTo(bottoms[0], 6));
+    tops.forEach((y) => expect(y).toBeCloseTo(tops[0], 6));
     // each row is centred on its own midpoint, so the two midpoints coincide
     const cx = layout.clusters.map((c) => c.cx);
     expect((cx[0] + cx[2]) / 2).toBeCloseTo((cx[3] + cx[5]) / 2, 6);
@@ -100,7 +99,7 @@ describe('buildLayout', () => {
   });
 });
 
-describe('buildLayout: even mode', () => {
+describe('buildLayout: grouped and even gaps', () => {
   const sizesList = [[4, 4, 4, 4, 4, 4], [3, 5, 4, 6, 3, 3], [6, 3, 4, 3, 5, 3], [6, 6, 3, 3, 3, 3]];
   const pitch = C.INTER * C.SCALE;
   const xs = (pts: { x: number }[]) => pts.map((p) => p.x);
@@ -125,21 +124,43 @@ describe('buildLayout: even mode', () => {
     });
   });
 
-  test('every horizontal edge-to-edge gap between neighbouring clusters equals the pitch', () => {
+  test('the gap is one pitch for even and PROXIMITY_GAP pitches for grouped', () => {
+    expect(clusterGap('even')).toBe(C.INTER);
+    expect(clusterGap('grouped')).toBe(C.PROXIMITY_GAP * C.INTER);
+    expect(C.PROXIMITY_GAP).toBeGreaterThanOrEqual(2);
+  });
+
+  test.each([['even', 1], ['grouped', C.PROXIMITY_GAP]] as const)('%s: every horizontal edge-to-edge gap is %s pitch(es)', (mode, factor) => {
     sizesList.forEach((sizes, k) => {
-      const { clusters } = buildLayout(mulberry32(7 + k), sizes, 15, 'even');
+      const { clusters } = buildLayout(mulberry32(7 + k), sizes, 15, mode);
       [[0, 1], [1, 2], [3, 4], [4, 5]].forEach(([a, b]) => {
-        expect(Math.min(...xs(clusters[b].points)) - Math.max(...xs(clusters[a].points))).toBeCloseTo(pitch, 6);
+        expect(Math.min(...xs(clusters[b].points)) - Math.max(...xs(clusters[a].points))).toBeCloseTo(factor * pitch, 6);
       });
     });
   });
 
-  test('every vertical edge-to-edge gap between the two rows equals the pitch, column by column', () => {
+  test.each([['even', 1], ['grouped', C.PROXIMITY_GAP]] as const)('%s: every vertical gap between the rows is %s pitch(es), column by column', (mode, factor) => {
     sizesList.forEach((sizes, k) => {
-      const { clusters } = buildLayout(mulberry32(70 + k), sizes, 15, 'even');
+      const { clusters } = buildLayout(mulberry32(70 + k), sizes, 15, mode);
       [0, 1, 2].forEach((c) => {
-        expect(Math.min(...ys(clusters[c + 3].points)) - Math.max(...ys(clusters[c].points))).toBeCloseTo(pitch, 6);
+        expect(Math.min(...ys(clusters[c + 3].points)) - Math.max(...ys(clusters[c].points))).toBeCloseTo(factor * pitch, 6);
       });
+    });
+  });
+
+  test('the widest and tallest grouped layouts fit the canvas margin', () => {
+    // two 6-dot columns stacked, maximum jitter: the tallest case; three 2-wide clusters: the widest
+    [[6, 3, 3, 6, 3, 3], [5, 5, 5, 3, 3, 3], [4, 4, 4, 4, 4, 4]].forEach((sizes, k) => {
+      for (let seed = 0; seed < 50; seed += 1) {
+        const pts = buildLayout(mulberry32(1000 * k + seed), sizes, C.JITTER_MAX, 'grouped').clusters.flatMap((c) => c.points);
+        const lo = C.CANVAS_MARGIN + C.RDOT * C.SCALE;
+        pts.forEach((p) => {
+          expect(p.x).toBeGreaterThanOrEqual(lo);
+          expect(p.x).toBeLessThanOrEqual(C.CANVAS.width - lo);
+          expect(p.y).toBeGreaterThanOrEqual(lo);
+          expect(p.y).toBeLessThanOrEqual(C.CANVAS.height - lo);
+        });
+      }
     });
   });
 

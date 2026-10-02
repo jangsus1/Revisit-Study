@@ -7,9 +7,9 @@
  * were consumed. `display.seed` is always the *requested* seed, so a trial can be reproduced
  * from the stored record alone.
  *
- * Stimulus A depends on the cue as well as the seed: `proximity` uses the gapped layout and every
- * other cue the even one (`layoutModeFor`), so one seed gives different geometry for `proximity`
- * than for the other cues (the templates and jitter are the same). Stimulus B depends on its paired
+ * Stimulus A depends on the cue as well as the seed: `proximity` uses the gapped layout (gap of
+ * `PROXIMITY_GAP` pitches) and every other cue the even one (`layoutModeFor`), so one seed gives
+ * different geometry for `proximity` than for the other cues (the templates and jitter are the same). Stimulus B depends on its paired
  * A (field and link budget), so it must always be regenerated through `generateTrialPair`.
  */
 import { buildBaseline } from './baseline';
@@ -164,13 +164,14 @@ export interface TrialPairOptions {
   cue: Cue;
   density: Density;
   nB: number;
-  /** colour-wheel rotation in degrees; default 0 */
+  /** colour-ellipse rotation in degrees of its perimeter; default 0 */
   hueOffset?: number;
 }
 
 /**
  * The two displays of one trial. A is built first; B is then sampled inside A's dot-centre
- * bounding box and aims its links at A's link length plus A's outline ink (`measureDisplay`).
+ * bounding box and aims its links at A's link length (`measureDisplay`); A's rect outlines are not
+ * made up for.
  * This is the only way B is ever built for a trial, so the runner, the gallery and the analysis
  * regenerate identical pairs from `seedA`, `seedB`, cue, density, `nB` and `hueOffset`.
  */
@@ -193,7 +194,6 @@ export function generateTrialPair(
     field: nodeBounds(displayA),
     inkTarget: {
       linkLength: metricsA.linkLength,
-      outlineInk: metricsA.outlineInk,
       edges: displayA.edges.length,
     },
   });

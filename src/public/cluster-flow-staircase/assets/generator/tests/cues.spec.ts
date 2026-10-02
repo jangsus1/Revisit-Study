@@ -109,21 +109,20 @@ describe('cue: edge', () => {
 });
 
 describe('cue: shape', () => {
-  test('uses circle, hollow square and cross, two clusters each, never repeating along the order', () => {
+  test('gives every cluster its own one of the six marks, one mark per cluster', () => {
+    const seen = new Set<string>();
     displays('shape').forEach((d) => {
-      const byCluster = new Map<number, string>();
-      d.nodes.forEach((n) => byCluster.set(n.cluster, n.shape));
-      const counts = new Map<string, number>();
-      byCluster.forEach((shape) => counts.set(shape, (counts.get(shape) ?? 0) + 1));
-      expect([...counts.values()].sort()).toEqual([2, 2, 2]);
-      expect([...counts.keys()].sort()).toEqual(['circle', 'cross', 'hollowSquare']);
-
-      const inOrder = [...d.clusters]
-        .sort((a, b) => a.orderPos - b.orderPos)
-        .map((c) => byCluster.get(c.index));
-      for (let i = 1; i < inOrder.length; i += 1) {
-        expect(inOrder[i]).not.toBe(inOrder[i - 1]);
-      }
+      const byCluster = new Map<number, Set<string>>();
+      d.nodes.forEach((n) => {
+        if (!byCluster.has(n.cluster)) byCluster.set(n.cluster, new Set());
+        (byCluster.get(n.cluster) as Set<string>).add(n.shape);
+      });
+      byCluster.forEach((shapes) => expect(shapes.size).toBe(1));
+      const perCluster = [...byCluster.values()].map((shapes) => [...shapes][0]);
+      expect([...perCluster].sort()).toEqual([...C.SHAPES].sort());
+      seen.add(perCluster.join());
     });
+    // the assignment is a seeded permutation, not a fixed one
+    expect(seen.size).toBeGreaterThan(1);
   });
 });

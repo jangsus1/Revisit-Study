@@ -12,7 +12,7 @@ import { GENERATOR_CONFIG } from './generator/config';
 import { generateTrialPair, hashSeed } from './generator/generator';
 import { measureDisplay } from './generator/metrics';
 import {
-  PALETTE_CHROMA, hexToLab, makePalette, paletteHues,
+  deltaE2000, hexToLab, makePalette, palettePositions,
 } from './generator/palette';
 import {
   CUES, Cue, Density, Display, DisplayMetrics,
@@ -118,16 +118,24 @@ function TrialPreview({
 
 function PaletteStrip({ hueOffset }: { hueOffset: number }) {
   const palette = makePalette(hueOffset);
-  const hues = paletteHues(hueOffset);
+  const positions = palettePositions(hueOffset);
+  const labs = palette.map(hexToLab);
   const grey = hexToLab(GENERATOR_CONFIG.DOT_FILL);
+  let worst = Infinity;
+  labs.forEach((p, i) => labs.slice(i + 1).forEach((q) => { worst = Math.min(worst, deltaE2000(p, q)); }));
+  const {
+    centre, major, minor, axisHue, tilt,
+  } = GENERATOR_CONFIG.COLOR_ELLIPSE;
   return (
     <Stack gap={4}>
       <Text size="sm" fw={600}>
-        {`Colour cue palette: CIELAB L* ${GENERATOR_CONFIG.LAB_L}, chroma ${PALETTE_CHROMA}, hues ${hues.map((h) => `${fmt(h)}°`).join(' ')}`}
+        {`Colour cue palette: tilted CIELAB ellipse (centre L* ${centre[0]}, a* ${centre[1]}, b* ${centre[2]}; radii ${major} and ${minor}; axis ${axisHue}°, tilt ${tilt}°), `
+          + `six colours evenly spaced along it, closest pair ${fmt(worst, 1)} CIEDE2000`}
       </Text>
       <Group gap="xs" data-testid="palette-strip">
         {palette.map((hex, k) => {
-          const lab = hexToLab(hex);
+          const lab = labs[k];
+          const hue = ((Math.atan2(lab.b, lab.a) * 180) / Math.PI + 360) % 360;
           return (
             <Stack key={hex} gap={2} align="center">
               <div style={{
@@ -135,7 +143,8 @@ function PaletteStrip({ hueOffset }: { hueOffset: number }) {
               }}
               />
               <Text size="xs">{hex}</Text>
-              <Text size="xs" c="dimmed">{`L* ${fmt(lab.L, 1)} · C ${fmt(Math.hypot(lab.a, lab.b), 1)} · ${fmt(hues[k])}°`}</Text>
+              <Text size="xs" c="dimmed">{`L* ${fmt(lab.L, 1)} · C ${fmt(Math.hypot(lab.a, lab.b), 1)} · h ${fmt(hue)}°`}</Text>
+              <Text size="xs" c="dimmed">{`at ${fmt(positions[k])}°`}</Text>
             </Stack>
           );
         })}
@@ -194,7 +203,7 @@ export default function Gallery() {
           w={120}
         />
         <NumberInput
-          label="Hue rotation (°)"
+          label="Colour rotation (° of ellipse)"
           value={hueOffset}
           min={0}
           max={59}
