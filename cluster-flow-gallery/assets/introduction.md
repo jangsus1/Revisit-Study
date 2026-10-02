@@ -11,9 +11,10 @@ and outlined) and **edge** (dashed between-cluster links). Every cue except prox
 between neighbouring clusters equals the spacing inside a cluster, so only the cue groups.
 
 Each row puts the grouped **stimulus A** (24 items in 6 clusters, wired into a directed flow) next
-to its **stimulus B** baseline, built exactly as a trial builds it: B's items are sampled inside
-A's bounding box with a spacing matched to A, and B's links are chosen to match A's link length.
-A's rect outlines are not made up for, so rect B is built like proximity B.
+to its **stimulus B** baseline, built exactly as a trial builds it. B is the same for every cue:
+its items are sampled inside the bounding box of the even-layout A of the seed, with a spacing
+matched to it, and its links match that A's link length; only B's colours, marks or dashes follow
+the cue. Proximity's A is spread wider than its B, and rect A's outlines are not made up for.
 
 - **Seed** picks the display; the same seed always produces exactly the same pair.
 - **N_B** sets the number of items in the baseline (the staircase varies it between 8 and 48).
