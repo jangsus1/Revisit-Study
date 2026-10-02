@@ -47,7 +47,7 @@ function buildStimulusA(seed: number, opts: GenerateOptions): Display {
   const rng = mulberry32(seed);
   const jitter = drawJitter(jitterRng(seed));
   const sizes = numDistributer(rng, C.NCLUST, C.NTOTAL);
-  const layout = buildLayout(rng, sizes, jitter, layoutModeFor(opts.cue));
+  const layout = buildLayout(rng, sizes, jitter, opts.layout ?? layoutModeFor(opts.cue));
 
   let nextId = 0;
   const graphClusters: GraphCluster[] = layout.clusters.map((cluster) => {
@@ -169,11 +169,13 @@ export interface TrialPairOptions {
 }
 
 /**
- * The two displays of one trial. A is built first; B is then sampled inside A's dot-centre
- * bounding box and aims its links at A's link length (`measureDisplay`); A's rect outlines are not
- * made up for.
- * This is the only way B is ever built for a trial, so the runner, the gallery and the analysis
- * regenerate identical pairs from `seedA`, `seedB`, cue, density, `nB` and `hueOffset`.
+ * The two displays of one trial. B does not depend on the cue: its field (dot-centre bounding box)
+ * and link budget come from a reference A, the plain even-layout display of `seedA` (grey circles,
+ * no cue), and its links clear every mark, so every cue gets the same B geometry for the same seeds
+ * and only B's colours, marks or dashes differ. For every cue but `proximity` (and, when the marks
+ * change which seed passes the invariants, `shape`) the reference is A's own geometry. This is the
+ * only way B is ever built for a trial, so the runner, the gallery and the analysis regenerate
+ * identical pairs from `seedA`, `seedB`, cue, density, `nB` and `hueOffset`.
  */
 export function generateTrialPair(
   seedA: number,
@@ -184,17 +186,20 @@ export function generateTrialPair(
   const displayA = generateDisplay(seedA, {
     kind: 'A', cue: opts.cue, density: opts.density, hueOffset,
   });
-  const metricsA = measureDisplay(displayA);
+  const reference = generateDisplay(seedA, {
+    kind: 'A', cue: 'proximity', layout: 'even', density: opts.density,
+  });
+  const metricsRef = measureDisplay(reference);
   const displayB = generateDisplay(seedB, {
     kind: 'B',
     cue: opts.cue,
     density: opts.density,
     nB: opts.nB,
     hueOffset,
-    field: nodeBounds(displayA),
+    field: nodeBounds(reference),
     inkTarget: {
-      linkLength: metricsA.linkLength,
-      edges: displayA.edges.length,
+      linkLength: metricsRef.linkLength,
+      edges: reference.edges.length,
     },
   });
   return { displayA, displayB };

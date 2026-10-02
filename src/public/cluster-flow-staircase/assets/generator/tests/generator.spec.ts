@@ -152,6 +152,29 @@ describe('generateTrialPair', () => {
     expect(mean(attempts)).toBeLessThan(5);
   }, 120000);
 
+  test('B has the same dots and links for every cue; only its features differ', () => {
+    const geometry = (d: Display) => ({
+      nodes: d.nodes.map((n) => [n.x, n.y]),
+      edges: d.edges.map((e) => [e.source, e.target]),
+      field: d.meta.field,
+      linkTarget: d.meta.linkTarget,
+    });
+    for (const density of DENSITIES) {
+      for (let seed = 1; seed <= 25; seed += 1) {
+        for (const nB of [8, 24, 48]) {
+          const ref = geometry(generateTrialPair(seed, hashSeed(seed, nB), { cue: 'rect', density, nB }).displayB);
+          CUES.forEach((cue) => {
+            const { displayB } = generateTrialPair(seed, hashSeed(seed, nB), {
+              cue, density, nB, hueOffset: 17,
+            });
+            expect(geometry(displayB)).toEqual(ref);
+            expect(checkInvariants(displayB)).toEqual([]);
+          });
+        }
+      }
+    }
+  }, 120000);
+
   describe('equating B to A at N_B = 24', () => {
     const SEEDS = 50;
     const pairs = (cue: Display['cue'], density: Display['density'] = 'sparse') => Array.from(

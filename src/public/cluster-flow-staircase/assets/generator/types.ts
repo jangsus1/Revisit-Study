@@ -134,6 +134,8 @@ export interface GenerateOptions {
   kind: StimulusKind;
   cue: Cue;
   density: Density;
+  /** A only: override the cue's layout (`generateTrialPair` builds B's reference A as `even`) */
+  layout?: LayoutMode;
   /** node count for stimulus B; ignored for A (always 24) */
   nB?: number;
   /** rotation of the colour-cue ellipse, degrees of its perimeter (60 = one colour); default 0 */

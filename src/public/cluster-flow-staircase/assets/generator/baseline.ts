@@ -9,7 +9,7 @@
  */
 import { GENERATOR_CONFIG as C } from './config';
 import { visibleLinkLength } from './geometry';
-import { MIN_CENTRE_DISTANCE, linkIsClear } from './invariants';
+import { MAX_MARK_REACH, MIN_CENTRE_DISTANCE, linkIsClear } from './invariants';
 import { makePalette } from './palette';
 import { Rng, mulberry32, randperm } from './prng';
 import {
@@ -129,16 +129,10 @@ export function buildBaseline(
     return true;
   };
 
-  // the shape cue's marks are drawn before the links, so the tree keeps clear of each mark's reach
-  const shapes: NodeShape[] = pts.map(() => 'circle');
-  if (cue === 'shape') {
-    shapes.forEach((_, id) => {
-      shapes[id] = C.SHAPES[Math.floor(rng() * C.SHAPES.length)] as NodeShape;
-    });
-  }
-  const dots = pts.map((p, id) => ({
-    id, x: p.x, y: p.y, shape: shapes[id],
-  }));
+  // Links keep clear of a disc of the largest mark's reach around every dot, so the geometry is the
+  // same for every cue and any mark drawn afterwards is cleared.
+  const dots = pts.map((p, id) => ({ id, x: p.x, y: p.y }));
+  const clear = (u: number, v: number) => linkIsClear(dots[u], dots[v], dots, MAX_MARK_REACH);
   const dist = (a: number, b: number) => Math.hypot(dots[a].x - dots[b].x, dots[a].y - dots[b].y);
   const byDistance = (from: number, candidates: number[]) => [...candidates]
     .sort((a, b) => dist(a, from) - dist(b, from));
@@ -182,12 +176,12 @@ export function buildBaseline(
   for (let k = 1; k < nB; k += 1) {
     const u = attach[k];
     const ordered = byDistance(u, attach.slice(0, k));
-    const near = ordered.slice(0, C.B_ATTACH_CANDIDATES).filter((o) => linkIsClear(dots[u], dots[o], dots));
+    const near = ordered.slice(0, C.B_ATTACH_CANDIDATES).filter((o) => clear(u, o));
     // nothing among the nearest is usable: fall back to the nearest candidate that clears, and
     // failing that to the nearest one at all (the invariants then reject the seed)
     const v = near.length > 0
       ? choose(u, near)
-      : ordered.find((o) => linkIsClear(dots[u], dots[o], dots)) ?? ordered[0];
+      : ordered.find((o) => clear(u, o)) ?? ordered[0];
     add(u, v, false);
     record(u, v);
   }
@@ -203,7 +197,7 @@ export function buildBaseline(
           .slice(0, C.B_ATTACH_CANDIDATES)
           .filter((v) => rank[u] !== rank[v]
             && !seen.has(rank[u] < rank[v] ? key(u, v) : key(v, u))
-            && linkIsClear(dots[u], dots[v], dots));
+            && clear(u, v));
         if (candidates.length > 0) {
           const v = choose(u, candidates);
           added = add(u, v, true);
@@ -219,7 +213,7 @@ export function buildBaseline(
     y: p.y,
     cluster: -1,
     rank: rank[id],
-    shape: shapes[id],
+    shape: 'circle' as NodeShape,
     fill: C.DOT_FILL,
   }));
 
@@ -227,6 +221,10 @@ export function buildBaseline(
   if (cue === 'color') {
     nodes.forEach((node) => {
       node.fill = palette[Math.floor(rng() * palette.length)];
+    });
+  } else if (cue === 'shape') {
+    nodes.forEach((node) => {
+      node.shape = C.SHAPES[Math.floor(rng() * C.SHAPES.length)] as NodeShape;
     });
   } else if (cue === 'edge') {
     const dashCount = Math.round(edges.length * C.B_DASH_PROPORTION[density]);

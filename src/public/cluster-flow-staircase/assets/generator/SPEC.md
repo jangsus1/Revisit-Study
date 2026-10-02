@@ -232,5 +232,13 @@ for i = 0 .. 4:
     stop 1.4 r from the centre. Outlines are 0.25 r wide, drawn inside the filled footprint. The
     link-clearance invariant (4) is measured from the link's centre line to the outline of each
     mark (not its centre), with the circle's margin of 0.2 r, so a link never grazes a triangle tip
-    or a square corner; for circles the rule is unchanged. B draws its marks before its links so its
-    tree respects the same rule.
+    or a square corner; for circles the rule is unchanged. B's links clear the largest mark around
+    every dot (21).
+21. **One B for every cue.** B's field and link budget come from a reference A: the plain
+    even-layout display of `seedA` (grey circles, no cue), not from the trial's own A. B's links
+    keep the usual margin from a disc of the largest mark's reach (a triangle tip, 1.35 r) around
+    every dot, and colours, marks and dashes are drawn only after the geometry. So for the same
+    seeds every cue gets exactly the same B dots and links, and only B's features differ. For
+    `proximity`, whose A is spread wider by the two-pitch gaps (17), B therefore covers about 0.56
+    of A's convex-hull area at N_B = 24 (mean nearest-neighbour distance 0.92 of A's, link length
+    0.81 to 0.88 of A's); for the other cues the reference has A's own geometry (B/A hull 0.98).

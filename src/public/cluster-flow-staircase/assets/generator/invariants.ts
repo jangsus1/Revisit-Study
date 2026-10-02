@@ -102,13 +102,15 @@ export function segmentMarkDistance(
 
 /**
  * True when the (trimmed) link between two dots keeps `MARK_MARGIN` from the mark of every dot that is
- * not one of its endpoints. Used both by `checkInvariants` and by the stimulus B tree builder,
- * which only ever proposes links that already pass this test.
+ * not one of its endpoints. With `reach`, every dot is treated as a disc of that radius instead of
+ * its own mark; the stimulus B tree builder passes `MAX_MARK_REACH`, so its links also pass
+ * `checkInvariants` whatever marks B gets.
  */
 export function linkIsClear(
   source: { id: number; x: number; y: number },
   target: { id: number; x: number; y: number },
   nodes: { id: number; x: number; y: number; shape?: NodeShape }[],
+  reach?: number,
 ): boolean {
   const len = Math.hypot(target.x - source.x, target.y - source.y);
   if (len < EPS) return false;
@@ -121,8 +123,17 @@ export function linkIsClear(
   const by = target.y - uy * trim;
   return nodes.every((n) => n.id === source.id
     || n.id === target.id
-    || segmentMarkDistance(n, ax, ay, bx, by) >= MARK_MARGIN - EPS);
+    || (reach === undefined
+      ? segmentMarkDistance(n, ax, ay, bx, by)
+      : pointSegmentDistance(n.x, n.y, ax, ay, bx, by) - reach) >= MARK_MARGIN - EPS);
 }
+
+/**
+ * The furthest any mark reaches from its centre (a triangle's tip). Stimulus B builds its links
+ * against a disc of this radius around every dot, so whichever marks are drawn afterwards, every
+ * link clears them and B's geometry does not depend on the cue.
+ */
+export const MAX_MARK_REACH = Math.max(DOT_R, (SQUARE_SIDE / 2) * Math.SQRT2, TRIANGLE_R);
 
 /**
  * Returns one human-readable string per violated invariant; an empty array means the display
