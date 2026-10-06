@@ -163,6 +163,13 @@ export interface TrialParams {
   starts: { above: number; below: number } | null;
   /** measured frame period in ms from the setup component; defaults to 1000/60 */
   refreshMs: number;
+  /** CSS px per cm from the setup's card check; null (or absent) without a card */
+  pxPerCm?: number | null;
+  /**
+   * show the "press any key or click to start" gate before the fixation: set by the blocks on the
+   * block's first trial and on the first trial after a rest page
+   */
+  waitForStart?: boolean;
 }
 
 /** Paint-to-paint durations of the timed phases, in ms. */
@@ -207,6 +214,14 @@ export interface TrialAnswer {
   measured: MeasuredDurations;
   refreshMs: number;
   fullscreen: boolean;
+  /** times full screen was left in this session up to this answer (a running total) */
+  fullscreenExits: number;
+  /** the CSS scale applied to the whole 800 x 640 design stage; displays and metrics stay in design px */
+  displayScale: number;
+  /** the stimulus width on screen in cm; null without a card calibration */
+  stimulusWidthCm: number | null;
+  /** ms from the start gate appearing to the key press or click that started the trial; null when there was no gate */
+  startWaitMs: number | null;
   metricsA: DisplayMetrics;
   metricsB: DisplayMetrics;
   displayA: Display;
@@ -222,4 +237,14 @@ export interface SetupAnswer {
   screen: { w: number; h: number; dpr: number };
   userAgent: string;
   fullscreen: boolean;
+  /** times full screen was left in the session before the setup finished */
+  fullscreenExits: number;
+  /** CSS px per cm from the card check; null when the participant had no card */
+  pxPerCm: number | null;
+  /** the matched card picture's width in CSS px; null without a card */
+  cardWidthPx: number | null;
+  /** screen diagonal in inches implied by the card; null without a card */
+  screenInches: number | null;
+  /** true when the participant kept a card size implying a screen outside 11-34 inches */
+  confirmedImplausible: boolean;
 }

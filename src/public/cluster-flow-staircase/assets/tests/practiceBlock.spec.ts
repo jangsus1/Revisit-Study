@@ -71,6 +71,12 @@ describe('practiceBlock', () => {
     expect(easyB.correctAnswer?.[0].answer).toBe(aFirst1 ? 'second' : 'first');
   });
 
+  test('only the first practice trial waits for the start gate', () => {
+    expect((runPractice(0).parameters as unknown as TrialParams).waitForStart).toBe(true);
+    expect((runPractice(1).parameters as unknown as TrialParams).waitForStart).toBe(false);
+    expect((runPractice(7).parameters as unknown as TrialParams).waitForStart).toBe(false);
+  });
+
   test('ends after eight trials by default', () => {
     expect(runPractice(7).component).toBe('practice-trial');
     expect(runPractice(8)).toEqual({ component: null });
@@ -86,7 +92,7 @@ describe('practiceBlock', () => {
       answers: {
         ...storedTrials(0),
         setup_2: {
-          componentName: 'setup', endTime: 1, answer: { setup: { sessionSalt: 555, refreshMs: 10 } },
+          componentName: 'setup', endTime: 1, answer: { setup: { sessionSalt: 555, refreshMs: 10, pxPerCm: 38.2 } },
         },
       } as unknown as ParticipantData['answers'],
       customParameters: CELL,
@@ -95,6 +101,7 @@ describe('practiceBlock', () => {
     });
     const parameters = withSetup.parameters as unknown as TrialParams;
     expect(parameters.refreshMs).toBe(10);
+    expect(parameters.pxPerCm).toBe(38.2);
     expect(parameters.seedA).not.toBe((runPractice(0).parameters as unknown as TrialParams).seedA);
   });
 });

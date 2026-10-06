@@ -6,7 +6,10 @@ import {
   afterEach, beforeEach, describe, expect, test, vi,
 } from 'vitest';
 import type { Display, GenerateOptions, TrialParams } from '../generator/types';
-import TrialRunner, { PROMPT_TEXT } from '../TrialRunner';
+import TrialRunner, { PROMPT_TEXT, READY_TEXT, forgetStartedTrials } from '../TrialRunner';
+import { fullscreenSession } from '../ui/fullscreen';
+
+vi.mock('../ui/studyContext', () => ({ useStudyProgress: () => null, useUpcomingCell: () => null }));
 
 // The generator and the renderer are mocked: this suite is about the trial's timing, key
 // handling and answer shape, all of which are independent of what the stimulus looks like.
@@ -97,6 +100,9 @@ function renderTrial(overrides: Partial<TrialParams> = {}) {
 beforeEach(() => {
   clock = 0;
   frameCallbacks = [];
+  fullscreenSession.exits = 0;
+  fullscreenSession.refused = false;
+  forgetStartedTrials();
   vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
   vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
     frameCallbacks.push(callback);
@@ -135,9 +141,9 @@ describe('TrialRunner', () => {
 
     runFrames(200);
     expect(screen.getByTestId('trial-prompt').textContent).toBe(PROMPT_TEXT);
-    expect(PROMPT_TEXT).toContain('Which one had more items?');
-    expect(PROMPT_TEXT).toContain('first');
-    expect(PROMPT_TEXT).toContain('second');
+    expect(PROMPT_TEXT).toBe('Which one had more items?');
+    // without waitForStart there is no start gate
+    expect(screen.queryByTestId('start-gate')).toBeNull();
 
     fireEvent.keyDown(window, { key: 'f' });
 
@@ -168,6 +174,11 @@ describe('TrialRunner', () => {
     expect(trialData.metricsA).toEqual({ ink: 24, meanNN: 1 });
     expect(trialData.metricsB).toEqual({ ink: 34, meanNN: 1 });
     expect(trialData.fullscreen).toBe(false);
+    expect(trialData.fullscreenExits).toBe(0);
+    expect(trialData.startWaitMs).toBeNull();
+    // jsdom's 1024 x 768 window holds the 720 x 540 test canvas at scale 1; no card, no physical width
+    expect(trialData.displayScale).toBe(1);
+    expect(trialData.stimulusWidthCm).toBeNull();
   });
 
   test('measures every phase to within a frame of its target', () => {
@@ -394,7 +405,8 @@ describe('TrialRunner', () => {
       runFrames(200);
       expect(screen.queryByTestId('trial-prompt')).toBeNull();
 
-      fireEvent.click(screen.getByRole('button', { name: 'Click to return to fullscreen' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Return to full screen' }));
+      expect(screen.queryByTestId('fullscreen-gate')).toBeNull();
       expect(requestFullscreen).toHaveBeenCalled();
 
       runFrames(200);
@@ -402,6 +414,141 @@ describe('TrialRunner', () => {
       fireEvent.keyDown(window, { key: 'f' });
       expect(setAnswer).toHaveBeenCalledTimes(1);
     } finally {
+      Reflect.deleteProperty(document.documentElement, 'requestFullscreen');
+    }
+  });
+
+  describe('start gate', () => {
+    test('waits on the ready screen until a key, which is not taken as an answer', () => {
+      const { setAnswer, advance } = renderTrial({ waitForStart: true });
+      expect(screen.getByTestId('start-gate')).toBeTruthy();
+      expect(screen.getByTestId('start-gate-text').textContent).toBe(READY_TEXT);
+      expect(screen.getByTestId('answer-keys').textContent).toContain('F');
+
+      // the timeline does not run behind the ready screen
+      runFrames(200);
+      expect(screen.queryByTestId('trial-prompt')).toBeNull();
+
+      clock += 1234;
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(screen.queryByTestId('start-gate')).toBeNull();
+      expect(setAnswer).not.toHaveBeenCalled();
+      expect(advance).not.toHaveBeenCalled();
+
+      runFrames(200);
+      expect(screen.getByTestId('trial-prompt')).toBeTruthy();
+      fireEvent.keyDown(window, { key: 'j' });
+      expect(setAnswer).toHaveBeenCalledTimes(1);
+      const { trial, trialData } = setAnswer.mock.calls[0][0].answers;
+      expect(trial).toBe('second');
+      expect(trialData.startWaitMs).toBeCloseTo(1234 + 200 * FRAME_MS, 3);
+      // the fixation still lasted its 500 ms after the start
+      expect(trialData.measured.fixation).toBeCloseTo(500, 0);
+    });
+
+    test('a remount of a started trial does not show the gate again and keeps the wait', () => {
+      renderTrial({ waitForStart: true });
+      clock += 500;
+      fireEvent.keyDown(window, { key: 'f' });
+      cleanup();
+
+      const { setAnswer } = renderTrial({ waitForStart: true });
+      expect(screen.queryByTestId('start-gate')).toBeNull();
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(setAnswer.mock.calls[0][0].answers.trialData.startWaitMs).toBe(500);
+      cleanup();
+
+      // another trial still waits
+      renderTrial({ waitForStart: true, trialIndex: 4 });
+      expect(screen.getByTestId('start-gate')).toBeTruthy();
+    });
+
+    test('starts on a click', () => {
+      renderTrial({ waitForStart: true });
+      fireEvent.pointerDown(screen.getByTestId('start-gate'));
+      expect(screen.queryByTestId('start-gate')).toBeNull();
+      runFrames(200);
+      expect(screen.getByTestId('trial-prompt')).toBeTruthy();
+    });
+
+    test('swallows the starting key, Enter included, so reVISit never sees it', () => {
+      const seen: string[] = [];
+      const bubble = (event: KeyboardEvent) => {
+        seen.push(event.key);
+      };
+      window.addEventListener('keydown', bubble);
+      try {
+        renderTrial({ waitForStart: true });
+        fireEvent.keyDown(window, { key: 'Enter' });
+        expect(seen).toEqual([]);
+        expect(screen.queryByTestId('start-gate')).toBeNull();
+      } finally {
+        window.removeEventListener('keydown', bubble);
+      }
+    });
+
+    test('ignores modifier keys, Escape and auto-repeat', () => {
+      renderTrial({ waitForStart: true });
+      fireEvent.keyDown(window, { key: 'Shift' });
+      fireEvent.keyDown(window, { key: 'Escape' });
+      fireEvent.keyDown(window, { key: 'k', repeat: true });
+      expect(screen.getByTestId('start-gate')).toBeTruthy();
+      fireEvent.keyDown(window, { key: ' ' });
+      expect(screen.queryByTestId('start-gate')).toBeNull();
+    });
+  });
+
+  describe('stimulus size', () => {
+    test('scales the stage to 21 cm with a card calibration and records it', () => {
+      // 40 px/cm: 21 cm = 840 px on the 720-px test canvas -> scale 1.1667, which fits 1024 x 768
+      const { setAnswer } = renderTrial({ pxPerCm: 40 });
+      const scaled = screen.getByTestId('trial-stage-scaled');
+      expect(scaled.style.width).toBe(`${720 * 1.1667}px`);
+      expect(screen.getByTestId('trial-stage').getAttribute('data-scale')).toBe('1.1667');
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'f' });
+      const { trialData } = setAnswer.mock.calls[0][0].answers;
+      expect(trialData.displayScale).toBe(1.1667);
+      expect(trialData.stimulusWidthCm).toBeCloseTo(21, 1);
+      // stored geometry stays in design pixels
+      expect(trialData.displayA.width).toBe(720);
+    });
+
+    test('shrinks the stage to fit a small window', () => {
+      vi.stubGlobal('innerWidth', 800);
+      vi.stubGlobal('innerHeight', 600);
+      const { setAnswer } = renderTrial();
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'f' });
+      // (600 - 120) / 540
+      expect(setAnswer.mock.calls[0][0].answers.trialData.displayScale).toBeCloseTo(480 / 540, 4);
+    });
+  });
+
+  test('ignores answers while the full-screen gate is up and counts exits', () => {
+    let fullscreenElement: Element | null = document.documentElement;
+    Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreenElement });
+    Object.defineProperty(document.documentElement, 'requestFullscreen', {
+      configurable: true, writable: true, value: vi.fn(() => Promise.resolve()),
+    });
+    try {
+      const { setAnswer } = renderTrial();
+      runFrames(200);
+      fullscreenElement = null;
+      act(() => {
+        document.dispatchEvent(new Event('fullscreenchange'));
+      });
+      expect(screen.getByTestId('fullscreen-gate')).toBeTruthy();
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(setAnswer).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Return to full screen' }));
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(setAnswer).toHaveBeenCalledTimes(1);
+      expect(setAnswer.mock.calls[0][0].answers.trialData.fullscreenExits).toBe(1);
+    } finally {
+      Reflect.deleteProperty(document, 'fullscreenElement');
       Reflect.deleteProperty(document.documentElement, 'requestFullscreen');
     }
   });

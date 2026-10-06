@@ -6,7 +6,8 @@
  * parameters. Seeds, the interval order, the staircase starting levels and the colour-wheel
  * rotation are all derived from the session salt created in `SetupCheck`, so the whole session can
  * be regenerated from the stored data. Every `restEvery` main trials the block inserts the `rest`
- * page before the next trial.
+ * page before the next trial. The block's first trial and the first trial after each rest wait for a
+ * key press or click before they start (`waitForStart`).
  */
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
 import type {
@@ -63,8 +64,11 @@ export function drawHueOffset(sessionSalt: number): number {
   return Math.floor(mulberry32(hashSeed(sessionSalt, 'hue'))() * 60);
 }
 
-/** Reads the session salt and measured refresh rate written by the `setup` component. */
-export function readSetupAnswer(answers: JumpFunctionParameters<unknown>['answers']): { sessionSalt: number, refreshMs: number } {
+/**
+ * Reads the session salt, the measured refresh rate and the card calibration (CSS px per cm, null
+ * without a card) written by the `setup` component.
+ */
+export function readSetupAnswer(answers: JumpFunctionParameters<unknown>['answers']): { sessionSalt: number, refreshMs: number, pxPerCm: number | null } {
   const setupEntry = Object.values(answers)
     .find((answer) => answer.componentName === 'setup' && answer.answer && answer.answer.setup);
   const setup = setupEntry?.answer.setup as SetupAnswer | undefined;
@@ -72,7 +76,31 @@ export function readSetupAnswer(answers: JumpFunctionParameters<unknown>['answer
   return {
     sessionSalt: typeof setup?.sessionSalt === 'number' ? setup.sessionSalt : DEFAULT_SALT,
     refreshMs: typeof setup?.refreshMs === 'number' && setup.refreshMs > 0 ? setup.refreshMs : DEFAULT_REFRESH_MS,
+    pxPerCm: typeof setup?.pxPerCm === 'number' && setup.pxPerCm > 0 ? setup.pxPerCm : null,
   };
+}
+
+/**
+ * Whether the next trial of this block waits for a key press or click before its fixation: true
+ * for the block's first trial and for the first trial after a `rest` page, i.e. when the block has
+ * no finished record yet or its latest finished record (by reVISit's `funcIndex`, the last segment
+ * of the answer key) is a rest.
+ */
+export function waitsForStart(
+  answers: JumpFunctionParameters<unknown>['answers'],
+  currentBlock: string,
+  currentStep: number,
+): boolean {
+  const prefix = `${currentBlock}_${currentStep}_`;
+  const latest = Object.entries(answers)
+    .filter(([key, value]) => key.startsWith(prefix) && value.endTime > -1)
+    .map(([key, value]) => ({ funcIndex: Number(key.slice(key.lastIndexOf('_') + 1)), componentName: value.componentName }))
+    .filter(({ funcIndex }) => Number.isFinite(funcIndex))
+    .reduce<{ funcIndex: number; componentName: string } | null>(
+      (best, record) => (best === null || record.funcIndex > best.funcIndex ? record : best),
+      null,
+    );
+  return latest === null || latest.componentName === 'rest';
 }
 
 /** A stored trial with its correctness derived from the platform record. */
@@ -122,7 +150,7 @@ export default function staircaseBlock({
     cellId, cue, density, maxTrials, maxReversals, catchEvery, restEvery,
   } = customParameters;
 
-  const { sessionSalt, refreshMs } = readSetupAnswer(answers);
+  const { sessionSalt, refreshMs, pxPerCm } = readSetupAnswer(answers);
   const starts = drawStarts(sessionSalt, cellId);
 
   const cfg: StaircaseConfig = {
@@ -168,6 +196,8 @@ export default function staircaseBlock({
     hueOffset: drawHueOffset(sessionSalt),
     starts,
     refreshMs,
+    pxPerCm,
+    waitForStart: waitsForStart(answers, currentBlock, currentStep),
   };
 
   return {

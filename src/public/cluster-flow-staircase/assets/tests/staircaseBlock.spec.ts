@@ -4,7 +4,7 @@ import {
 import type { ParticipantData } from '../../../../parser/types';
 import type { TrialAnswer, TrialParams } from '../generator/types';
 import staircaseBlock, {
-  collectBlockTrials, correctInterval, countRests, drawAFirst, drawHueOffset, drawStarts, readSetupAnswer,
+  collectBlockTrials, correctInterval, countRests, drawAFirst, drawHueOffset, drawStarts, readSetupAnswer, waitsForStart,
 } from '../staircaseBlock';
 
 // The generator is mocked everywhere in these component tests: the block only needs `hashSeed`
@@ -79,7 +79,7 @@ const params = { cellId: 'cell-color-sparse', cue: 'color' as const, density: 's
 
 describe('readSetupAnswer', () => {
   test('falls back to a fixed salt and 60 Hz when there is no setup answer', () => {
-    expect(readSetupAnswer(answers({}))).toEqual({ sessionSalt: 1, refreshMs: 1000 / 60 });
+    expect(readSetupAnswer(answers({}))).toEqual({ sessionSalt: 1, refreshMs: 1000 / 60, pxPerCm: null });
   });
 
   test('reads the salt and refresh period written by the setup component', () => {
@@ -90,14 +90,69 @@ describe('readSetupAnswer', () => {
         answer: { setup: { sessionSalt: 987, refreshMs: 8.33 } },
       },
     }));
-    expect(result).toEqual({ sessionSalt: 987, refreshMs: 8.33 });
+    expect(result).toEqual({ sessionSalt: 987, refreshMs: 8.33, pxPerCm: null });
   });
 
   test('ignores a nonsensical refresh period', () => {
     const result = readSetupAnswer(answers({
       setup_2: { componentName: 'setup', endTime: 10, answer: { setup: { sessionSalt: 5, refreshMs: 0 } } },
     }));
-    expect(result).toEqual({ sessionSalt: 5, refreshMs: 1000 / 60 });
+    expect(result).toEqual({ sessionSalt: 5, refreshMs: 1000 / 60, pxPerCm: null });
+  });
+
+  test('reads the card calibration and ignores a missing or nonsensical one', () => {
+    const withCard = readSetupAnswer(answers({
+      setup_2: { componentName: 'setup', endTime: 10, answer: { setup: { sessionSalt: 5, refreshMs: 10, pxPerCm: 47.5 } } },
+    }));
+    expect(withCard.pxPerCm).toBe(47.5);
+    const noCard = readSetupAnswer(answers({
+      setup_2: { componentName: 'setup', endTime: 10, answer: { setup: { sessionSalt: 5, refreshMs: 10, pxPerCm: null } } },
+    }));
+    expect(noCard.pxPerCm).toBeNull();
+    const zero = readSetupAnswer(answers({
+      setup_2: { componentName: 'setup', endTime: 10, answer: { setup: { sessionSalt: 5, refreshMs: 10, pxPerCm: 0 } } },
+    }));
+    expect(zero.pxPerCm).toBeNull();
+  });
+});
+
+describe('waitsForStart', () => {
+  const record = (componentName: string, endTime = 1) => ({ componentName, endTime, answer: {} });
+
+  test('the block\'s first trial waits', () => {
+    expect(waitsForStart(answers({}), BLOCK, STEP)).toBe(true);
+    // records of other blocks, and the unfinished record of the trial being scheduled, do not count
+    expect(waitsForStart(answers({
+      'practice-color-sparse_4_practice-trial_0': record('practice-trial'),
+      [`${BLOCK}_${STEP}_trial_0`]: record('trial', -1),
+    }), BLOCK, STEP)).toBe(true);
+  });
+
+  test('later trials do not wait', () => {
+    expect(waitsForStart(answers({
+      [`${BLOCK}_${STEP}_trial_0`]: record('trial'),
+    }), BLOCK, STEP)).toBe(false);
+  });
+
+  test('the first trial after a rest waits, the one after it does not', () => {
+    const base = {
+      [`${BLOCK}_${STEP}_trial_0`]: record('trial'),
+      [`${BLOCK}_${STEP}_trial_1`]: record('trial'),
+      [`${BLOCK}_${STEP}_rest_2`]: record('rest'),
+    };
+    expect(waitsForStart(answers(base), BLOCK, STEP)).toBe(true);
+    expect(waitsForStart(answers({ ...base, [`${BLOCK}_${STEP}_trial_3`]: record('trial') }), BLOCK, STEP)).toBe(false);
+  });
+
+  test('orders records by funcIndex, not by insertion or string order', () => {
+    expect(waitsForStart(answers({
+      [`${BLOCK}_${STEP}_trial_10`]: record('trial'),
+      [`${BLOCK}_${STEP}_rest_9`]: record('rest'),
+    }), BLOCK, STEP)).toBe(false);
+    expect(waitsForStart(answers({
+      [`${BLOCK}_${STEP}_trial_9`]: record('trial'),
+      [`${BLOCK}_${STEP}_rest_10`]: record('rest'),
+    }), BLOCK, STEP)).toBe(true);
   });
 });
 
@@ -245,6 +300,18 @@ describe('staircaseBlock', () => {
     expect(a.seedA).not.toBe(b.seedA);
     expect(a.hueOffset).toBe(drawHueOffset(424242));
     expect(a.starts).toEqual(drawStarts(424242, 'cell-color-sparse'));
+    expect(a.pxPerCm).toBeNull();
+    expect(b.pxPerCm).toBeNull();
+  });
+
+  test('passes the card calibration on to the trial', () => {
+    const result = staircaseBlock({
+      answers: answers({ setup_2: { componentName: 'setup', endTime: 1, answer: { setup: { sessionSalt: 3, refreshMs: 10, pxPerCm: 40 } } } }),
+      customParameters: params,
+      currentStep: STEP,
+      currentBlock: BLOCK,
+    });
+    expect((result.parameters as unknown as TrialParams).pxPerCm).toBe(40);
   });
 
   test('marks the interval of the larger display as the correct answer', () => {
@@ -345,6 +412,14 @@ describe('staircaseBlock', () => {
       });
       expect(afterRest.component).toBe('trial');
       expect((afterRest.parameters as unknown as TrialParams).trialIndex).toBe(60);
+      // the first trial after a rest waits for a key press or click
+      expect((afterRest.parameters as unknown as TrialParams).waitForStart).toBe(true);
+    });
+
+    test('only the block\'s first trial and the first after a rest wait for the start gate', () => {
+      expect((call({}).parameters as unknown as TrialParams).waitForStart).toBe(true);
+      expect((call(blockAnswers(mainTrials(1))).parameters as unknown as TrialParams).waitForStart).toBe(false);
+      expect((call(blockAnswers(mainTrials(59))).parameters as unknown as TrialParams).waitForStart).toBe(false);
     });
 
     test('honours the restEvery override and 0 turns rests off', () => {

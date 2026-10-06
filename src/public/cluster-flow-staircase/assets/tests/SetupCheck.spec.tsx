@@ -7,6 +7,10 @@ import {
 } from 'vitest';
 import SetupCheck, { SetupCheckParameters } from '../SetupCheck';
 
+vi.mock('../ui/studyContext', () => ({ useStudyProgress: () => null, useUpcomingCell: () => null }));
+
+const START = 'Enter full screen and start';
+
 const FRAME_MS = 1000 / 60;
 
 let clock = 0;
@@ -24,19 +28,29 @@ function runFrames(count: number) {
   }
 }
 
-function renderSetup(parameters: SetupCheckParameters = { calibrationIntervals: 4, refreshSamples: 6 }) {
+function renderSetup(parameters: SetupCheckParameters | undefined = { calibrationIntervals: 4, refreshSamples: 6 }) {
   const setAnswer = vi.fn();
+  const advance = vi.fn();
   render(
     <MantineProvider>
       <SetupCheck
         parameters={parameters}
         setAnswer={setAnswer}
+        advance={advance}
         answers={{}}
         useTrrack={(() => undefined) as never}
       />
     </MantineProvider>,
   );
-  return setAnswer;
+  return { setAnswer, advance };
+}
+
+/** Runs the timing stage, continues to the card check and answers it. */
+function completeSetup(card: 'no-card' | 'done' = 'no-card') {
+  fireEvent.click(screen.getByRole('button', { name: START }));
+  runFrames(3000);
+  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+  fireEvent.click(screen.getByRole('button', { name: card === 'no-card' ? 'I have no card' : 'Done' }));
 }
 
 beforeEach(() => {
@@ -48,6 +62,14 @@ beforeEach(() => {
   });
   vi.stubGlobal('cancelAnimationFrame', () => undefined);
   vi.stubGlobal('performance', { now: () => clock });
+  vi.stubGlobal('ResizeObserver', class {
+    observe() { return this; }
+
+    unobserve() { return this; }
+
+    disconnect() { return this; }
+  });
+  Object.defineProperty(window, 'screen', { configurable: true, value: { width: 1920, height: 1080 } });
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,
     media: query,
@@ -67,21 +89,31 @@ afterEach(() => {
 });
 
 describe('SetupCheck', () => {
-  test('offers the calibration button and does not answer before it runs', () => {
-    const setAnswer = renderSetup();
-    expect(screen.getByRole('button', { name: 'Enter fullscreen and start calibration' })).toBeTruthy();
+  test('offers the start button and does not answer before it runs', () => {
+    const { setAnswer, advance } = renderSetup();
+    expect(screen.getByRole('button', { name: START })).toBeTruthy();
     runFrames(50);
     expect(setAnswer).not.toHaveBeenCalled();
+    expect(advance).not.toHaveBeenCalled();
   });
 
-  test('measures the refresh rate and the calibration intervals', () => {
-    const setAnswer = renderSetup();
-    fireEvent.click(screen.getByRole('button', { name: 'Enter fullscreen and start calibration' }));
+  test('measures the timing, shows a short result, and only answers after the card step', () => {
+    const { setAnswer, advance } = renderSetup();
+    fireEvent.click(screen.getByRole('button', { name: START }));
     expect(screen.getByTestId('setup-running')).toBeTruthy();
 
     runFrames(400);
+    expect(screen.getByTestId('setup-summary')).toBeTruthy();
+    expect(screen.getByTestId('setup-hz').textContent).toBe('60.0 Hz');
+    expect(setAnswer).not.toHaveBeenCalled();
+
+    // Enter continues to the screen-size step
+    fireEvent.keyDown(window, { key: 'Enter' });
+    expect(screen.getByTestId('card-check')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'I have no card' }));
 
     expect(setAnswer).toHaveBeenCalledTimes(1);
+    expect(advance).toHaveBeenCalledTimes(1);
     const { status, answers } = setAnswer.mock.calls[0][0];
     expect(status).toBe(true);
 
@@ -98,20 +130,24 @@ describe('SetupCheck', () => {
     expect(setup.sessionSalt).toBeGreaterThanOrEqual(0);
     expect(setup.sessionSalt).toBeLessThan(2 ** 31);
     expect(setup.fullscreen).toBe(false);
+    expect(setup.fullscreenExits).toBe(0);
     expect(typeof setup.userAgent).toBe('string');
-    expect(setup.screen).toEqual({
-      w: window.screen.width, h: window.screen.height, dpr: window.devicePixelRatio,
-    });
+    expect(setup.screen).toEqual({ w: 1920, h: 1080, dpr: window.devicePixelRatio });
+    // no card: the stimuli keep their nominal size
+    expect(setup.pxPerCm).toBeNull();
+    expect(setup.cardWidthPx).toBeNull();
+    expect(setup.screenInches).toBeNull();
+    expect(setup.confirmedImplausible).toBe(false);
   });
 
-  test('shows the summary and the Enter hint when it is done', () => {
-    renderSetup();
-    fireEvent.click(screen.getByRole('button', { name: 'Enter fullscreen and start calibration' }));
-    runFrames(400);
-
-    expect(screen.getByTestId('setup-summary')).toBeTruthy();
-    expect(screen.getByText('Press Enter to continue')).toBeTruthy();
-    expect(screen.getByText(/60\.0 Hz/)).toBeTruthy();
+  test('stores the card calibration', () => {
+    const { setAnswer } = renderSetup();
+    completeSetup('done');
+    const { setup } = setAnswer.mock.calls[0][0].answers;
+    expect(setup.pxPerCm).toBeGreaterThan(30);
+    expect(setup.cardWidthPx).toBeGreaterThan(300);
+    expect(setup.screenInches).toBeGreaterThan(20);
+    expect(setup.confirmedImplausible).toBe(false);
   });
 
   test('uses the crypto random source for the session salt when it is available', () => {
@@ -122,26 +158,30 @@ describe('SetupCheck', () => {
     });
     vi.stubGlobal('crypto', { getRandomValues });
 
-    const setAnswer = renderSetup();
-    fireEvent.click(screen.getByRole('button', { name: 'Enter fullscreen and start calibration' }));
-    runFrames(400);
+    const { setAnswer } = renderSetup();
+    completeSetup();
 
     expect(getRandomValues).toHaveBeenCalled();
     expect(setAnswer.mock.calls[0][0].answers.setup.sessionSalt).toBe(2000000000);
   });
 
-  test('continues when fullscreen is refused', () => {
+  test('continues when fullscreen is refused', async () => {
     const requestFullscreen = vi.fn(() => Promise.reject(new Error('denied')));
     Object.defineProperty(document.documentElement, 'requestFullscreen', {
       configurable: true, value: requestFullscreen, writable: true,
     });
 
     try {
-      const setAnswer = renderSetup({ calibrationIntervals: 2, refreshSamples: 4 });
-      fireEvent.click(screen.getByRole('button', { name: 'Enter fullscreen and start calibration' }));
+      const { setAnswer } = renderSetup({ calibrationIntervals: 2, refreshSamples: 4 });
+      fireEvent.click(screen.getByRole('button', { name: START }));
       expect(requestFullscreen).toHaveBeenCalled();
+      // let the refusal settle: it is recorded and the gate no longer blocks
+      await act(async () => { await Promise.resolve(); });
 
       runFrames(400);
+      expect(screen.queryByTestId('fullscreen-gate')).toBeNull();
+      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
+      fireEvent.click(screen.getByRole('button', { name: 'I have no card' }));
       expect(setAnswer).toHaveBeenCalledTimes(1);
       expect(setAnswer.mock.calls[0][0].answers.setup.fullscreen).toBe(false);
       expect(setAnswer.mock.calls[0][0].answers.setup.calibration).toHaveLength(2);
@@ -151,19 +191,9 @@ describe('SetupCheck', () => {
   });
 
   test('falls back to the defaults when no parameters are configured', () => {
-    const setAnswer = vi.fn();
-    render(
-      <MantineProvider>
-        <SetupCheck
-          parameters={undefined}
-          setAnswer={setAnswer}
-          answers={{}}
-          useTrrack={(() => undefined) as never}
-        />
-      </MantineProvider>,
-    );
-    fireEvent.click(screen.getByRole('button', { name: 'Enter fullscreen and start calibration' }));
-    runFrames(3000);
+    // null rather than undefined, which would pick the helper's default parameters
+    const { setAnswer } = renderSetup(null as unknown as undefined);
+    completeSetup();
     expect(setAnswer.mock.calls[0][0].answers.setup.calibration).toHaveLength(2);
   });
 });
