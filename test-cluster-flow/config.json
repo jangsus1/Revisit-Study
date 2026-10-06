@@ -48,23 +48,43 @@
   },
   "components": {
     "introduction": {
-      "type": "markdown",
-      "path": "cluster-flow-staircase/assets/introduction.md",
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "introduction"
+      },
+      "response": []
+    },
+    "instructions": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "instructions"
+      },
       "response": []
     },
     "practice-intro": {
-      "type": "markdown",
-      "path": "cluster-flow-staircase/assets/practice-intro.md",
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "practice"
+      },
       "response": []
     },
     "block-intro": {
-      "type": "markdown",
-      "path": "cluster-flow-staircase/assets/block-intro.md",
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "main"
+      },
       "response": []
     },
     "rest": {
-      "type": "markdown",
-      "path": "cluster-flow-staircase/assets/rest.md",
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "rest"
+      },
       "response": []
     },
     "setup": {
@@ -100,6 +120,7 @@
     "components": [
       "introduction",
       "setup",
+      "instructions",
       {
         "order": "latinSquare",
         "numSamples": 1,

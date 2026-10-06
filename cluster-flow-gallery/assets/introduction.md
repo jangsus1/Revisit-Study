@@ -25,6 +25,11 @@ the cue. Proximity's A is spread wider than its B, and rect A's outlines are not
   500 ms, first stimulus 200 ms, noise mask 150 ms, blank 250 ms, second stimulus 200 ms,
   blank 400 ms.
 
+The gallery draws everything at its 800 x 640 design size. In the experiment the whole trial stage
+is scaled uniformly to 21 cm wide when the participant matched a bank card on the screen-size page
+(and to fit the window either way), and the first trial of practice, of the main block and after
+every break waits for a key press or click; neither happens in this preview.
+
 Under each panel the footers print the generator diagnostics (seed, attempts, layout, cluster
 sizes, jitter, gaps and traversal order for A; field, spacing and link target for B) and the ink
 and spacing metrics (ink by nodes, links and outlines, link length, nearest-neighbour distances,
