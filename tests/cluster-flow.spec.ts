@@ -1,7 +1,6 @@
 /* eslint-disable no-await-in-loop */
 import { expect, test, Page } from '@playwright/test';
 import {
-  nextClick,
   readStoredValue,
   resetClientStudyState,
   waitForStudyEndMessage,
@@ -25,6 +24,10 @@ interface StoredTrialData {
   measured: {
     fixation: number, s1: number, mask: number, blank: number, s2: number, blank2: number,
   };
+  displayScale: number;
+  stimulusWidthCm: number | null;
+  startWaitMs: number | null;
+  fullscreenExits: number;
 }
 
 /** One stored trial: the platform record around the hidden telemetry. */
@@ -35,21 +38,29 @@ interface StoredTrial {
   checkAnswer?: { attemptsUsed: number, correct: boolean };
 }
 
-/** Reads every stored trial record of the local (IndexedDB) storage engine. */
-async function readStoredTrials(page: Page): Promise<StoredTrial[]> {
+type StoredRecord = {
+  componentName?: string,
+  answer?: { trial?: string, trialData?: StoredTrialData, setup?: Record<string, unknown> },
+  correctAnswer?: { id: string, answer: string }[],
+  checkAnswer?: { attemptsUsed: number, correct: boolean },
+};
+
+/** Reads every stored answer record of the local (IndexedDB) storage engine. */
+async function readStoredRecords(page: Page): Promise<StoredRecord[]> {
   const assignments = await readStoredValue<Record<string, unknown>>(page, `dev-${STUDY_ID}/sequenceAssignment`);
   const participantId = Object.keys(assignments ?? {})[0];
   expect(participantId, 'a participant should have been assigned a sequence').toBeTruthy();
 
-  const participant = await readStoredValue<{
-    answers?: Record<string, {
-      answer?: { trial?: string, trialData?: StoredTrialData },
-      correctAnswer?: { id: string, answer: string }[],
-      checkAnswer?: { attemptsUsed: number, correct: boolean },
-    }>;
-  }>(page, `dev-${STUDY_ID}/participants/${participantId}_participantData`);
+  const participant = await readStoredValue<{ answers?: Record<string, StoredRecord> }>(
+    page,
+    `dev-${STUDY_ID}/participants/${participantId}_participantData`,
+  );
+  return Object.values(participant?.answers ?? {});
+}
 
-  return Object.values(participant?.answers ?? {})
+/** Reads every stored trial record. */
+async function readStoredTrials(page: Page): Promise<StoredTrial[]> {
+  return (await readStoredRecords(page))
     .filter((answer) => !!answer.answer?.trialData && typeof answer.answer.trialData.seedA === 'number')
     .map((answer) => ({
       trial: answer.answer?.trial ?? '',
@@ -63,48 +74,76 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   await resetClientStudyState(page);
   await page.goto(`/${STUDY_ID}`);
 
-  // Introduction
-  await expect(page.getByRole('heading', { name: 'Counting items in flow diagrams' })).toBeVisible({ timeout: 15000 });
-  await nextClick(page);
+  // Introduction (a TSX page in the Panel layout, advanced by its own button)
+  await expect(page.getByRole('heading', { name: 'Which diagram has more items?' })).toBeVisible({ timeout: 15000 });
+  await expect(page.getByTestId('session-step')).toHaveCount(5);
+  await page.getByRole('button', { name: 'Start', exact: true }).click();
 
-  // Setup: the calibration never blocks, even when headless Chromium refuses fullscreen.
-  await page.getByRole('button', { name: 'Enter fullscreen and start calibration' }).click();
+  // Setup: full screen + timing, then the screen-size card check ("I have no card").
+  await page.getByRole('button', { name: 'Enter full screen and start' }).click();
   await expect(page.getByTestId('setup-summary')).toBeVisible({ timeout: 20000 });
-  await expect(page.getByText('Press Enter to continue')).toBeVisible();
-  await page.keyboard.press('Enter');
+  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(page.getByTestId('card-check')).toBeVisible();
+  await page.getByRole('button', { name: 'I have no card' }).click();
+
+  // Instructions: storyboard and item figure. Leaving full screen here brings up the gate, which
+  // keeps Enter from advancing the page underneath.
+  await expect(page.getByRole('heading', { name: 'How a trial works' })).toBeVisible({ timeout: 10000 });
+  await expect(page.getByTestId('trial-storyboard')).toBeVisible();
+  await expect(page.getByTestId('item-count-figure')).toBeVisible();
+  const fullscreenGranted = await page.evaluate(() => !!document.fullscreenElement);
+  if (fullscreenGranted) {
+    await page.evaluate(() => document.exitFullscreen());
+    await expect(page.getByTestId('fullscreen-gate')).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('heading', { name: 'How a trial works' })).toBeVisible();
+    await page.getByRole('button', { name: 'Return to full screen' }).click();
+    await expect(page.getByTestId('fullscreen-gate')).toBeHidden();
+  }
+  await page.getByRole('button', { name: 'Continue' }).click();
 
   // Practice and the shortened staircase cell. Correctness does not matter, so the keys alternate.
   // Practice trials hand over to reVISit's Check Answer flow: Enter grades, Enter again moves on.
-  // Main trials advance on their own once the key is pressed.
-  const gateButton = page.getByRole('button', { name: 'Click to return to fullscreen' });
+  // Main trials advance on their own once the key is pressed. The block starts and the trial after
+  // each rest wait on the start gate; F is pressed there, and must not count as an answer.
+  const fullscreenGate = page.getByTestId('fullscreen-gate');
+  const startGate = page.getByTestId('start-gate');
   const prompt = page.getByTestId('trial-prompt');
   const practiceDone = page.getByTestId('practice-done');
   const feedback = page.getByText(/Correct Answer|Incorrect Answer/);
   const completed = page.getByText(COMPLETED_MESSAGE, { exact: true });
-  // markdown pages inside the cell: practice intro, main-task intro and the rest page
-  const practiceIntro = page.getByRole('heading', { name: 'Practice', exact: true });
-  const blockIntro = page.getByRole('heading', { name: 'Main task', exact: true });
-  const rest = page.getByRole('heading', { name: 'Short break', exact: true });
+  const practiceIntro = page.getByTestId('info-page-practice');
+  const blockIntro = page.getByTestId('info-page-main');
+  const rest = page.getByTestId('info-page-rest');
 
   let trials = 0;
   let practiceTrials = 0;
   let rests = 0;
   let intros = 0;
+  let gates = 0;
   const deadline = Date.now() + 60000;
   while (Date.now() < deadline) {
     if (await completed.isVisible()) {
       break;
     }
-    if (await practiceIntro.isVisible() || await blockIntro.isVisible() || await rest.isVisible()) {
-      if (await rest.isVisible()) {
-        rests += 1;
-      } else {
-        intros += 1;
-      }
-      await nextClick(page);
-      await expect(page.getByRole('heading', { name: /^(Practice|Main task|Short break)$/ })).toBeHidden({ timeout: 10000 });
-    } else if (await gateButton.isVisible()) {
-      await gateButton.click();
+    if (await fullscreenGate.isVisible()) {
+      await page.getByRole('button', { name: 'Return to full screen' }).click();
+    } else if (await practiceIntro.isVisible()) {
+      intros += 1;
+      await page.getByRole('button', { name: 'Start practice' }).click();
+      await expect(practiceIntro).toBeHidden({ timeout: 10000 });
+    } else if (await blockIntro.isVisible()) {
+      intros += 1;
+      await page.getByRole('button', { name: 'Start the main task' }).click();
+      await expect(blockIntro).toBeHidden({ timeout: 10000 });
+    } else if (await rest.isVisible()) {
+      rests += 1;
+      await page.getByRole('button', { name: 'Continue' }).click();
+      await expect(rest).toBeHidden({ timeout: 10000 });
+    } else if (await startGate.isVisible()) {
+      gates += 1;
+      await page.keyboard.press('f');
+      await expect(startGate).toBeHidden({ timeout: 10000 });
     } else if (await practiceDone.isVisible()) {
       practiceTrials += 1;
       await page.keyboard.press('Enter');
@@ -126,9 +165,21 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   expect(trials).toBeGreaterThanOrEqual(3);
   expect(intros).toBe(2);
   expect(rests).toBeGreaterThanOrEqual(1);
+  // one start gate at the start of practice, one at the start of the main block, one after each rest
+  expect(gates).toBe(2 + rests);
 
+  const records = await readStoredRecords(page);
+  const setup = records.find((record) => record.componentName === 'setup')?.answer?.setup;
+  expect(setup?.pxPerCm).toBeNull();
+  expect(setup?.cardWidthPx).toBeNull();
+  expect(setup?.screenInches).toBeNull();
+  expect(setup?.confirmedImplausible).toBe(false);
+  expect(typeof setup?.fullscreenExits).toBe('number');
+
+  // the gate's key press was not an answer: every stored trial matches one prompt answer
   const stored = await readStoredTrials(page);
   expect(stored.length).toBe(trials);
+  expect(stored.filter((trial) => trial.trialData.startWaitMs !== null)).toHaveLength(gates);
 
   const [first] = stored;
   expect(typeof first.trialData.seedA).toBe('number');
@@ -154,6 +205,11 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
     expect(trial.correctAnswer[0].answer).toBe(trial.trialData.nB > 24 ? bInterval : aInterval);
     expect(trial.trialData.metricsA.ink).toBeGreaterThan(0);
     expect(trial.trialData.metricsB.meanNN).toBeGreaterThan(0);
+    // no card: nominal size (scale 1 unless the window is too small), no physical width
+    expect(trial.trialData.displayScale).toBeGreaterThanOrEqual(0.6);
+    expect(trial.trialData.displayScale).toBeLessThanOrEqual(1);
+    expect(trial.trialData.stimulusWidthCm).toBeNull();
+    expect(trial.trialData.fullscreenExits).toBe(fullscreenGranted ? 1 : 0);
 
     if (trial.trialData.staircaseId === 'practice') {
       expect(trial.trialData.starts).toBeNull();
