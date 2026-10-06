@@ -3,6 +3,10 @@
  * stimulus, the noise mask, the second stimulus and the fixation cross layered on top of it. Every
  * layer is mounted for the whole trial and only its `visibility` follows the phase, so a phase
  * change costs a paint and not a layout. Used by the trial runner and the gallery preview.
+ *
+ * `scale` enlarges or shrinks the whole stage uniformly with a CSS transform (the trial runner's
+ * physical-size scaling, `stimulusScale.ts`); the displays themselves stay in design pixels. The
+ * gallery uses the default scale 1.
  */
 import { CSSProperties } from 'react';
 import { GENERATOR_CONFIG as C } from '../generator/config';
@@ -24,11 +28,11 @@ function layer(visible: boolean): CSSProperties {
 }
 
 export function TrialStage({
-  first, second, maskSeed, phase,
-}: { first: Display; second: Display; maskSeed: number; phase: TimelinePhase }) {
+  first, second, maskSeed, phase, scale = 1,
+}: { first: Display; second: Display; maskSeed: number; phase: TimelinePhase; scale?: number }) {
   const { width, height } = first;
-  return (
-    <div data-testid="trial-stage" style={{ position: 'relative', width, height }}>
+  const stage = (
+    <div data-testid="trial-stage" data-scale={scale} style={{ position: 'relative', width, height }}>
       <StimulusFrame />
       <div data-testid="layer-s1" data-stimulus={first.kind} style={layer(phase === 's1')}>
         <StimulusFrame display={first} />
@@ -44,6 +48,17 @@ export function TrialStage({
           <line x1={width / 2 - CROSS_HALF} y1={height / 2} x2={width / 2 + CROSS_HALF} y2={height / 2} stroke={C.INK} strokeWidth={2} />
           <line x1={width / 2} y1={height / 2 - CROSS_HALF} x2={width / 2} y2={height / 2 + CROSS_HALF} stroke={C.INK} strokeWidth={2} />
         </svg>
+      </div>
+    </div>
+  );
+  if (scale === 1) return stage;
+  return (
+    <div data-testid="trial-stage-scaled" style={{ width: width * scale, height: height * scale, flex: 'none' }}>
+      <div style={{
+        width, height, transform: `scale(${scale})`, transformOrigin: 'top left',
+      }}
+      >
+        {stage}
       </div>
     </div>
   );
