@@ -31,8 +31,8 @@ const BLOCK_CAP = 0.97;
 const PAGE_SECONDS: [RegExp, number][] = [
   [/^end$/, 0],
   [/^introduction$/, 20],
-  // the consent page's reading time is about 2.5 min at 240 words per minute
-  [/^consent$/, 150],
+  // the consent page has no minimum reading time; most people skim it
+  [/^consent$/, 45],
   [/^setup$/, 60],
   [/^instructions$/, 45],
   [/^examples$/, 50],

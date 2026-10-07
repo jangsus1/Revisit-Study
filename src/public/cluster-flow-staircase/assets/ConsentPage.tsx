@@ -3,19 +3,16 @@
  * consent-form.pdf) in the Panel layout, verbatim except for the parts that may change between
  * recruitment rounds, which are left out: the duration bullet and sentences and the compensation
  * amounts (the sentence on withdrawing early is kept). A link opens or downloads the PDF; it is not
- * embedded. "I agree" is available after the page's reading time (about 2.5 min at 240 words per
- * minute) and stores `accept: 'Accept'`, as the earlier radio-button consent did; "I do not agree"
- * explains how to leave and does not advance.
+ * embedded. "I agree" is clickable at once (no minimum reading time on this page) and stores
+ * `accept: 'Accept'`, as the earlier radio-button consent did; "I do not agree" explains how to
+ * leave and does not advance.
  */
 import { Button } from '@mantine/core';
 import { IconFileDownload } from '@tabler/icons-react';
-import {
-  ReactNode, useEffect, useRef, useState,
-} from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import type { StimulusParams } from '../../../store/types';
 import { PREFIX } from '../../../utils/Prefix';
 import { Panel } from './ui/Panel';
-import { ReadingButton, useReadingTime } from './ui/readingTime';
 import { UI } from './ui/theme';
 
 /** The consent form PDF, relative to the deployment's base path. */
@@ -150,14 +147,7 @@ export function ConsentText() {
   );
 }
 
-export interface ConsentPageParameters {
-  /** replaces the computed minimum reading time, seconds */
-  readingSeconds?: number;
-}
-
-export default function ConsentPage({ parameters, setAnswer, advance }: StimulusParams<ConsentPageParameters | undefined>) {
-  const textRef = useRef<HTMLDivElement>(null);
-  const reading = useReadingTime(textRef, { fixedSeconds: parameters?.readingSeconds });
+export default function ConsentPage({ setAnswer, advance }: StimulusParams<undefined>) {
   const [declined, setDeclined] = useState(false);
 
   // Nothing is valid until "I agree": Enter cannot advance the page.
@@ -177,10 +167,9 @@ export default function ConsentPage({ parameters, setAnswer, advance }: Stimulus
       title="Consent Form"
       maxWidth={780}
       alignLeft
-      textRef={textRef}
       actions={declined ? undefined : (
         <>
-          <ReadingButton reading={reading} onClick={agree} testId="consent-agree">I agree</ReadingButton>
+          <Button size="lg" onClick={agree} data-testid="consent-agree">I agree</Button>
           <Button size="lg" variant="subtle" color="gray" onClick={() => setDeclined(true)} data-testid="consent-decline">
             I do not agree
           </Button>

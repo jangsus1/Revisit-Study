@@ -1,20 +1,20 @@
 import { MantineProvider } from '@mantine/core';
 import {
-  act, cleanup, fireEvent, render, screen,
+  cleanup, fireEvent, render, screen,
 } from '@testing-library/react';
 import {
   afterEach, beforeEach, describe, expect, test, vi,
 } from 'vitest';
-import ConsentPage, { CONSENT_PDF, ConsentPageParameters } from '../ConsentPage';
+import ConsentPage, { CONSENT_PDF } from '../ConsentPage';
 
 vi.mock('../ui/studyContext', () => ({ useStudyProgress: () => null, useUpcomingCell: () => null }));
 
-function renderConsent(parameters?: ConsentPageParameters) {
+function renderConsent() {
   const setAnswer = vi.fn();
   const advance = vi.fn();
   render(
     <MantineProvider>
-      <ConsentPage parameters={parameters} setAnswer={setAnswer} advance={advance} answers={{}} useTrrack={(() => undefined) as never} />
+      <ConsentPage parameters={undefined} setAnswer={setAnswer} advance={advance} answers={{}} useTrrack={(() => undefined) as never} />
     </MantineProvider>,
   );
   return { setAnswer, advance };
@@ -65,23 +65,19 @@ describe('ConsentPage', () => {
     expect(document.querySelector('iframe, embed, object')).toBeNull();
   });
 
-  test('"I agree" waits for the computed reading time, then stores Accept and advances', () => {
+  test('"I agree" is clickable at once, stores Accept and advances', () => {
     const { setAnswer, advance } = renderConsent();
     expect(setAnswer).toHaveBeenLastCalledWith({ status: false, answers: {} });
     const agree = screen.getByTestId('consent-agree') as HTMLButtonElement;
-    expect(agree.disabled).toBe(true);
-    // about 560 words at 240 per minute: more than two minutes
-    const seconds = Number((agree.textContent as string).match(/(\d+) s$/)?.[1]);
-    expect(seconds).toBeGreaterThan(120);
-    act(() => { vi.advanceTimersByTime(seconds * 1000); });
     expect(agree.disabled).toBe(false);
+    expect(agree.textContent).toBe('I agree');
     fireEvent.click(agree);
     expect(setAnswer).toHaveBeenLastCalledWith({ status: true, answers: { accept: 'Accept' } });
     expect(advance).toHaveBeenCalledTimes(1);
   });
 
   test('"I do not agree" explains how to leave and does not advance', () => {
-    const { setAnswer, advance } = renderConsent({ readingSeconds: 1 });
+    const { setAnswer, advance } = renderConsent();
     fireEvent.click(screen.getByTestId('consent-decline'));
     expect(screen.getByTestId('consent-declined').textContent).toContain('close this tab');
     expect(screen.getByTestId('consent-declined').textContent).toContain('Prolific');

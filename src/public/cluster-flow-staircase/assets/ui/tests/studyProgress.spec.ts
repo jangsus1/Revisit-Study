@@ -24,7 +24,7 @@ describe('blockEstimate', () => {
   });
 
   test('pages have fixed weights and unknown pages 10 s', () => {
-    expect(pageSeconds('consent')).toBe(150);
+    expect(pageSeconds('consent')).toBe(45);
     expect(pageSeconds('examples')).toBe(50);
     expect(pageSeconds('end')).toBe(0);
     expect(pageSeconds('something-else')).toBe(10);
@@ -32,10 +32,10 @@ describe('blockEstimate', () => {
 });
 
 describe('progressSummary', () => {
-  test('starts at 0 and the whole session is about 15-16 minutes', () => {
+  test('starts at 0 and the whole session is about 13-16 minutes', () => {
     const p = progressSummary(FLAT, 0, null);
     expect(p?.fraction).toBe(0);
-    expect(p?.minutesLeft).toBeGreaterThan(14);
+    expect(p?.minutesLeft).toBeGreaterThan(13);
     expect(p?.minutesLeft).toBeLessThan(17);
     // the main block is about 8 minutes
     expect(MAIN_BLOCK_MINUTES).toBe(8);
@@ -43,7 +43,7 @@ describe('progressSummary', () => {
 
   test('counts the pages before the current one', () => {
     const atInstructions = progressSummary(FLAT, 3, null);
-    expect(atInstructions?.done).toBe(20 + 150 + 60);
+    expect(atInstructions?.done).toBe(20 + 45 + 60);
   });
 
   test('moves through a dynamic block by its funcIndex, capped below the block end', () => {
