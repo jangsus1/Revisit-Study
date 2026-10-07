@@ -7,6 +7,11 @@
  * are drawn per participant by `staircaseBlock` (`drawStarts`) and passed in through the config. The whole state is *derived* from the stored trial history on
  * every call so the dynamic block stays stateless and a reload cannot desynchronise it.
  *
+ * The 2-down-1-up correctness rule is a deliberate departure from Yu et al. (2019), who ran one
+ * response-based 1-up-1-down staircase per condition (PSE = mean of the last 5 of 20 reversals).
+ * Here each arm settles on a 70.7 %-correct level, so `summarise()` is not the PSE; the PSE comes
+ * from the planned psychometric fit to all stored trials.
+ *
  * No React, no generator imports at runtime (the StaircaseId type import is erased at compile
  * time), so this module is trivially unit-testable.
  */
