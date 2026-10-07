@@ -6,17 +6,17 @@
  *  - `practice`: the practice feedback loop and one real diagram of the participant's cue;
  *  - `main`: the main-task rules and answer keys;
  *  - `rest`: the break page the staircase block inserts every 60 main trials.
- * Every page advances with its button (reVISit's `advance()`) or Enter (the study's `nextOnEnter`).
+ * Every page advances with its button (reVISit's `advance()`) or Enter (the study's `nextOnEnter`),
+ * but only after its minimum reading time (`ui/readingTime.tsx`; none on the rest page).
  * Pages after the setup mount the full-screen gate. The practice page reads the participant's cue
  * and density from the upcoming practice block's parameters (or from `parameters.cue/density`).
  */
-import { Button } from '@mantine/core';
 import {
   IconBolt, IconClock, IconCoffee, IconDeviceDesktop, IconDeviceDesktopCheck, IconKeyboard, IconMaximize,
   IconMessageOff, IconMessageQuestion, IconSchool, IconSignature,
 } from '@tabler/icons-react';
 import {
-  ComponentType, ReactNode, useEffect, useMemo,
+  ComponentType, ReactNode, useEffect, useMemo, useRef,
 } from 'react';
 import type { StimulusParams } from '../../../store/types';
 import type { Cue, Density, TrialAnswer } from './generator';
@@ -26,8 +26,9 @@ import { drawHueOffset, readSetupAnswer } from './staircaseBlock';
 import { ItemCountFigure, PracticeStoryboard, TrialStoryboard } from './ui/figures';
 import { AnswerKeys } from './ui/KeyCap';
 import { FullscreenGate, Panel } from './ui/Panel';
-import { useUpcomingCell } from './ui/studyContext';
-import { DEFAULT_PRACTICE_TRIALS } from './ui/studyProgress';
+import { ReadingButton, useReadingTime } from './ui/readingTime';
+import { useStudyProgress, useUpcomingCell } from './ui/studyContext';
+import { DEFAULT_PRACTICE_TRIALS, DEFAULT_SESSION_MINUTES, MAIN_BLOCK_MINUTES } from './ui/studyProgress';
 import { UI } from './ui/theme';
 
 export type InfoPageName = 'introduction' | 'instructions' | 'practice' | 'main' | 'rest';
@@ -37,6 +38,8 @@ export interface InfoPageParameters {
   /** practice page: the cue and density of the preview diagram; default: the participant's cell */
   cue?: Cue;
   density?: Density;
+  /** replaces the computed minimum reading time, seconds (the shortened test study uses 1) */
+  readingSeconds?: number;
 }
 
 /** The seed of the practice page's example diagram (any fixed seed; it is not a trial). */
@@ -127,7 +130,10 @@ function Meta({ icon: I, children }: { icon: Icon; children: ReactNode }) {
   );
 }
 
-function IntroductionPage() {
+function IntroductionPage({ practiceTrials }: { practiceTrials: number }) {
+  // the same estimate the progress header shows ("About N min left" at 0 %)
+  const progress = useStudyProgress();
+  const minutes = progress ? Math.ceil(progress.minutesLeft) : DEFAULT_SESSION_MINUTES;
   return (
     <div data-testid="info-introduction" style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
       <div style={{ fontSize: 19 }}>
@@ -141,8 +147,8 @@ function IntroductionPage() {
       >
         <StepChip n={1} icon={IconSignature} label="Consent" />
         <StepChip n={2} icon={IconDeviceDesktopCheck} label="Display check" sub="full screen, screen size" />
-        <StepChip n={3} icon={IconSchool} label="Instructions" sub="+ 8 practice trials" />
-        <StepChip n={4} icon={IconKeyboard} label="Main task" sub="about 10 min, with breaks" />
+        <StepChip n={3} icon={IconSchool} label="Instructions" sub={`examples + ${practiceTrials} practice trials`} />
+        <StepChip n={4} icon={IconKeyboard} label="Main task" sub={`about ${MAIN_BLOCK_MINUTES} min, with breaks`} />
         <StepChip n={5} icon={IconMessageQuestion} label="A few questions" />
       </div>
       <div
@@ -151,7 +157,7 @@ function IntroductionPage() {
           display: 'flex', justifyContent: 'center', gap: 22, flexWrap: 'wrap', fontSize: 16, color: UI.muted,
         }}
       >
-        <Meta icon={IconClock}>About 15–20 minutes</Meta>
+        <Meta icon={IconClock}>{`About ${minutes} minutes`}</Meta>
         <span aria-hidden>·</span>
         <Meta icon={IconDeviceDesktop}>laptop or desktop</Meta>
         <span aria-hidden>·</span>
@@ -276,21 +282,36 @@ function RestPage({ trialsDone }: { trialsDone: number }) {
   );
 }
 
-const PAGES: Record<InfoPageName, { kicker?: string; title: string; button: string; maxWidth: number; gate: boolean }> = {
+interface PageSpec {
+  kicker?: string;
+  title: string;
+  button: string;
+  maxWidth: number;
+  gate: boolean;
+  /** minimum reading time: computed from the words, never below this floor; null = no timer */
+  minReadSeconds: number | null;
+}
+
+/**
+ * Reading-time floors: the introduction is computed from its words alone; the instructions are
+ * mostly figures, so at least 20 s; practice intro 8 s; main-task intro 5 s; no timer on the rest
+ * page.
+ */
+export const PAGES: Record<InfoPageName, PageSpec> = {
   introduction: {
-    kicker: 'Research study', title: 'Which diagram has more items?', button: 'Start', maxWidth: 900, gate: false,
+    kicker: 'Research study', title: 'Which diagram has more items?', button: 'Start', maxWidth: 900, gate: false, minReadSeconds: 0,
   },
   instructions: {
-    title: 'How a trial works', button: 'Continue', maxWidth: 1100, gate: true,
+    title: 'How a trial works', button: 'Continue', maxWidth: 1100, gate: true, minReadSeconds: 20,
   },
   practice: {
-    kicker: 'Practice', title: '8 easy trials with feedback', button: 'Start practice', maxWidth: 1000, gate: true,
+    kicker: 'Practice', title: '3 easy trials with feedback', button: 'Start practice', maxWidth: 1000, gate: true, minReadSeconds: 8,
   },
   main: {
-    kicker: 'Practice done', title: 'Main task', button: 'Start the main task', maxWidth: 760, gate: true,
+    kicker: 'Practice done', title: 'Main task', button: 'Start the main task', maxWidth: 760, gate: true, minReadSeconds: 5,
   },
   rest: {
-    kicker: 'Main task', title: 'Short break', button: 'Continue', maxWidth: 700, gate: true,
+    kicker: 'Main task', title: 'Short break', button: 'Continue', maxWidth: 700, gate: true, minReadSeconds: null,
   },
 };
 
@@ -299,15 +320,22 @@ export default function InfoPage({
 }: StimulusParams<InfoPageParameters>) {
   const page: InfoPageName = parameters?.page && parameters.page in PAGES ? parameters.page : 'introduction';
   const upcoming = useUpcomingCell();
+  const practiceTrials = upcoming?.trials ?? DEFAULT_PRACTICE_TRIALS;
   const spec = page === 'practice'
-    ? { ...PAGES.practice, title: `${upcoming?.trials ?? DEFAULT_PRACTICE_TRIALS} easy trials with feedback` }
+    ? { ...PAGES.practice, title: `${practiceTrials} easy trials with feedback` }
     : PAGES[page];
   const cell = parameters?.cue && parameters?.density ? { cue: parameters.cue, density: parameters.density } : upcoming;
   const { sessionSalt } = readSetupAnswer(answers ?? {});
 
+  // The page answer stays invalid until the reading time has passed, so neither the button nor
+  // reVISit's Enter handler can advance it early.
+  const textRef = useRef<HTMLDivElement>(null);
+  const reading = useReadingTime(textRef, {
+    minSeconds: spec.minReadSeconds ?? 0, fixedSeconds: parameters?.readingSeconds, enabled: spec.minReadSeconds !== null,
+  });
   useEffect(() => {
-    setAnswer({ status: true, answers: {} });
-  }, [setAnswer]);
+    setAnswer({ status: reading.ready, answers: {} });
+  }, [setAnswer, reading.ready]);
 
   let body: ReactNode;
   switch (page) {
@@ -315,7 +343,7 @@ export default function InfoPage({
     case 'practice': body = <PracticePage cell={cell} hueOffset={drawHueOffset(sessionSalt)} />; break;
     case 'main': body = <MainPage />; break;
     case 'rest': body = <RestPage trialsDone={countMainTrials(answers)} />; break;
-    default: body = <IntroductionPage />;
+    default: body = <IntroductionPage practiceTrials={practiceTrials} />;
   }
 
   return (
@@ -325,7 +353,8 @@ export default function InfoPage({
         kicker={spec.kicker}
         title={spec.title}
         maxWidth={spec.maxWidth}
-        actions={<Button size="lg" onClick={() => advance?.()}>{spec.button}</Button>}
+        textRef={textRef}
+        actions={<ReadingButton reading={reading} onClick={() => advance?.()}>{spec.button}</ReadingButton>}
       >
         {body}
       </Panel>

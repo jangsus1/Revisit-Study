@@ -28,6 +28,8 @@ interface StoredTrialData {
   stimulusWidthCm: number | null;
   startWaitMs: number | null;
   fullscreenExits: number;
+  correct?: boolean;
+  feedbackShownMs?: number;
 }
 
 /** One stored trial: the platform record around the hidden telemetry. */
@@ -74,10 +76,17 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   await resetClientStudyState(page);
   await page.goto(`/${STUDY_ID}`);
 
-  // Introduction (a TSX page in the Panel layout, advanced by its own button)
+  // Introduction (a TSX page in the Panel layout, advanced by its own button once the reading time,
+  // shortened to 1 s in the test study, has passed; Enter does nothing before that)
   await expect(page.getByRole('heading', { name: 'Which diagram has more items?' })).toBeVisible({ timeout: 15000 });
   await expect(page.getByTestId('session-step')).toHaveCount(5);
-  await page.getByRole('button', { name: 'Start', exact: true }).click();
+  const primary = page.getByTestId('primary-button');
+  await expect(primary).toBeDisabled();
+  await expect(primary).toHaveText(/^Start · 1 s$/);
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('heading', { name: 'Which diagram has more items?' })).toBeVisible();
+  await expect(primary).toBeEnabled({ timeout: 5000 });
+  await primary.click();
 
   // Setup: full screen + timing, then the screen-size card check ("I have no card").
   await page.getByRole('button', { name: 'Enter full screen and start' }).click();
@@ -100,17 +109,29 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
     await page.getByRole('button', { name: 'Return to full screen' }).click();
     await expect(page.getByTestId('fullscreen-gate')).toBeHidden();
   }
-  await page.getByRole('button', { name: 'Continue' }).click();
+  await expect(primary).toBeEnabled({ timeout: 5000 });
+  await primary.click();
+
+  // Examples: Continue needs both demos played. Each plays the real sequence in place and then
+  // shows the answer: the first had more (24 vs 10), the second had more (24 vs 44).
+  await expect(page.getByTestId('example-page')).toBeVisible({ timeout: 10000 });
+  await expect(primary).toHaveText('Play both examples to continue', { timeout: 5000 });
+  await page.getByTestId('example-fewer-play').click();
+  await expect(page.getByTestId('example-fewer-answer')).toHaveText('The first had more', { timeout: 10000 });
+  await expect(primary).toBeDisabled();
+  await page.getByTestId('example-more-play').click();
+  await expect(page.getByTestId('example-more-answer')).toHaveText('The second had more', { timeout: 10000 });
+  await expect(primary).toBeEnabled();
+  await primary.click();
 
   // Practice and the shortened staircase cell. Correctness does not matter, so the keys alternate.
-  // Practice trials hand over to reVISit's Check Answer flow: Enter grades, Enter again moves on.
-  // Main trials advance on their own once the key is pressed. The block starts and the trial after
-  // each rest wait on the start gate; F is pressed there, and must not count as an answer.
+  // Practice trials show their feedback in the stream for 1.5 s and move on by themselves; main
+  // trials advance as soon as the key is pressed. The block starts and the trial after each rest
+  // wait on the start gate; F is pressed there, and must not count as an answer.
   const fullscreenGate = page.getByTestId('fullscreen-gate');
   const startGate = page.getByTestId('start-gate');
   const prompt = page.getByTestId('trial-prompt');
-  const practiceDone = page.getByTestId('practice-done');
-  const feedback = page.getByText(/Correct Answer|Incorrect Answer/);
+  const feedback = page.getByTestId('practice-feedback');
   const completed = page.getByText(COMPLETED_MESSAGE, { exact: true });
   const practiceIntro = page.getByTestId('info-page-practice');
   const blockIntro = page.getByTestId('info-page-main');
@@ -130,11 +151,13 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
       await page.getByRole('button', { name: 'Return to full screen' }).click();
     } else if (await practiceIntro.isVisible()) {
       intros += 1;
-      await page.getByRole('button', { name: 'Start practice' }).click();
+      await expect(primary).toBeEnabled({ timeout: 5000 });
+      await primary.click();
       await expect(practiceIntro).toBeHidden({ timeout: 10000 });
     } else if (await blockIntro.isVisible()) {
       intros += 1;
-      await page.getByRole('button', { name: 'Start the main task' }).click();
+      await expect(primary).toBeEnabled({ timeout: 5000 });
+      await primary.click();
       await expect(blockIntro).toBeHidden({ timeout: 10000 });
     } else if (await rest.isVisible()) {
       rests += 1;
@@ -144,25 +167,25 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
       gates += 1;
       await page.keyboard.press('f');
       await expect(startGate).toBeHidden({ timeout: 10000 });
-    } else if (await practiceDone.isVisible()) {
-      practiceTrials += 1;
-      await page.keyboard.press('Enter');
-      await expect(feedback).toBeVisible({ timeout: 10000 });
-      await page.keyboard.press('Enter');
-      await practiceDone.waitFor({ state: 'hidden', timeout: 10000 });
     } else if (await prompt.isVisible()) {
       await page.keyboard.press(trials % 2 === 0 ? 'f' : 'ArrowRight');
       trials += 1;
       await prompt.waitFor({ state: 'hidden', timeout: 10000 });
+      if (await feedback.isVisible()) {
+        // practice: the feedback is part of the trial and goes away by itself (Enter is ignored)
+        practiceTrials += 1;
+        await page.keyboard.press('Enter');
+        await feedback.waitFor({ state: 'hidden', timeout: 10000 });
+      }
     } else {
       await page.waitForTimeout(50);
     }
   }
 
   await waitForStudyEndMessage(page);
-  // two practice trials plus the shortened cell, with its two intro pages and at least one rest
-  expect(practiceTrials).toBe(2);
-  expect(trials).toBeGreaterThanOrEqual(3);
+  // three practice trials plus the shortened cell, with its two intro pages and at least one rest
+  expect(practiceTrials).toBe(3);
+  expect(trials).toBeGreaterThanOrEqual(6);
   expect(intros).toBe(2);
   expect(rests).toBeGreaterThanOrEqual(1);
   // one start gate at the start of practice, one at the start of the main block, one after each rest
@@ -219,9 +242,12 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
     }
 
     if (trial.trialData.staircaseId === 'practice') {
-      // practice answers were graded by reVISit's Check Answer
-      expect(trial.checkAnswer?.attemptsUsed).toBe(1);
-      expect(trial.checkAnswer?.correct).toBe(trial.trial === trial.correctAnswer[0].answer);
+      // practice answers are graded in the trial for the in-stream feedback, not by Check Answer
+      expect(trial.checkAnswer).toBeUndefined();
+      expect(trial.trialData.correct).toBe(trial.trial === trial.correctAnswer[0].answer);
+      expect(Math.abs((trial.trialData.feedbackShownMs ?? 0) - 1500)).toBeLessThan(250);
+    } else {
+      expect(trial.trialData.correct).toBeUndefined();
     }
 
     expect(Math.abs(trial.trialData.measured.s1 - 200)).toBeLessThanOrEqual(tolerance);

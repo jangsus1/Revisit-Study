@@ -1,14 +1,14 @@
 import { describe, expect, test } from 'vitest';
 import {
-  EXPECTED_MAIN_TRIALS, SECONDS_PER_TRIAL, blockEstimate, pageSeconds, progressLabel, progressSummary,
+  EXPECTED_MAIN_TRIALS, MAIN_BLOCK_MINUTES, SECONDS_PER_TRIAL, blockEstimate, pageSeconds, progressLabel, progressSummary,
 } from '../studyProgress';
 
-const FLAT = ['introduction', 'consent', 'setup', 'instructions', 'practice-intro', 'practice-color-sparse',
+const FLAT = ['introduction', 'consent', 'setup', 'instructions', 'examples', 'practice-intro', 'practice-color-sparse',
   'block-intro', 'cell-color-sparse', 'demographics'];
 
 describe('blockEstimate', () => {
-  test('practice blocks are 8 trials by default, or their `trials`', () => {
-    expect(blockEstimate('practice-color-sparse')?.steps).toBe(8);
+  test('practice blocks are 3 trials by default, or their `trials`', () => {
+    expect(blockEstimate('practice-color-sparse')?.steps).toBe(3);
     expect(blockEstimate('practice-color-sparse', { trials: 2 })?.steps).toBe(2);
     expect(blockEstimate('practice-intro')).toBeNull();
   });
@@ -24,39 +24,42 @@ describe('blockEstimate', () => {
   });
 
   test('pages have fixed weights and unknown pages 10 s', () => {
-    expect(pageSeconds('consent')).toBe(60);
+    expect(pageSeconds('consent')).toBe(150);
+    expect(pageSeconds('examples')).toBe(50);
     expect(pageSeconds('end')).toBe(0);
     expect(pageSeconds('something-else')).toBe(10);
   });
 });
 
 describe('progressSummary', () => {
-  test('starts at 0 and the whole session is about 13-15 minutes', () => {
+  test('starts at 0 and the whole session is about 15-16 minutes', () => {
     const p = progressSummary(FLAT, 0, null);
     expect(p?.fraction).toBe(0);
-    expect(p?.minutesLeft).toBeGreaterThan(12);
-    expect(p?.minutesLeft).toBeLessThan(16);
+    expect(p?.minutesLeft).toBeGreaterThan(14);
+    expect(p?.minutesLeft).toBeLessThan(17);
+    // the main block is about 8 minutes
+    expect(MAIN_BLOCK_MINUTES).toBe(8);
   });
 
   test('counts the pages before the current one', () => {
     const atInstructions = progressSummary(FLAT, 3, null);
-    expect(atInstructions?.done).toBe(20 + 60 + 60);
+    expect(atInstructions?.done).toBe(20 + 150 + 60);
   });
 
   test('moves through a dynamic block by its funcIndex, capped below the block end', () => {
-    const start = progressSummary(FLAT, 7, 0)!;
-    const half = progressSummary(FLAT, 7, 76)!;
-    const over = progressSummary(FLAT, 7, 400)!;
-    const after = progressSummary(FLAT, 8, null)!;
+    const start = progressSummary(FLAT, 8, 0)!;
+    const half = progressSummary(FLAT, 8, 76)!;
+    const over = progressSummary(FLAT, 8, 400)!;
+    const after = progressSummary(FLAT, 9, null)!;
     expect(half.done).toBeGreaterThan(start.done);
     expect(half.done - start.done).toBeCloseTo(pageSeconds('cell-color-sparse') * 0.5, 0);
     expect(over.done).toBeLessThan(after.done);
   });
 
   test('uses block parameters when given', () => {
-    const p = progressSummary(FLAT, 5, 1, (name) => (name.startsWith('practice-') ? { trials: 2 } : undefined))!;
-    const before = progressSummary(FLAT, 5, null, (name) => (name.startsWith('practice-') ? { trials: 2 } : undefined))!;
-    expect(p.done - before.done).toBeCloseTo(5, 5);
+    const p = progressSummary(FLAT, 6, 1, (name) => (name.startsWith('practice-') ? { trials: 2 } : undefined))!;
+    const before = progressSummary(FLAT, 6, null, (name) => (name.startsWith('practice-') ? { trials: 2 } : undefined))!;
+    expect(p.done - before.done).toBeCloseTo(4.5, 5);
   });
 
   test('returns null for an empty sequence', () => {

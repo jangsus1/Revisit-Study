@@ -5,7 +5,9 @@
  * participant-facing page of the study uses it, so they all look alike.
  */
 import { Button } from '@mantine/core';
-import { CSSProperties, ReactNode, useEffect } from 'react';
+import {
+  CSSProperties, ReactNode, Ref, useEffect,
+} from 'react';
 import { useStudyProgress } from './studyContext';
 import { progressLabel } from './studyProgress';
 import { useFullscreenGate } from './fullscreen';
@@ -68,10 +70,15 @@ export interface PanelProps {
   zIndex?: number;
   testId?: string;
   onPointerDown?: () => void;
+  /** attached to the title and body (what the reading timer counts), not the progress header or buttons */
+  textRef?: Ref<HTMLDivElement>;
+  /** left-aligned body text (long pages such as the consent form) */
+  alignLeft?: boolean;
 }
 
 export function Panel({
   kicker, title, children, actions, maxWidth = 640, progress = true, background = '#ffffff', zIndex, testId, onPointerDown,
+  textRef, alignLeft = false,
 }: PanelProps) {
   return (
     <div
@@ -80,23 +87,30 @@ export function Panel({
       onPointerDown={onPointerDown}
     >
       {progress && <StudyProgress />}
-      {kicker && (
-        <div style={{
-          fontSize: 14, fontWeight: 650, letterSpacing: 0.7, textTransform: 'uppercase', color: UI.accent,
+      <div
+        ref={textRef}
+        style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'inherit', width: '100%',
         }}
-        >
-          {kicker}
-        </div>
-      )}
-      {title && <h1 style={{ margin: 0, fontSize: 'clamp(24px, 3.6vh, 32px)', fontWeight: 700 }}>{title}</h1>}
-      {children && (
-        <div style={{
-          fontSize: 18, lineHeight: 1.5, color: UI.muted, maxWidth, width: '100%',
-        }}
-        >
-          {children}
-        </div>
-      )}
+      >
+        {kicker && (
+          <div style={{
+            fontSize: 14, fontWeight: 650, letterSpacing: 0.7, textTransform: 'uppercase', color: UI.accent,
+          }}
+          >
+            {kicker}
+          </div>
+        )}
+        {title && <h1 style={{ margin: 0, fontSize: 'clamp(24px, 3.6vh, 32px)', fontWeight: 700 }}>{title}</h1>}
+        {children && (
+          <div style={{
+            fontSize: 18, lineHeight: 1.5, color: UI.muted, maxWidth, width: '100%', textAlign: alignLeft ? 'left' : 'center',
+          }}
+          >
+            {children}
+          </div>
+        )}
+      </div>
       {actions && <div style={{ display: 'flex', gap: 12, marginTop: 4 }}>{actions}</div>}
     </div>
   );

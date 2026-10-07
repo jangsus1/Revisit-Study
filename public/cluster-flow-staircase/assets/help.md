@@ -9,6 +9,10 @@
 - **What counts.** Count the nodes (dots and small marks) only. Arrows, outlines, colours and shapes
   do not count.
 - The two diagrams never have the same number of items, so always answer, even if you are guessing.
+- **Practice.** The three practice trials tell you right away whether you were correct; the next
+  trial then starts by itself. The main task has no feedback.
+- **Waiting buttons.** Some pages keep their button grey with a countdown for a few seconds so
+  there is time to read them.
 - **Full screen.** If you leave full screen, the study pauses and shows *Return to full screen*.
   Click it to continue.
 - Questions or problems? Contact **minsuk@gatech.edu**.
