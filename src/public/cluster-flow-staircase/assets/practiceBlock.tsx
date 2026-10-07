@@ -1,9 +1,11 @@
 /**
- * Dynamic block for the practice phase: a short fixed run of easy trials in the participant's own
- * cell (cue x density), so they practise exactly the displays of their main block. Feedback is
- * reVISit's own Check Answer flow: the `practice-trial` component has `provideFeedback` and this
- * block supplies the `correctAnswer` it grades against. Its first trial waits for a key press or
- * click before it starts (`waitForStart`).
+ * Dynamic block for the practice phase: a short fixed run of easy trials (N_B 12, 40, 12) in the
+ * participant's own cell (cue x density), so they practise exactly the displays of their main
+ * block. Feedback is shown inside the trial stream: the trial runner grades the key press against
+ * the interval this block marks as correct, shows "Correct" / "Not quite" for about 1.5 s and moves
+ * on by itself (no Check Answer step). The block still returns the `correctAnswer`, so reVISit
+ * stores it on the record. Its first trial waits for a key press or click before it starts
+ * (`waitForStart`).
  */
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
 import type { Cue, Density, TrialParams } from './generator';
@@ -15,13 +17,13 @@ import {
 export interface PracticeBlockParameters {
   cue: Cue;
   density: Density;
-  /** number of practice trials; defaults to 8 */
+  /** number of practice trials; defaults to 3 */
   trials?: number;
 }
 
 const PRACTICE_CELL = 'practice';
 const PRACTICE_NB = [12, 40];
-const DEFAULT_PRACTICE_TRIALS = 8;
+const DEFAULT_PRACTICE_TRIALS = 3;
 const TARGET = 24;
 
 export default function practiceBlock({

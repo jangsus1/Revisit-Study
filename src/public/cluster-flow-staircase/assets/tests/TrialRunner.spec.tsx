@@ -6,7 +6,9 @@ import {
   afterEach, beforeEach, describe, expect, test, vi,
 } from 'vitest';
 import type { Display, GenerateOptions, TrialParams } from '../generator/types';
-import TrialRunner, { PROMPT_TEXT, READY_TEXT, forgetStartedTrials } from '../TrialRunner';
+import TrialRunner, {
+  FEEDBACK_MS, PROMPT_TEXT, READY_TEXT, forgetStartedTrials,
+} from '../TrialRunner';
 import { fullscreenSession } from '../ui/fullscreen';
 
 vi.mock('../ui/studyContext', () => ({ useStudyProgress: () => null, useUpcomingCell: () => null }));
@@ -320,25 +322,66 @@ describe('TrialRunner', () => {
     fireEvent.keyDown(window, { key: 'f' });
     expect(screen.getByTestId('trial-runner')).toBeTruthy();
     expect(screen.queryByTestId('trial-prompt')).toBeNull();
-    expect(screen.queryByTestId('practice-done')).toBeNull();
+    expect(screen.queryByTestId('practice-feedback')).toBeNull();
   });
 
-  test('practice trials hand over to the platform instead of advancing', () => {
+  test('practice trials show the feedback in the stream, then advance by themselves', () => {
+    // nB 40 > 24 with A first: the second interval held more items
     const { setAnswer, advance } = renderTrial({
-      staircaseId: 'practice', cellId: 'practice', nB: 40, starts: null,
+      staircaseId: 'practice', cellId: 'practice', nB: 40, starts: null, aFirst: true,
     });
     runFrames(200);
-    fireEvent.keyDown(window, { key: 'j' });
+    fireEvent.keyDown(window, { key: 'f' });
 
     expect(setAnswer).toHaveBeenCalledTimes(1);
-    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('second');
+    expect(setAnswer.mock.calls[0][0].answers.trial).toBe('first');
     expect(setAnswer.mock.calls[0][0].answers.trialData.starts).toBeNull();
+    expect(setAnswer.mock.calls[0][0].answers.trialData.correct).toBe(false);
     expect(advance).not.toHaveBeenCalled();
 
-    // the fixed overlay is gone so reVISit's feedback and Next button are visible
-    expect(screen.queryByTestId('trial-runner')).toBeNull();
-    expect(screen.getByTestId('practice-done').textContent).toContain('second');
-    expect(screen.getByTestId('practice-done').textContent).toContain('Enter');
+    // the overlay stays and shows the feedback over the blank frame
+    expect(screen.getByTestId('trial-runner')).toBeTruthy();
+    const feedback = screen.getByTestId('practice-feedback');
+    expect(feedback.textContent).toContain('Not quite');
+    expect(screen.getByTestId('practice-feedback-answer').textContent).toBe('The second diagram had more items.');
+
+    // Enter does nothing while the feedback is up
+    const seen: string[] = [];
+    const bubble = (event: KeyboardEvent) => { seen.push(event.key); };
+    window.addEventListener('keydown', bubble);
+    fireEvent.keyDown(window, { key: 'Enter' });
+    window.removeEventListener('keydown', bubble);
+    expect(seen).toEqual([]);
+
+    // first paint of the feedback, then FEEDBACK_MS later the trial moves on
+    runFrames(1);
+    clock += FEEDBACK_MS;
+    act(() => { vi.advanceTimersByTime(FEEDBACK_MS); });
+    expect(advance).toHaveBeenCalledTimes(1);
+    expect(setAnswer).toHaveBeenCalledTimes(2);
+    const final = setAnswer.mock.calls[1][0].answers.trialData;
+    expect(final.correct).toBe(false);
+    expect(final.feedbackShownMs).toBeCloseTo(FEEDBACK_MS, 0);
+    expect(setAnswer.mock.calls[1][0].answers.trial).toBe('first');
+  });
+
+  test('a correct practice answer says so', () => {
+    renderTrial({
+      staircaseId: 'practice', cellId: 'practice', nB: 12, starts: null, aFirst: false,
+    });
+    runFrames(200);
+    // nB 12 < 24 with B first: A, in the second interval, had more
+    fireEvent.keyDown(window, { key: 'j' });
+    expect(screen.getByTestId('practice-feedback').getAttribute('data-correct')).toBe('true');
+    expect(screen.getByTestId('practice-feedback').textContent).toContain('Correct');
+  });
+
+  test('main trials store no correctness and show no feedback', () => {
+    const { setAnswer } = renderTrial();
+    runFrames(200);
+    fireEvent.keyDown(window, { key: 'f' });
+    expect(setAnswer.mock.calls[0][0].answers.trialData.correct).toBeUndefined();
+    expect(screen.queryByTestId('practice-feedback')).toBeNull();
   });
 
   test('swallows Enter until the answer is in', () => {

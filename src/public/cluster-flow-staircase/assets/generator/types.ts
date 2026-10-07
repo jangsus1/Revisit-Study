@@ -228,6 +228,10 @@ export interface TrialAnswer {
   stimulusWidthCm: number | null;
   /** ms from the start gate appearing to the key press or click that started the trial; null when there was no gate */
   startWaitMs: number | null;
+  /** practice only: whether the answer named the interval with more items (shown as feedback) */
+  correct?: boolean;
+  /** practice only: how long the feedback was on screen, ms (about 1 500) */
+  feedbackShownMs?: number;
   metricsA: DisplayMetrics;
   metricsB: DisplayMetrics;
   displayA: Display;

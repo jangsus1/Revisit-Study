@@ -39,7 +39,7 @@ function runPractice(count: number, overrides: { trials?: number } = {}) {
 }
 
 describe('practiceBlock', () => {
-  test('schedules the practice-trial component, which carries the platform feedback', () => {
+  test('schedules the practice-trial component with the interval it grades against', () => {
     const result = runPractice(0);
     const parameters = result.parameters as unknown as TrialParams;
     expect(result.component).toBe('practice-trial');
@@ -52,11 +52,13 @@ describe('practiceBlock', () => {
   });
 
   test('alternates the easy item counts, always in the participant\'s own cell', () => {
-    const seen = new Array(8).fill(null).map((_, index) => runPractice(index).parameters as unknown as TrialParams);
-    expect(seen.map((parameters) => parameters.nB)).toEqual([12, 40, 12, 40, 12, 40, 12, 40]);
+    const seen = new Array(3).fill(null).map((_, index) => runPractice(index).parameters as unknown as TrialParams);
+    expect(seen.map((parameters) => parameters.nB)).toEqual([12, 40, 12]);
     expect(seen.every((parameters) => parameters.cue === 'shape' && parameters.density === 'dense')).toBe(true);
-    expect(new Set(seen.map((parameters) => parameters.seedA)).size).toBe(8);
-    expect(new Set(seen.map((parameters) => parameters.aFirst)).size).toBe(2);
+    expect(new Set(seen.map((parameters) => parameters.seedA)).size).toBe(3);
+    // with more trials the interval order varies
+    const many = new Array(8).fill(null).map((_, index) => runPractice(index, { trials: 8 }).parameters as unknown as TrialParams);
+    expect(new Set(many.map((parameters) => parameters.aFirst)).size).toBe(2);
   });
 
   test('marks the interval of the larger display as the correct answer', () => {
@@ -74,12 +76,12 @@ describe('practiceBlock', () => {
   test('only the first practice trial waits for the start gate', () => {
     expect((runPractice(0).parameters as unknown as TrialParams).waitForStart).toBe(true);
     expect((runPractice(1).parameters as unknown as TrialParams).waitForStart).toBe(false);
-    expect((runPractice(7).parameters as unknown as TrialParams).waitForStart).toBe(false);
+    expect((runPractice(2).parameters as unknown as TrialParams).waitForStart).toBe(false);
   });
 
-  test('ends after eight trials by default', () => {
-    expect(runPractice(7).component).toBe('practice-trial');
-    expect(runPractice(8)).toEqual({ component: null });
+  test('ends after three trials by default', () => {
+    expect(runPractice(2).component).toBe('practice-trial');
+    expect(runPractice(3)).toEqual({ component: null });
   });
 
   test('honours the trials override', () => {

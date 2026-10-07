@@ -24,8 +24,9 @@
  *
  * What is reVISit's and what is ours: the key press is read here (the platform has no keypress
  * response type) and written to the `trial` reactive response, which is what enables Next. Main
- * trials then call the platform's `advance()`; practice trials leave the platform's Check Answer
- * flow (`provideFeedback` on the `practice-trial` component) to grade the answer and show feedback.
+ * trials then call the platform's `advance()`. Practice trials grade the key press themselves against
+ * the interval that held more items, show "Correct" / "Not quite" over the blank frame for
+ * `FEEDBACK_MS`, store `correct` and `feedbackShownMs`, and then call `advance()` too.
  */
 import {
   CSSProperties, useCallback, useEffect, useMemo, useRef, useState,
@@ -36,6 +37,7 @@ import type { TrialAnswer, TrialParams } from './generator';
 import { generateTrialPair, hashSeed, measureDisplay } from './generator';
 import { GENERATOR_CONFIG as C } from './generator/config';
 import { TrialStage } from './render/TrialStage';
+import { correctInterval } from './staircaseBlock';
 import { stimulusScale } from './stimulusScale';
 import { fullscreenSession, useFullscreenGate } from './ui/fullscreen';
 import { AnswerKeys, KeyCap } from './ui/KeyCap';
@@ -43,7 +45,7 @@ import { FullscreenGatePanel, Panel } from './ui/Panel';
 import { UI } from './ui/theme';
 import { useTrialTimeline } from './useTrialTimeline';
 
-type Phase = 'ready' | 'running' | 'prompt' | 'done';
+type Phase = 'ready' | 'running' | 'prompt' | 'feedback' | 'done';
 
 export const PROMPT_TEXT = 'Which one had more items?';
 export const READY_TEXT = 'Put your fingers on F and J. Press any key or click to start.';
@@ -82,18 +84,45 @@ const overlayStyle: CSSProperties = {
   fontSize: 18,
 };
 
-/** After a practice answer the overlay gives way to reVISit's response block, feedback and Next. */
-const practiceDoneStyle: CSSProperties = {
-  color: UI.ink,
-  padding: '32px 32px 8px',
-  fontFamily: UI.font,
-  fontSize: 18,
-  textAlign: 'center',
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'center',
-  gap: 14,
-};
+/** How long a practice trial shows its feedback before it moves on by itself. */
+export const FEEDBACK_MS = 1500;
+
+/** The practice feedback card, centred on the (blank) stimulus frame. */
+function PracticeFeedback({ correct, answer }: { correct: boolean; answer: TrialAnswer['response'] }) {
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none',
+    }}
+    >
+      <div
+        data-testid="practice-feedback"
+        data-correct={correct}
+        style={{
+          background: correct ? '#ebfbee' : '#fff5f5',
+          border: `3px solid ${correct ? UI.correct : UI.wrong}`,
+          borderRadius: 16,
+          padding: '28px 48px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: 14,
+          boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+        }}
+      >
+        <div style={{ fontSize: 44, fontWeight: 800, color: correct ? UI.correct : UI.wrong }}>
+          {correct ? 'Correct' : 'Not quite'}
+        </div>
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 12, fontSize: 21, color: UI.ink, fontWeight: 600,
+        }}
+        >
+          <KeyCap label={answer === 'first' ? 'F' : 'J'} size={40} />
+          <span data-testid="practice-feedback-answer">{`The ${answer} diagram had more items.`}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export default function TrialRunner({ parameters, setAnswer, advance }: StimulusParams<TrialParams>) {
   const {
@@ -133,8 +162,12 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
 
   let phase: Phase = 'running';
   if (!started) phase = 'ready';
-  else if (response !== null) phase = 'done';
+  else if (response !== null) phase = isPractice ? 'feedback' : 'done';
   else if (timeline.phase === 'end') phase = 'prompt';
+
+  // The interval that held more items, as the block's correctAnswer has it (practice feedback).
+  const expected = correctInterval(nB, aFirst, displayA.n);
+  const answerRef = useRef<TrialAnswer | null>(null);
 
   // The ready screen's wait is timed from when it is first visible (after any full-screen gate).
   useEffect(() => {
@@ -209,6 +242,8 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
 
       const chosen: TrialAnswer['response'] = FIRST_KEYS.has(key) ? 'first' : 'second';
       const trialAnswer: TrialAnswer = {
+        // practice only: graded here for the in-stream feedback; the time it was shown is filled in when it ends
+        ...(isPractice ? { correct: chosen === expected, feedbackShownMs: 0 } : {}),
         response: chosen,
         aFirst,
         hueOffset,
@@ -246,9 +281,10 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
           trialData: trialAnswer as unknown as JsonValue,
         },
       });
+      answerRef.current = trialAnswer;
       setResponse(chosen);
 
-      // Practice trials are graded by the platform (Check Answer on Enter); main trials move on.
+      // Main trials move on at once; practice trials first show their feedback (effect below).
       if (!isPractice) {
         advance?.();
       }
@@ -257,33 +293,36 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
-    advance, aFirst, blocked, cellId, cue, density, displayA, displayB, endedAt, hueOffset, isPractice, measured, nB,
+    advance, aFirst, blocked, cellId, cue, density, displayA, displayB, endedAt, expected, hueOffset, isPractice, measured, nB,
     phase, refreshMs, scale, seedA, seedB, setAnswer, staircaseId, starts, trialIndex, widthCm,
   ]);
 
-  const gate = blocked && phase !== 'done' ? <FullscreenGatePanel onReturn={returnToFullscreen} /> : null;
+  // Practice feedback: shown for FEEDBACK_MS from its first paint, then the trial stores how long
+  // it was up and moves on by itself, so practice needs no Enter presses and no Check Answer step.
+  useEffect(() => {
+    if (phase !== 'feedback') return undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const raf = requestAnimationFrame(() => {
+      const shownAt = performance.now();
+      timer = setTimeout(() => {
+        const record = answerRef.current;
+        if (record) {
+          const final = { ...record, feedbackShownMs: performance.now() - shownAt };
+          setAnswer({
+            status: true,
+            answers: { trial: final.response, trialData: final as unknown as JsonValue },
+          });
+        }
+        advance?.();
+      }, FEEDBACK_MS);
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      if (timer !== undefined) clearTimeout(timer);
+    };
+  }, [phase, advance, setAnswer]);
 
-  if (phase === 'done' && isPractice) {
-    return (
-      <div style={practiceDoneStyle} data-testid="practice-done">
-        <div style={{ fontSize: 20 }}>
-          You answered
-          {' '}
-          <strong>{response === 'first' ? 'first' : 'second'}</strong>
-          .
-        </div>
-        <div style={{
-          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap', justifyContent: 'center',
-        }}
-        >
-          <KeyCap label="Enter" size={38} />
-          <span>to check your answer, then</span>
-          <KeyCap label="Enter" size={38} />
-          <span>again for the next trial.</span>
-        </div>
-      </div>
-    );
-  }
+  const gate = blocked && phase !== 'done' ? <FullscreenGatePanel onReturn={returnToFullscreen} /> : null;
 
   return (
     <>
@@ -295,6 +334,7 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
           phase={phase === 'running' ? timeline.phase : 'end'}
           scale={scale}
         />
+        {phase === 'feedback' && response !== null && <PracticeFeedback correct={response === expected} answer={expected} />}
 
         <div style={{
           height: 56, marginTop: 8, display: 'flex', alignItems: 'center',
