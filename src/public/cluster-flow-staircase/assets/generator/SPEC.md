@@ -225,7 +225,7 @@ for i = 0 .. 4:
     without A's rect outlines: making up for them took B's links 2.4 times as long as A's, so they
     crossed and B looked cluttered. Rect B is now built exactly like proximity B (grey circles,
     local links), and rect A carries about 1.5 times B's ink (B/A ink 0.66 sparse, 0.72 dense).
-20. **Six shapes.** The shape cue gives every cluster its own mark from a seeded permutation of
+20. *Marks superseded by 23; the outline-accurate clearance is kept.* **Six shapes.** The shape cue gives every cluster its own mark from a seeded permutation of
     six: circle, square and triangle, each filled and outlined. The square has the circle's area
     (side r * sqrt(pi)); the upward equilateral triangle has circumradius 1.35 r, three quarters
     of the circle's area, because an equal-area triangle (1.56 r) would reach the arrowheads, which
@@ -242,3 +242,37 @@ for i = 0 .. 4:
     `proximity`, whose A is spread wider by the two-pitch gaps (17), B therefore covers about 0.56
     of A's convex-hull area at N_B = 24 (mean nearest-neighbour distance 0.92 of A's, link length
     0.81 to 0.88 of A's); for the other cues the reference has A's own geometry (B/A hull 0.98).
+22. **No crossing links.** A fourth invariant: no two links of a display may cross, touch or
+    overlap. It is measured on the drawn centre lines (each link trimmed by `RDOT + 4` at both
+    ends): two links that share no endpoint must keep their centre lines at least one link width
+    (`LINK_GAP`, 1.8 px) apart, and two links that share an endpoint must not run back along each
+    other (the far end of either may not come within `LINK_GAP` of the other). Since every display
+    passes `checkInvariants`, A and B never show a crossing. The builders avoid crossings
+    themselves, so the invariant rarely has to reject a seed: A's within-cluster tree tries the
+    randomly drawn earlier node first and then the other earlier nodes in turn; a backbone link
+    tries the sink-source pairs in order of their distance sum (the nearest pair of section 8
+    first); a dense extra arrow whose link would cross counts as a failed draw; a skip link with no
+    usable pair is left out. Where it has a choice, A also prefers links that clear every other dot
+    by the largest mark's reach, as B always did (21). B's tree and dense extras only consider
+    candidates that cross no earlier link. Over 200 seeds, mean (max) attempts per A were, before
+    and after: sparse 8.0 to 8.6 (35 to 47) and dense 18.3 to 21.4 (101 to 138) before; 6.8 to 7.4
+    (33 to 37) for both densities after. Before, 90 to 93 % of sparse and all dense A displays,
+    and 76 % (sparse) and 91 % (dense) of B displays, had at least one crossing. Dense A now has
+    32.2 links on average (5.62 between clusters) instead of 33.7 (6.0): about 8.6 of the 12
+    requested within-cluster extras and 0.6 of the 1.2 expected skip links fit without crossing.
+    Dense B is matched to that: 9 extra arrows per 24 nodes (was 12) and 5.62 / 32.2 of its arrows
+    dashed under the edge cue (was 6.2 / 36.2).
+23. **Seven filled shapes.** The shape cue's pool is seven filled silhouettes from the user's
+    reference sheet: circle, square, diamond (a rhombus 0.6 as wide as tall), upward triangle,
+    five-point star (inner radius 0.42 of the outer), a thick three-armed Y (stem down, arms up-left
+    and up-right, arm width 0.7 of the arm length, flat ends) and a pentagon (one vertex up). The
+    outlined marks are dropped. Every stimulus A of the shape cue draws six distinct marks from the
+    pool at random (a seeded permutation of seven, the first six go to clusters 0 to 5), and its B
+    draws each node's mark at random from the same six (`generateTrialPair` passes them, read back
+    with `shapeSubset(displayA)`; no new stored field is needed since A's node shapes record them).
+    Each mark has the circle's area unless that would take it further than 1.35 RDOT from its
+    centre (`MARK_MAX_R`; arrowheads stop at 1.4 RDOT). Areas relative to the circle, and reach in
+    RDOT: circle 1.00 (1.00), square 1.00 (1.25), pentagon 1.00 (1.15), Y 0.98 (1.35), triangle 0.75
+    (1.35), star 0.72 (1.35), diamond 0.70 (1.35). Node ink uses the exact polygon areas. The link
+    clearance (4) is measured to each polygon's outline with an even-odd point-in-polygon test, so
+    the concave star and Y are covered, and the builders' disc of the largest reach is 1.35 RDOT.

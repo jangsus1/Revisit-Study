@@ -37,8 +37,8 @@ function paddedRect(display: Display, cluster: DisplayCluster): Rect {
  * - `proximity`: nothing; the gapped layout is the cue.
  * - `rect`: a padded bounding rectangle per cluster.
  * - `color`: one palette colour per cluster, seeded permutation.
- * - `shape`: one of the six marks per cluster (circle, square, triangle, filled and outlined),
- *   seeded permutation, so no two clusters share a mark.
+ * - `shape`: six distinct marks drawn at random (seeded) from the pool of seven filled
+ *   silhouettes, one per cluster, so no two clusters share a mark (`shapeSubset` reads them back).
  * - `edge`: between-cluster links dashed, within-cluster links solid.
  */
 export function applyCue(display: Display, cue: Cue, rng: Rng, palette: readonly string[]): Display {
@@ -62,4 +62,14 @@ export function applyCue(display: Display, cue: Cue, rng: Rng, palette: readonly
     });
   }
   return display;
+}
+
+/**
+ * The marks a shape-cue stimulus A uses, in cluster order (the six it drew from the pool). B draws
+ * its marks from these, so A and B always show the same six silhouettes.
+ */
+export function shapeSubset(display: Display): NodeShape[] {
+  return [...display.clusters]
+    .sort((a, b) => a.index - b.index)
+    .map((cluster) => display.nodes.find((n) => n.id === cluster.nodeIds[0])?.shape ?? 'circle');
 }

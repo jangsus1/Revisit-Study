@@ -3,12 +3,23 @@ import { GENERATOR_CONFIG as C } from '../config';
 import {
   generateDisplay, generateTrialPair, hashSeed, nodeBounds,
 } from '../generator';
-import { checkInvariants } from '../invariants';
+import { checkInvariants, linksConflict } from '../invariants';
 import { measureDisplay } from '../metrics';
 import { makePalette } from '../palette';
 import {
   CUES, DENSITIES, Display, layoutModeFor,
 } from '../types';
+
+/** How many pairs of links of a display cross, touch or overlap. */
+function crossingPairs(d: Display): number {
+  const byId = new Map(d.nodes.map((n) => [n.id, n]));
+  const at = (id: number) => byId.get(id) as Display['nodes'][number];
+  let count = 0;
+  d.edges.forEach((a, i) => d.edges.slice(i + 1).forEach((b) => {
+    if (linksConflict(at(a.source), at(a.target), at(b.source), at(b.target))) count += 1;
+  }));
+  return count;
+}
 
 const mean = (values: number[]) => values.reduce((a, b) => a + b, 0) / values.length;
 const median = (values: number[]) => {
@@ -79,6 +90,19 @@ describe('generateDisplay', () => {
       }
     }
     expect(Math.max(...attempts)).toBeLessThan(C.MAX_SEED_ATTEMPTS);
+    // the builders avoid crossings themselves, so dense A is no harder than sparse A
+    expect(mean(attempts)).toBeLessThan(12);
+  }, 120000);
+
+  test('stimulus A: 200 seeds x every cue x both densities have no crossing links', () => {
+    for (let seed = 1; seed <= 200; seed += 1) {
+      for (const cue of CUES) {
+        for (const density of DENSITIES) {
+          const d = generateDisplay(seed, { kind: 'A', cue, density });
+          expect(crossingPairs(d)).toBe(0);
+        }
+      }
+    }
   }, 120000);
 
   test('rejects a nonsensical nB for stimulus B', () => {
@@ -126,6 +150,22 @@ describe('generateTrialPair', () => {
       }
     }
   }, 120000);
+
+  test('B: 40 seed pairs x N_B 8 to 48 x both densities have no crossing links', () => {
+    for (const density of DENSITIES) {
+      for (let seed = 1; seed <= 40; seed += 1) {
+        for (let nB = 8; nB <= 48; nB += 2) {
+          const { displayA, displayB } = generateTrialPair(seed, hashSeed(seed, nB, 'B'), { cue: 'shape', density, nB });
+          expect(crossingPairs(displayB)).toBe(0);
+          expect(crossingPairs(displayA)).toBe(0);
+          // the shape cue's B shows exactly A's six marks
+          const six = new Set(displayA.nodes.map((n) => n.shape));
+          expect(six.size).toBe(C.NCLUST);
+          displayB.nodes.forEach((n) => expect(six.has(n.shape)).toBe(true));
+        }
+      }
+    }
+  }, 240000);
 
   test('feasibility: no B from 8 to 48 dots needs more than 50 attempts', () => {
     const attempts: number[] = [];

@@ -4,6 +4,7 @@
  * drift apart.
  */
 import { GENERATOR_CONFIG as C } from './config';
+import type { NodeShape } from './types';
 
 /** Dot (circle) radius. */
 export const DOT_R = C.RDOT * C.SCALE;
@@ -29,44 +30,89 @@ export const DASH_ARRAY = `${DASH_ON} ${DASH_OFF}`;
  */
 export const DASH_DUTY = (DASH_ON + LINK_W) / DASH_PERIOD;
 
-/**
- * Outer side of the squares. A square of side r * sqrt(pi) covers the same area as the circle.
- */
-export const SQUARE_SIDE = DOT_R * Math.sqrt(Math.PI);
-/** Circumradius of the upward equilateral triangles (see `TRIANGLE_R`). */
-export const TRIANGLE_R = C.TRIANGLE_R * DOT_R;
-/** Outline width of the hollow marks; the outline is drawn inside the outer footprint. */
-export const HOLLOW_STROKE = C.HOLLOW_STROKE * C.SCALE;
+/** The circle's area: every mark aims at it. */
+export const CIRCLE_AREA = Math.PI * DOT_R * DOT_R;
+/** No mark reaches further than this from its centre (arrowheads stop at TRIM = 1.4 RDOT). */
+export const MARK_MAX_R = C.MARK_MAX_R * DOT_R;
 
-/** Area of an equilateral triangle with circumradius `r`. */
-function triangleArea(r: number): number {
-  return (3 * Math.sqrt(3) * r * r) / 4;
-}
+type Pt = [number, number];
 
-/**
- * The three vertices of the upward equilateral triangle with circumradius `r` centred (on its
- * centroid) at the origin, top vertex first.
- */
-export function trianglePoints(r: number): [number, number][] {
-  return [0, 1, 2].map((k) => {
-    const a = -Math.PI / 2 + (2 * Math.PI * k) / 3;
-    return [r * Math.cos(a), r * Math.sin(a)];
+/** Area of a simple polygon (shoelace), always positive. */
+export function polygonAreaOf(points: Pt[]): number {
+  let twice = 0;
+  points.forEach(([x, y], i) => {
+    const [nx, ny] = points[(i + 1) % points.length];
+    twice += x * ny - nx * y;
   });
+  return Math.abs(twice) / 2;
 }
 
+/** Largest distance of a vertex from the origin. */
+function circumradius(points: Pt[]): number {
+  return Math.max(...points.map(([x, y]) => Math.hypot(x, y)));
+}
+
+const polar = (r: number, deg: number): Pt => [r * Math.cos((deg * Math.PI) / 180), r * Math.sin((deg * Math.PI) / 180)];
+
 /**
- * Ink area of one node mark. A hollow mark is its filled footprint minus the footprint shrunk by
- * the stroke width (the inradius of a triangle is half its circumradius, so insetting it by w
- * shrinks the circumradius by 2w).
+ * Each polygon mark at unit size, centred on the origin, y pointing down (screen coordinates).
+ * The square, diamond, triangle and pentagon are convex; the star and the Y are not.
  */
-export const NODE_INK = {
-  circle: Math.PI * DOT_R * DOT_R,
-  square: SQUARE_SIDE * SQUARE_SIDE,
-  triangle: triangleArea(TRIANGLE_R),
-  hollowCircle: Math.PI * (DOT_R * DOT_R - (DOT_R - HOLLOW_STROKE) ** 2),
-  hollowSquare: SQUARE_SIDE * SQUARE_SIDE - (SQUARE_SIDE - 2 * HOLLOW_STROKE) ** 2,
-  hollowTriangle: triangleArea(TRIANGLE_R) - triangleArea(TRIANGLE_R - 2 * HOLLOW_STROKE),
-} as const;
+const UNIT_MARKS: Record<Exclude<NodeShape, 'circle'>, Pt[]> = {
+  square: [[-1, -1], [1, -1], [1, 1], [-1, 1]],
+  // a rhombus taller than wide (width / height = DIAMOND_ASPECT), like the reference sheet
+  diamond: [[0, -1], [C.DIAMOND_ASPECT, 0], [0, 1], [-C.DIAMOND_ASPECT, 0]],
+  // upward equilateral triangle on its centroid
+  triangle: [0, 1, 2].map((k) => polar(1, -90 + 120 * k)),
+  // five-point star, one point up; inner radius STAR_INNER of the outer one
+  star: Array.from({ length: 10 }, (_, k) => polar(k % 2 === 0 ? 1 : C.STAR_INNER, -90 + 36 * k)),
+  // three thick arms: a stem down and two arms up-left and up-right, flat ends
+  y: [90, 210, 330].flatMap((a) => {
+    const half = C.Y_ARM_WIDTH / 2;
+    const [dx, dy] = polar(1, a);
+    const [nx, ny] = polar(1, a + 90);
+    return [
+      [dx - half * nx, dy - half * ny] as Pt,
+      [dx + half * nx, dy + half * ny] as Pt,
+      // the inner corner between this arm and the next one, on their bisector
+      polar(half / Math.sin(Math.PI / 3), a + 60),
+    ];
+  }),
+  // regular pentagon, one vertex up
+  pentagon: Array.from({ length: 5 }, (_, k) => polar(1, -90 + 72 * k)),
+};
+
+/**
+ * The scale of each polygon mark: the circle's area, capped so the mark reaches at most
+ * `MARK_MAX_R` from its centre. Spiky marks (diamond, triangle, star, Y) hit the cap and are
+ * smaller in area; the square and the pentagon match the circle exactly.
+ */
+function sizeMark(unit: Pt[]): Pt[] {
+  const byArea = Math.sqrt(CIRCLE_AREA / polygonAreaOf(unit));
+  const byReach = MARK_MAX_R / circumradius(unit);
+  const s = Math.min(byArea, byReach);
+  return unit.map(([x, y]) => [x * s, y * s]);
+}
+
+/** The drawn outline of every polygon mark in canvas px, relative to the node centre. */
+export const MARK_POINTS: Record<Exclude<NodeShape, 'circle'>, Pt[]> = Object.fromEntries(
+  Object.entries(UNIT_MARKS).map(([shape, unit]) => [shape, sizeMark(unit)]),
+) as Record<Exclude<NodeShape, 'circle'>, Pt[]>;
+
+/** Outer side of the square (the circle's area: side r * sqrt(pi)). */
+export const SQUARE_SIDE = MARK_POINTS.square[1][0] - MARK_POINTS.square[0][0];
+
+/** How far each mark reaches from its centre. */
+export const MARK_REACH: Record<NodeShape, number> = {
+  circle: DOT_R,
+  ...Object.fromEntries(Object.entries(MARK_POINTS).map(([shape, pts]) => [shape, circumradius(pts)])),
+} as Record<NodeShape, number>;
+
+/** Ink area of one node mark: every mark is filled. */
+export const NODE_INK: Record<NodeShape, number> = {
+  circle: CIRCLE_AREA,
+  ...Object.fromEntries(Object.entries(MARK_POINTS).map(([shape, pts]) => [shape, polygonAreaOf(pts)])),
+} as Record<NodeShape, number>;
 
 /** Rect cue outline width. */
 export const OUTLINE_W = C.HULL_STROKE_WIDTH;

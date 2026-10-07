@@ -50,7 +50,7 @@ describe('denseExtraCount and plannedEdgeCount', () => {
   test('scale B_DENSE_EXTRA_PER_24 with the node count', () => {
     expect(denseExtraCount(24)).toBe(C.B_DENSE_EXTRA_PER_24);
     expect(denseExtraCount(48)).toBe(2 * C.B_DENSE_EXTRA_PER_24);
-    expect(denseExtraCount(12)).toBe(C.B_DENSE_EXTRA_PER_24 / 2);
+    expect(denseExtraCount(12)).toBe(Math.round(C.B_DENSE_EXTRA_PER_24 / 2));
     expect(plannedEdgeCount(24, 'sparse')).toBe(23);
     expect(plannedEdgeCount(24, 'dense')).toBe(23 + C.B_DENSE_EXTRA_PER_24);
   });
@@ -241,6 +241,12 @@ describe('buildBaseline', () => {
     const shape = buildBaseline(5, 30, 'shape', 'sparse', { field: FIELD }) as Display;
     expect(shape.nodes.every((n) => (C.SHAPES as readonly string[]).includes(n.shape))).toBe(true);
     expect(new Set(shape.nodes.map((n) => n.shape)).size).toBe(C.SHAPES.length);
+    // with A's six, B draws only from those six, and its geometry does not change
+    const six = ['star', 'circle', 'y', 'diamond', 'pentagon', 'square'] as const;
+    const subset = buildBaseline(5, 30, 'shape', 'sparse', { field: FIELD, shapes: six }) as Display;
+    expect(new Set(subset.nodes.map((n) => n.shape))).toEqual(new Set(six));
+    expect(subset.nodes.map((n) => [n.x, n.y])).toEqual(shape.nodes.map((n) => [n.x, n.y]));
+    expect(subset.edges).toEqual(shape.edges);
 
     const edge = buildBaseline(5, 30, 'edge', 'sparse', { field: FIELD }) as Display;
     const dashed = edge.edges.filter((e) => e.dashed).length;

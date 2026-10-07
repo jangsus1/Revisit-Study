@@ -6,7 +6,9 @@
  * Every figure is one SVG with a viewBox, so it scales with the window.
  */
 import { CSSProperties, ReactNode } from 'react';
+import { DOT_R, MARK_POINTS } from '../generator/geometry';
 import { mulberry32 } from '../generator/prng';
+import type { NodeShape } from '../generator/types';
 import { SvgKeyCap } from './KeyCap';
 import { UI } from './theme';
 
@@ -200,28 +202,14 @@ function Badge({ x, y, n }: { x: number; y: number; n: number }) {
   );
 }
 
-type Mark = 'circle' | 'square' | 'triangle' | 'hollowCircle';
-
+/** A filled mark of the shape-cue pool, drawn with the generator's own outline at radius `r`. */
 function NodeMark({
   p, mark, fill, r,
-}: { p: Pt; mark: Mark; fill: string; r: number }) {
+}: { p: Pt; mark: NodeShape; fill: string; r: number }) {
   const [x, y] = p;
-  if (mark === 'square') {
-    const s = r * 1.77;
-    return <rect x={x - s / 2} y={y - s / 2} width={s} height={s} fill={fill} />;
-  }
-  if (mark === 'triangle') {
-    const R = r * 1.35;
-    const pts = [0, 1, 2].map((k) => {
-      const a = -Math.PI / 2 + (k * 2 * Math.PI) / 3;
-      return `${x + R * Math.cos(a)},${y + R * Math.sin(a)}`;
-    }).join(' ');
-    return <polygon points={pts} fill={fill} />;
-  }
-  if (mark === 'hollowCircle') {
-    return <circle cx={x} cy={y} r={r - 1.5} fill="none" stroke={fill} strokeWidth={3} />;
-  }
-  return <circle cx={x} cy={y} r={r} fill={fill} />;
+  if (mark === 'circle') return <circle cx={x} cy={y} r={r} fill={fill} />;
+  const k = r / DOT_R;
+  return <polygon points={MARK_POINTS[mark].map(([dx, dy]) => `${x + dx * k},${y + dy * k}`).join(' ')} fill={fill} />;
 }
 
 /** Leader line from a label to a point of the diagram. */
@@ -240,14 +228,14 @@ function Leader({ from, to }: { from: Pt; to: Pt }) {
  */
 export function ItemCountFigure({ maxHeight = '26vh' }: { maxHeight?: string }) {
   const r = 11;
-  const nodes: { p: Pt; mark: Mark; fill: string }[] = [
+  const nodes: { p: Pt; mark: NodeShape; fill: string }[] = [
     { p: [62, 62], mark: 'circle', fill: DOT },
     { p: [148, 46], mark: 'circle', fill: '#3b5bdb' },
     { p: [128, 128], mark: 'square', fill: DOT },
     { p: [262, 88], mark: 'triangle', fill: '#e8590c' },
-    { p: [352, 44], mark: 'hollowCircle', fill: '#555555' },
+    { p: [352, 44], mark: 'star', fill: '#555555' },
     { p: [348, 150], mark: 'circle', fill: '#2b8a3e' },
-    { p: [446, 98], mark: 'square', fill: '#3b5bdb' },
+    { p: [446, 98], mark: 'diamond', fill: '#3b5bdb' },
   ];
   const edges: [number, number][] = [[0, 1], [0, 2], [1, 3], [2, 3], [3, 4], [3, 5], [4, 6], [5, 6]];
   const outline = {
@@ -282,13 +270,13 @@ export function ItemCountFigure({ maxHeight = '26vh' }: { maxHeight?: string }) 
   );
 }
 
-/** Practice: answer with F or J, Enter to check, feedback, Enter for the next trial. */
+/** Practice: answer with F or J, the feedback appears at once, the next trial follows by itself. */
 export function PracticeStoryboard({ maxHeight = '26vh' }: { maxHeight?: string }) {
-  const W = 190;
+  const W = 220;
   const H = 120;
-  const GAP = 60;
+  const GAP = 70;
   const TOP = 60;
-  const xs = [0, 1, 2, 3].map((i) => 10 + i * (W + GAP));
+  const xs = [0, 1, 2].map((i) => 20 + i * (W + GAP));
   const midY = TOP + H / 2;
   const caption = (x: number, text: string) => (
     <text x={x + W / 2} y={TOP + H + 30} textAnchor="middle" fontFamily={UI.font} fontSize={17} fontWeight={600} fill={UI.muted}>{text}</text>
@@ -296,37 +284,33 @@ export function PracticeStoryboard({ maxHeight = '26vh' }: { maxHeight?: string 
   return (
     <svg
       data-testid="practice-storyboard"
-      viewBox="0 0 980 220"
+      viewBox="0 0 900 220"
       style={figureStyle(maxHeight)}
       role="img"
-      aria-label="Practice: answer with F or J, press Enter to check, see whether you were correct, press Enter for the next trial."
+      aria-label="Practice: answer with F or J, the feedback appears at once, then the next trial starts by itself."
     >
-      {xs.slice(0, 3).map((x) => <FlowArrow key={x} x0={x + W + 8} x1={x + W + GAP - 8} y={midY} />)}
+      {xs.slice(0, 2).map((x) => <FlowArrow key={x} x0={x + W + 8} x1={x + W + GAP - 8} y={midY} />)}
 
       <StepFrame x={xs[0]} y={TOP} w={W} h={H} step={1} label="Answer" frame={false}>
-        <SvgKeyCap x={30} y={38} label="F" size={42} />
+        <SvgKeyCap x={W / 2 - 66} y={38} label="F" size={42} />
         <text x={W / 2} y={60} textAnchor="middle" dominantBaseline="central" fontFamily={UI.font} fontSize={16} fill={UI.faint}>or</text>
-        <SvgKeyCap x={W - 72} y={38} label="J" size={42} />
+        <SvgKeyCap x={W / 2 + 24} y={38} label="J" size={42} />
       </StepFrame>
       {caption(xs[0], 'first or second')}
 
-      <StepFrame x={xs[1]} y={TOP} w={W} h={H} step={2} label="Check" frame={false}>
-        <SvgKeyCap x={(W - 104) / 2} y={38} label="Enter" size={42} width={104} />
-      </StepFrame>
-      {caption(xs[1], 'see if you were right')}
-
-      <StepFrame x={xs[2]} y={TOP} w={W} h={H} step={3} label="Feedback" frame={false}>
-        <rect x={8} y={14} width={W - 16} height={40} rx={8} fill="#ebfbee" stroke={UI.correct} strokeWidth={2} />
+      <StepFrame x={xs[1]} y={TOP} w={W} h={H} step={2} label="Instant feedback" frame={false}>
+        <rect x={10} y={14} width={W - 20} height={40} rx={8} fill="#ebfbee" stroke={UI.correct} strokeWidth={2} />
         <text x={W / 2} y={35} textAnchor="middle" dominantBaseline="central" fontFamily={UI.font} fontSize={17} fontWeight={700} fill={UI.correct}>Correct</text>
-        <rect x={8} y={66} width={W - 16} height={40} rx={8} fill="#fff5f5" stroke={UI.wrong} strokeWidth={2} />
-        <text x={W / 2} y={87} textAnchor="middle" dominantBaseline="central" fontFamily={UI.font} fontSize={17} fontWeight={700} fill={UI.wrong}>Incorrect</text>
+        <rect x={10} y={66} width={W - 20} height={40} rx={8} fill="#fff5f5" stroke={UI.wrong} strokeWidth={2} />
+        <text x={W / 2} y={87} textAnchor="middle" dominantBaseline="central" fontFamily={UI.font} fontSize={17} fontWeight={700} fill={UI.wrong}>Not quite</text>
       </StepFrame>
-      {caption(xs[2], 'practice only')}
+      {caption(xs[1], 'practice only')}
 
-      <StepFrame x={xs[3]} y={TOP} w={W} h={H} step={4} label="Next trial" frame={false}>
-        <SvgKeyCap x={(W - 104) / 2} y={38} label="Enter" size={42} width={104} />
+      <StepFrame x={xs[2]} y={TOP} w={W} h={H} step={3} label="Next trial" frame={false}>
+        <circle cx={W / 2} cy={60} r={34} fill="none" stroke={UI.faint} strokeWidth={3} />
+        <path d={`M ${W / 2 - 8} 44 L ${W / 2 + 14} 60 L ${W / 2 - 8} 76 Z`} fill={UI.faint} />
       </StepFrame>
-      {caption(xs[3], 'starts the next one')}
+      {caption(xs[2], 'starts by itself')}
     </svg>
   );
 }

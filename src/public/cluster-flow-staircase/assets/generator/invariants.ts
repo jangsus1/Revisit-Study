@@ -1,10 +1,11 @@
 /**
- * Occlusion invariants (SPEC deviation 4). A display failing any of them is discarded and the
- * next derived seed is tried, so the participant never sees an ambiguous count.
+ * Occlusion invariants (SPEC deviations 4 and 22). A display failing any of them is discarded and
+ * the next derived seed is tried, so the participant never sees an ambiguous count or two links
+ * crossing.
  */
 import { GENERATOR_CONFIG as C } from './config';
 import {
-  DOT_R, SQUARE_SIDE, TRIANGLE_R, TRIM, trianglePoints,
+  DOT_R, LINK_W, MARK_POINTS, MARK_REACH, TRIM,
 } from './geometry';
 import { Display, NodeShape } from './types';
 
@@ -20,12 +21,20 @@ export const ARROW_CLEARANCE = (C.RDOT + C.ARROW_CLEARANCE) * C.SCALE;
  */
 export const MARK_MARGIN = C.ARROW_CLEARANCE * C.SCALE;
 
+/**
+ * Two links that share no endpoint must keep their centre lines at least this far apart, so their
+ * strokes never cross, touch or overlap (one link width).
+ */
+export const LINK_GAP = LINK_W;
+
 /** How far each end of a link is trimmed back from the dot centre, in canvas px. */
 export const LINK_TRIM = TRIM;
 /** Dot radius in canvas px. */
 export const DOT_RADIUS = DOT_R;
 
 const EPS = 1e-9;
+
+type Pt = [number, number];
 
 /** Shortest distance from a point to a segment, in canvas px. */
 export function pointSegmentDistance(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
@@ -43,12 +52,7 @@ function cross(ox: number, oy: number, ax: number, ay: number, bx: number, by: n
 }
 
 /** Shortest distance between two segments (0 when they cross). */
-export function segmentSegmentDistance(
-  p: [number, number],
-  q: [number, number],
-  r: [number, number],
-  s: [number, number],
-): number {
+export function segmentSegmentDistance(p: Pt, q: Pt, r: Pt, s: Pt): number {
   const d1 = cross(r[0], r[1], s[0], s[1], p[0], p[1]);
   const d2 = cross(r[0], r[1], s[0], s[1], q[0], q[1]);
   const d3 = cross(p[0], p[1], q[0], q[1], r[0], r[1]);
@@ -62,25 +66,21 @@ export function segmentSegmentDistance(
   );
 }
 
-/** The outline polygon of a square or triangle mark centred at (x, y); null for circles. */
-export function markPolygon(shape: NodeShape, x: number, y: number): [number, number][] | null {
-  if (shape === 'square' || shape === 'hollowSquare') {
-    const h = SQUARE_SIDE / 2;
-    return [[x - h, y - h], [x + h, y - h], [x + h, y + h], [x - h, y + h]];
-  }
-  if (shape === 'triangle' || shape === 'hollowTriangle') {
-    return trianglePoints(TRIANGLE_R).map(([dx, dy]) => [x + dx, y + dy]);
-  }
-  return null;
+/** The outline polygon of a node's mark centred at (x, y); null for circles. */
+export function markPolygon(shape: NodeShape, x: number, y: number): Pt[] | null {
+  if (shape === 'circle') return null;
+  return MARK_POINTS[shape].map(([dx, dy]) => [x + dx, y + dy]);
 }
 
-function inside(poly: [number, number][], x: number, y: number): boolean {
-  // convex, consistently wound: inside when on the same side of every edge
-  const signs = poly.map((v, i) => {
-    const w = poly[(i + 1) % poly.length];
-    return Math.sign(cross(v[0], v[1], w[0], w[1], x, y));
-  });
-  return signs.every((sg) => sg >= 0) || signs.every((sg) => sg <= 0);
+/** Even-odd point-in-polygon test; works for the non-convex star and Y. */
+export function insidePolygon(poly: Pt[], x: number, y: number): boolean {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i, i += 1) {
+    const [xi, yi] = poly[i];
+    const [xj, yj] = poly[j];
+    if ((yi > y) !== (yj > y) && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+  }
+  return inside;
 }
 
 /**
@@ -96,31 +96,72 @@ export function segmentMarkDistance(
 ): number {
   const poly = markPolygon(node.shape ?? 'circle', node.x, node.y);
   if (!poly) return Math.max(0, pointSegmentDistance(node.x, node.y, ax, ay, bx, by) - DOT_R);
-  if (inside(poly, ax, ay) || inside(poly, bx, by)) return 0;
+  if (insidePolygon(poly, ax, ay) || insidePolygon(poly, bx, by)) return 0;
   return Math.min(...poly.map((v, i) => segmentSegmentDistance([ax, ay], [bx, by], v, poly[(i + 1) % poly.length])));
+}
+
+/** The drawn centre line of a link: from the trimmed source end to the trimmed target end. */
+export function linkSegment(source: { x: number; y: number }, target: { x: number; y: number }): [Pt, Pt] | null {
+  const len = Math.hypot(target.x - source.x, target.y - source.y);
+  if (len < EPS) return null;
+  const ux = (target.x - source.x) / len;
+  const uy = (target.y - source.y) / len;
+  const trim = Math.min(LINK_TRIM, len / 2);
+  return [
+    [source.x + ux * trim, source.y + uy * trim],
+    [target.x - ux * trim, target.y - uy * trim],
+  ];
+}
+
+type Dot = { id: number; x: number; y: number };
+
+/**
+ * True when the links u-v and w-z would cross, touch or overlap. Links sharing an endpoint meet
+ * at that node by design; they conflict only when one runs back along the other (its far end
+ * comes within `LINK_GAP` of the other link).
+ */
+export function linksConflict(u: Dot, v: Dot, w: Dot, z: Dot): boolean {
+  const a = linkSegment(u, v);
+  const b = linkSegment(w, z);
+  if (!a || !b) return false;
+  const shared = u.id === w.id || u.id === z.id || v.id === w.id || v.id === z.id;
+  if (shared) {
+    if (u.id === w.id && v.id === z.id) return true;
+    if (u.id === z.id && v.id === w.id) return true;
+    // the end of each link away from the shared node
+    const farA = u.id === w.id || u.id === z.id ? a[1] : a[0];
+    const farB = w.id === u.id || w.id === v.id ? b[1] : b[0];
+    return pointSegmentDistance(farA[0], farA[1], b[0][0], b[0][1], b[1][0], b[1][1]) < LINK_GAP - EPS
+      || pointSegmentDistance(farB[0], farB[1], a[0][0], a[0][1], a[1][0], a[1][1]) < LINK_GAP - EPS;
+  }
+  return segmentSegmentDistance(a[0], a[1], b[0], b[1]) < LINK_GAP - EPS;
+}
+
+/** True when a new link u-v would conflict with any of `links` (pairs of node ids). */
+export function conflictsWithAny(
+  u: Dot,
+  v: Dot,
+  links: readonly { source: number; target: number }[],
+  byId: (id: number) => Dot,
+): boolean {
+  return links.some((l) => linksConflict(u, v, byId(l.source), byId(l.target)));
 }
 
 /**
  * True when the (trimmed) link between two dots keeps `MARK_MARGIN` from the mark of every dot that is
  * not one of its endpoints. With `reach`, every dot is treated as a disc of that radius instead of
- * its own mark; the stimulus B tree builder passes `MAX_MARK_REACH`, so its links also pass
- * `checkInvariants` whatever marks B gets.
+ * its own mark; the builders pass `MAX_MARK_REACH`, so their links also pass `checkInvariants`
+ * whatever marks the display gets.
  */
 export function linkIsClear(
-  source: { id: number; x: number; y: number },
-  target: { id: number; x: number; y: number },
+  source: Dot,
+  target: Dot,
   nodes: { id: number; x: number; y: number; shape?: NodeShape }[],
   reach?: number,
 ): boolean {
-  const len = Math.hypot(target.x - source.x, target.y - source.y);
-  if (len < EPS) return false;
-  const ux = (target.x - source.x) / len;
-  const uy = (target.y - source.y) / len;
-  const trim = Math.min(LINK_TRIM, len / 2);
-  const ax = source.x + ux * trim;
-  const ay = source.y + uy * trim;
-  const bx = target.x - ux * trim;
-  const by = target.y - uy * trim;
+  const seg = linkSegment(source, target);
+  if (!seg) return false;
+  const [[ax, ay], [bx, by]] = seg;
   return nodes.every((n) => n.id === source.id
     || n.id === target.id
     || (reach === undefined
@@ -129,11 +170,11 @@ export function linkIsClear(
 }
 
 /**
- * The furthest any mark reaches from its centre (a triangle's tip). Stimulus B builds its links
- * against a disc of this radius around every dot, so whichever marks are drawn afterwards, every
- * link clears them and B's geometry does not depend on the cue.
+ * The furthest any mark reaches from its centre (the capped tips, 1.35 RDOT). The builders keep
+ * their links clear of a disc of this radius around every dot, so whichever marks are drawn
+ * afterwards, every link clears them and B's geometry does not depend on the cue.
  */
-export const MAX_MARK_REACH = Math.max(DOT_R, (SQUARE_SIDE / 2) * Math.SQRT2, TRIANGLE_R);
+export const MAX_MARK_REACH = Math.max(...Object.values(MARK_REACH));
 
 /**
  * Returns one human-readable string per violated invariant; an empty array means the display
@@ -155,22 +196,16 @@ export function checkInvariants(display: Display): string[] {
 
   // 2. no link passes too close to a dot that is not one of its endpoints
   const byId = new Map(nodes.map((n) => [n.id, n]));
-  display.edges.forEach((edge) => {
-    const s = byId.get(edge.source);
-    const t = byId.get(edge.target);
-    if (!s || !t) {
-      violations.push(`edge ${edge.source}->${edge.target} references a missing dot`);
-      return;
-    }
-    const len = Math.hypot(t.x - s.x, t.y - s.y);
-    if (len < EPS) return;
-    const ux = (t.x - s.x) / len;
-    const uy = (t.y - s.y) / len;
-    const trim = Math.min(LINK_TRIM, len / 2);
-    const ax = s.x + ux * trim;
-    const ay = s.y + uy * trim;
-    const bx = t.x - ux * trim;
-    const by = t.y - uy * trim;
+  const at = (id: number) => byId.get(id) as Display['nodes'][number];
+  const valid = display.edges.filter((edge) => {
+    if (byId.has(edge.source) && byId.has(edge.target)) return true;
+    violations.push(`edge ${edge.source}->${edge.target} references a missing dot`);
+    return false;
+  });
+  valid.forEach((edge) => {
+    const seg = linkSegment(at(edge.source), at(edge.target));
+    if (!seg) return;
+    const [[ax, ay], [bx, by]] = seg;
     nodes.forEach((n) => {
       if (n.id === edge.source || n.id === edge.target) return;
       const d = segmentMarkDistance(n, ax, ay, bx, by);
@@ -187,6 +222,17 @@ export function checkInvariants(display: Display): string[] {
       violations.push(`dot ${n.id} at (${n.x.toFixed(1)}, ${n.y.toFixed(1)}) leaves the ${C.CANVAS_MARGIN}px canvas margin`);
     }
   });
+
+  // 4. no two links cross, touch or overlap
+  for (let i = 0; i < valid.length; i += 1) {
+    for (let j = i + 1; j < valid.length; j += 1) {
+      const a = valid[i];
+      const b = valid[j];
+      if (linksConflict(at(a.source), at(a.target), at(b.source), at(b.target))) {
+        violations.push(`links ${a.source}->${a.target} and ${b.source}->${b.target} cross or touch`);
+      }
+    }
+  }
 
   return violations;
 }

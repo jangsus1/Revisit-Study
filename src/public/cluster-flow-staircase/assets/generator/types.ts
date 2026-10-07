@@ -7,7 +7,8 @@
 export type Cue = 'proximity' | 'rect' | 'color' | 'shape' | 'edge';
 export type Density = 'sparse' | 'dense';
 export type StimulusKind = 'A' | 'B';
-export type NodeShape = 'circle' | 'square' | 'triangle' | 'hollowCircle' | 'hollowSquare' | 'hollowTriangle';
+/** The seven filled marks of the shape cue's pool (`GENERATOR_CONFIG.SHAPES`). */
+export type NodeShape = 'circle' | 'square' | 'diamond' | 'triangle' | 'star' | 'y' | 'pentagon';
 export type StaircaseId = 'above' | 'below' | 'catch' | 'practice';
 /**
  * How stimulus A places its clusters. `grouped` (proximity) puts `PROXIMITY_GAP` within-cluster
@@ -144,6 +145,11 @@ export interface GenerateOptions {
   field?: Rect;
   /** B only: the link-length budget taken from the paired A; default: plain nearest-neighbour links */
   inkTarget?: InkTarget;
+  /**
+   * B only, shape cue: the marks B draws from, at random per node; `generateTrialPair` passes the
+   * six its A uses. Default: the whole pool.
+   */
+  shapes?: readonly NodeShape[];
 }
 
 export interface TrialParams {

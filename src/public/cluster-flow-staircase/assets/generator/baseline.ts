@@ -9,7 +9,9 @@
  */
 import { GENERATOR_CONFIG as C } from './config';
 import { visibleLinkLength } from './geometry';
-import { MAX_MARK_REACH, MIN_CENTRE_DISTANCE, linkIsClear } from './invariants';
+import {
+  MAX_MARK_REACH, MIN_CENTRE_DISTANCE, conflictsWithAny, linkIsClear,
+} from './invariants';
 import { makePalette } from './palette';
 import { Rng, mulberry32, randperm } from './prng';
 import {
@@ -23,6 +25,8 @@ export interface BaselineOptions {
   palette?: readonly string[];
   /** link-length budget from the paired A; without it links go to a random near neighbour */
   target?: InkTarget;
+  /** shape cue: the marks to draw from (A's six); default the whole pool */
+  shapes?: readonly NodeShape[];
 }
 
 /** How many extra rank-respecting arrows the dense variant adds for `n` nodes. */
@@ -131,8 +135,11 @@ export function buildBaseline(
 
   // Links keep clear of a disc of the largest mark's reach around every dot, so the geometry is the
   // same for every cue and any mark drawn afterwards is cleared.
+  // They also never cross, touch or overlap a link already drawn (SPEC deviation 22): every
+  // candidate is checked against the links so far, so the crossing invariant rarely rejects a B.
   const dots = pts.map((p, id) => ({ id, x: p.x, y: p.y }));
-  const clear = (u: number, v: number) => linkIsClear(dots[u], dots[v], dots, MAX_MARK_REACH);
+  const clear = (u: number, v: number) => linkIsClear(dots[u], dots[v], dots, MAX_MARK_REACH)
+    && !conflictsWithAny(dots[u], dots[v], edges, (id) => dots[id]);
   const dist = (a: number, b: number) => Math.hypot(dots[a].x - dots[b].x, dots[a].y - dots[b].y);
   const byDistance = (from: number, candidates: number[]) => [...candidates]
     .sort((a, b) => dist(a, from) - dist(b, from));
@@ -223,8 +230,9 @@ export function buildBaseline(
       node.fill = palette[Math.floor(rng() * palette.length)];
     });
   } else if (cue === 'shape') {
+    const shapes = options.shapes && options.shapes.length > 0 ? options.shapes : C.SHAPES;
     nodes.forEach((node) => {
-      node.shape = C.SHAPES[Math.floor(rng() * C.SHAPES.length)] as NodeShape;
+      node.shape = shapes[Math.floor(rng() * shapes.length)] as NodeShape;
     });
   } else if (cue === 'edge') {
     const dashCount = Math.round(edges.length * C.B_DASH_PROPORTION[density]);

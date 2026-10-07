@@ -9,13 +9,17 @@ import {
 } from '@mantine/core';
 import { useEffect, useMemo, useState } from 'react';
 import { GENERATOR_CONFIG } from './generator/config';
+import { shapeSubset } from './generator/cues';
 import { generateTrialPair, hashSeed } from './generator/generator';
+import {
+  CIRCLE_AREA, DOT_R, MARK_MAX_R, MARK_POINTS, MARK_REACH, NODE_INK,
+} from './generator/geometry';
 import { measureDisplay } from './generator/metrics';
 import {
   deltaE2000, hexToLab, makePalette, palettePositions,
 } from './generator/palette';
 import {
-  CUES, Cue, Density, Display, DisplayMetrics,
+  CUES, Cue, Density, Display, DisplayMetrics, NodeShape,
 } from './generator/types';
 import { NoiseMask } from './render/NoiseMask';
 import { StimulusFrame } from './render/StimulusSVG';
@@ -161,6 +165,46 @@ function PaletteStrip({ hueOffset }: { hueOffset: number }) {
   );
 }
 
+/**
+ * The shape cue's pool: the seven filled marks at 4x, with their area relative to the circle and
+ * their reach in RDOT. The six a display uses are highlighted.
+ */
+function ShapePool({ used }: { used: readonly NodeShape[] }) {
+  const zoom = 4;
+  const box = 2 * MARK_MAX_R * zoom + 8;
+  return (
+    <Stack gap={4}>
+      <Text size="sm" fw={600}>
+        {`Shape cue pool: ${GENERATOR_CONFIG.SHAPES.length} filled marks, the circle's area unless that would reach beyond ${GENERATOR_CONFIG.MARK_MAX_R} RDOT; `
+          + 'each shape-cue A draws six (highlighted: this seed\'s), its B draws from the same six (shown at 4x)'}
+      </Text>
+      <Group gap="xs" data-testid="shape-pool">
+        {GENERATOR_CONFIG.SHAPES.map((shape) => {
+          const c = box / 2;
+          const inUse = used.includes(shape);
+          return (
+            <Stack key={shape} gap={2} align="center" data-testid={`shape-${shape}`} data-used={inUse}>
+              <svg width={box} height={box} style={{ background: inUse ? '#e7f1fb' : '#f8f9fa', borderRadius: 6 }}>
+                <circle cx={c} cy={c} r={MARK_MAX_R * zoom} fill="none" stroke="#ced4da" strokeDasharray="3 3" />
+                {shape === 'circle'
+                  ? <circle cx={c} cy={c} r={DOT_R * zoom} fill={GENERATOR_CONFIG.DOT_FILL} />
+                  : (
+                    <polygon
+                      points={MARK_POINTS[shape].map(([x, y]) => `${c + x * zoom},${c + y * zoom}`).join(' ')}
+                      fill={GENERATOR_CONFIG.DOT_FILL}
+                    />
+                  )}
+              </svg>
+              <Text size="xs" fw={inUse ? 700 : 400}>{shape}</Text>
+              <Text size="xs" c="dimmed">{`area ${fmt(NODE_INK[shape] / CIRCLE_AREA, 2)} · reach ${fmt(MARK_REACH[shape] / DOT_R, 2)} r`}</Text>
+            </Stack>
+          );
+        })}
+      </Group>
+    </Stack>
+  );
+}
+
 export default function Gallery() {
   const [seed, setSeed] = useState(1);
   const [nB, setNB] = useState(24);
@@ -177,6 +221,7 @@ export default function Gallery() {
   );
   const { width, height } = GENERATOR_CONFIG.CANVAS;
   const previewScale = 1 / 3;
+  const shapeRow = rows.find((row) => row.cue === 'shape');
 
   return (
     <Stack gap="lg" p="md">
@@ -220,6 +265,8 @@ export default function Gallery() {
         />
         <Button onClick={() => setSeed(Math.floor(Math.random() * 1000000))}>Random seed</Button>
       </Group>
+
+      <ShapePool used={shapeRow?.displayA ? shapeSubset(shapeRow.displayA) : []} />
 
       <Group align="flex-start" gap="xl">
         <PaletteStrip hueOffset={hueOffset} />

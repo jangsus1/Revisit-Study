@@ -5,14 +5,15 @@ import { mulberry32 } from '../prng';
 import { Display } from '../types';
 
 function grid(): GraphCluster[] {
-  // three clusters in a row, three below: the greedy chain must snake through them
+  // three clusters in a row, three below: the greedy chain must snake through them. Each cluster
+  // is an L of three nodes on the 90 px lattice.
   return [0, 1, 2, 3, 4, 5].map((i) => {
-    const cx = 100 + 100 * (i % 3);
-    const cy = 100 + 100 * Math.floor(i / 3);
+    const cx = 100 + 250 * (i % 3);
+    const cy = 100 + 250 * Math.floor(i / 3);
     return {
       index: i,
       nodeIds: [i * 3, i * 3 + 1, i * 3 + 2],
-      positions: [{ x: cx, y: cy }, { x: cx + 10, y: cy }, { x: cx, y: cy + 10 }],
+      positions: [{ x: cx, y: cy }, { x: cx + 90, y: cy }, { x: cx, y: cy + 90 }],
       cx,
       cy,
     };

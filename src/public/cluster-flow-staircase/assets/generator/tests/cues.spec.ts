@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
-import { CUE_PADDING, applyCue } from '../cues';
+import { CUE_PADDING, applyCue, shapeSubset } from '../cues';
 import { generateDisplay } from '../generator';
 import { makePalette } from '../palette';
 import { mulberry32 } from '../prng';
@@ -109,8 +109,9 @@ describe('cue: edge', () => {
 });
 
 describe('cue: shape', () => {
-  test('gives every cluster its own one of the six marks, one mark per cluster', () => {
+  test('gives every cluster its own mark, six distinct ones drawn from the pool of seven', () => {
     const seen = new Set<string>();
+    const left = new Set<string>();
     displays('shape').forEach((d) => {
       const byCluster = new Map<number, Set<string>>();
       d.nodes.forEach((n) => {
@@ -119,10 +120,14 @@ describe('cue: shape', () => {
       });
       byCluster.forEach((shapes) => expect(shapes.size).toBe(1));
       const perCluster = [...byCluster.values()].map((shapes) => [...shapes][0]);
-      expect([...perCluster].sort()).toEqual([...C.SHAPES].sort());
+      expect(new Set(perCluster).size).toBe(C.NCLUST);
+      perCluster.forEach((shape) => expect(C.SHAPES).toContain(shape));
+      expect(shapeSubset(d)).toEqual(d.clusters.map((c) => d.nodes[c.nodeIds[0]].shape));
+      C.SHAPES.filter((shape) => !perCluster.includes(shape)).forEach((shape) => left.add(shape));
       seen.add(perCluster.join());
     });
-    // the assignment is a seeded permutation, not a fixed one
+    // the assignment is a seeded draw, not a fixed one, and any mark can be the one left out
     expect(seen.size).toBeGreaterThan(1);
+    expect(left.size).toBeGreaterThan(1);
   });
 });

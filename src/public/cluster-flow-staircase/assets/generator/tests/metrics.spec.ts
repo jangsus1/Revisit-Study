@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
 import {
-  DASH_DUTY, DOT_R, HEAD_AREA, HEAD_LEN, HOLLOW_STROKE, LINK_W, SQUARE_SIDE, TRIANGLE_R, TRIM,
-  visibleLinkLength,
+  CIRCLE_AREA, DASH_DUTY, DOT_R, HEAD_AREA, HEAD_LEN, LINK_W, MARK_MAX_R, MARK_POINTS, MARK_REACH, NODE_INK, SQUARE_SIDE, TRIM,
+  polygonAreaOf, visibleLinkLength,
 } from '../geometry';
 import { measureDisplay } from '../metrics';
 import {
@@ -38,15 +38,41 @@ const link = (dashed: boolean): DisplayEdge => ({
 });
 
 describe('geometry', () => {
-  test('the square covers the circle\'s area, the outlines are a quarter radius', () => {
-    expect(SQUARE_SIDE * SQUARE_SIDE).toBeCloseTo(Math.PI * DOT_R * DOT_R, 9);
-    expect(HOLLOW_STROKE).toBeCloseTo(0.25 * DOT_R, 9);
+  test('the pool has seven filled marks; the square and the pentagon have the circle\'s area', () => {
+    expect([...C.SHAPES]).toEqual(['circle', 'square', 'diamond', 'triangle', 'star', 'y', 'pentagon']);
+    expect(SQUARE_SIDE * SQUARE_SIDE).toBeCloseTo(CIRCLE_AREA, 9);
+    expect(NODE_INK.square).toBeCloseTo(CIRCLE_AREA, 9);
+    expect(NODE_INK.pentagon).toBeCloseTo(CIRCLE_AREA, 9);
+  });
+
+  test('every other mark is capped at 1.35 RDOT and so is smaller than the circle', () => {
+    expect(MARK_MAX_R).toBeCloseTo(1.35 * DOT_R, 9);
+    (['diamond', 'triangle', 'star', 'y'] as const).forEach((shape) => {
+      expect(MARK_REACH[shape]).toBeCloseTo(MARK_MAX_R, 9);
+      expect(NODE_INK[shape]).toBeLessThan(CIRCLE_AREA);
+      // equally large to the eye: no capped mark is below 60 % of the circle's area
+      expect(NODE_INK[shape] / CIRCLE_AREA).toBeGreaterThan(0.6);
+    });
+    expect(MARK_REACH.square).toBeLessThan(MARK_MAX_R);
+    expect(MARK_REACH.pentagon).toBeLessThan(MARK_MAX_R);
+  });
+
+  test('the diamond is taller than wide; the star and Y are concave', () => {
+    const xs = MARK_POINTS.diamond.map(([x]) => x);
+    const ys = MARK_POINTS.diamond.map(([, y]) => y);
+    expect(Math.max(...ys) - Math.min(...ys)).toBeGreaterThan(Math.max(...xs) - Math.min(...xs));
+    expect(MARK_POINTS.star).toHaveLength(10);
+    expect(MARK_POINTS.y).toHaveLength(9);
   });
 
   test('no mark reaches the trimmed link ends, so arrowheads never touch a node', () => {
-    expect(TRIANGLE_R).toBeLessThan(TRIM);
-    expect((SQUARE_SIDE / 2) * Math.SQRT2).toBeLessThan(TRIM);
+    Object.values(MARK_REACH).forEach((reach) => expect(reach).toBeLessThan(TRIM));
     expect(DOT_R).toBeLessThan(TRIM);
+  });
+
+  test('polygonAreaOf is the shoelace area', () => {
+    expect(polygonAreaOf([[0, 0], [4, 0], [4, 3]])).toBeCloseTo(6, 9);
+    expect(polygonAreaOf([[0, 0], [0, 3], [4, 3], [4, 0]])).toBeCloseTo(12, 9);
   });
 
   test('visibleLinkLength trims both ends and removes the arrowhead', () => {
@@ -60,19 +86,15 @@ describe('geometry', () => {
 });
 
 describe('measureDisplay', () => {
-  test('ink of each of the six marks', () => {
+  test('ink of each of the seven marks is its exact filled area', () => {
     const r = C.RDOT * C.SCALE;
-    const w = 0.25 * r;
-    const side = r * Math.sqrt(Math.PI);
-    const R = C.TRIANGLE_R * r;
-    const tri = (cr: number) => (3 * Math.sqrt(3) * cr * cr) / 4;
     const ink = (shape: NodeShape) => measureDisplay(display([node(0, 100, 100, shape)])).nodeInk;
     expect(ink('circle')).toBeCloseTo(Math.PI * r * r, 6);
-    expect(ink('square')).toBeCloseTo(side * side, 6);
-    expect(ink('triangle')).toBeCloseTo(tri(R), 6);
-    expect(ink('hollowCircle')).toBeCloseTo(Math.PI * (r * r - (r - w) ** 2), 6);
-    expect(ink('hollowSquare')).toBeCloseTo(side * side - (side - 2 * w) ** 2, 6);
-    expect(ink('hollowTriangle')).toBeCloseTo(tri(R) - tri(R - 2 * w), 6);
+    (['square', 'diamond', 'triangle', 'star', 'y', 'pentagon'] as const).forEach((shape) => {
+      expect(ink(shape)).toBeCloseTo(polygonAreaOf(MARK_POINTS[shape]), 6);
+    });
+    // the triangle keeps its old size: circumradius 1.35 r, three quarters of the circle's area
+    expect(ink('triangle')).toBeCloseTo((3 * Math.sqrt(3) * (1.35 * r) ** 2) / 4, 6);
   });
 
   test('a lone node has no neighbours, no links and no hull', () => {

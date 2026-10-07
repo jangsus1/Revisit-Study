@@ -5,46 +5,25 @@
 import { ReactNode } from 'react';
 import { GENERATOR_CONFIG as C } from '../generator/config';
 import {
-  DASH_ARRAY, DOT_R, HEAD_LEN, HEAD_W, HOLLOW_STROKE, LINK_W, SQUARE_SIDE, TRIANGLE_R, TRIM, trianglePoints,
+  DASH_ARRAY, DOT_R, HEAD_LEN, HEAD_W, LINK_W, MARK_POINTS, TRIM,
 } from '../generator/geometry';
-import { Display, DisplayNode } from '../generator/types';
+import { Display, DisplayNode, NodeShape } from '../generator/types';
 
-function trianglePath(x: number, y: number, r: number): string {
-  return trianglePoints(r).map(([dx, dy]) => `${x + dx},${y + dy}`).join(' ');
+/** SVG `points` of a polygon mark centred at (x, y). */
+export function markPoints(shape: Exclude<NodeShape, 'circle'>, x: number, y: number): string {
+  return MARK_POINTS[shape].map(([dx, dy]) => `${x + dx},${y + dy}`).join(' ');
 }
 
 /**
- * One node mark. Hollow marks draw their outline inside the filled mark's footprint: the stroke
- * is centred on the footprint shrunk by half the stroke width (for the triangle, whose inradius is
- * half its circumradius, by a whole stroke width of circumradius).
+ * One node mark, always filled. The outlines come from `MARK_POINTS`, the same polygons the
+ * invariants and the ink metrics use.
  */
 function nodeMark(node: DisplayNode) {
-  const { id, x, y, fill } = node;
-  switch (node.shape) {
-    case 'square':
-      return <rect key={id} x={x - SQUARE_SIDE / 2} y={y - SQUARE_SIDE / 2} width={SQUARE_SIDE} height={SQUARE_SIDE} fill={fill} />;
-    case 'triangle':
-      return <polygon key={id} points={trianglePath(x, y, TRIANGLE_R)} fill={fill} />;
-    case 'hollowCircle':
-      return <circle key={id} cx={x} cy={y} r={DOT_R - HOLLOW_STROKE / 2} fill="none" stroke={fill} strokeWidth={HOLLOW_STROKE} />;
-    case 'hollowSquare': {
-      const inner = SQUARE_SIDE - HOLLOW_STROKE;
-      return <rect key={id} x={x - inner / 2} y={y - inner / 2} width={inner} height={inner} fill="none" stroke={fill} strokeWidth={HOLLOW_STROKE} />;
-    }
-    case 'hollowTriangle':
-      return (
-        <polygon
-          key={id}
-          points={trianglePath(x, y, TRIANGLE_R - HOLLOW_STROKE)}
-          fill="none"
-          stroke={fill}
-          strokeWidth={HOLLOW_STROKE}
-          strokeLinejoin="miter"
-        />
-      );
-    default:
-      return <circle key={id} cx={x} cy={y} r={DOT_R} fill={fill} />;
-  }
+  const {
+    id, x, y, fill, shape,
+  } = node;
+  if (shape === 'circle') return <circle key={id} cx={x} cy={y} r={DOT_R} fill={fill} />;
+  return <polygon key={id} points={markPoints(shape, x, y)} fill={fill} strokeLinejoin="miter" />;
 }
 
 /** The stimulus itself: an SVG of exactly `display.width` x `display.height` canvas px. */

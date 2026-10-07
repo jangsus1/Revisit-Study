@@ -15,7 +15,7 @@
 import { buildBaseline } from './baseline';
 import { GENERATOR_CONFIG as C } from './config';
 import { numDistributer } from './clusterSizes';
-import { applyCue } from './cues';
+import { applyCue, shapeSubset } from './cues';
 import { GraphCluster, buildGraph } from './graph';
 import { checkInvariants } from './invariants';
 import { buildLayout, drawJitter } from './layout';
@@ -130,6 +130,7 @@ export function generateDisplay(seed: number, opts: GenerateOptions): Display {
         field: opts.field,
         palette: makePalette(opts.hueOffset ?? 0),
         target: opts.inkTarget,
+        shapes: opts.shapes,
       });
     if (display) {
       const violations = checkInvariants(display);
@@ -172,8 +173,9 @@ export interface TrialPairOptions {
  * The two displays of one trial. B does not depend on the cue: its field (dot-centre bounding box)
  * and link budget come from a reference A, the plain even-layout display of `seedA` (grey circles,
  * no cue), and its links clear every mark, so every cue gets the same B geometry for the same seeds
- * and only B's colours, marks or dashes differ. For every cue but `proximity` (and, when the marks
- * change which seed passes the invariants, `shape`) the reference is A's own geometry. This is the
+ * and only B's colours, marks or dashes differ (the shape cue's B draws its marks from the six its A
+ * uses). For every cue but `proximity` (and, when the marks change which seed passes the
+ * invariants, `shape`) the reference is A's own geometry. This is the
  * only way B is ever built for a trial, so the runner, the gallery and the analysis regenerate
  * identical pairs from `seedA`, `seedB`, cue, density, `nB` and `hueOffset`.
  */
@@ -201,6 +203,8 @@ export function generateTrialPair(
       linkLength: metricsRef.linkLength,
       edges: reference.edges.length,
     },
+    // the shape cue's B draws its marks from the six its A uses
+    ...(opts.cue === 'shape' ? { shapes: shapeSubset(displayA) } : {}),
   });
   return { displayA, displayB };
 }

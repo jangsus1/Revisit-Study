@@ -87,7 +87,8 @@ describe('InfoPage', () => {
     upcoming.cell = { cue: 'shape', density: 'dense', trials: 8 };
     renderPage({ page: 'practice' });
     expect(screen.getByText('8 easy trials with feedback')).toBeTruthy();
-    expect(screen.getByTestId('practice-storyboard').textContent).toContain('Enter');
+    expect(screen.getByTestId('practice-storyboard').textContent).toContain('Instant feedback');
+    expect(screen.getByTestId('practice-storyboard').textContent).not.toContain('Enter');
     const preview = screen.getByTestId('stimulus-preview');
     expect(preview.getAttribute('data-cue')).toBe('shape');
     expect(preview.getAttribute('data-density')).toBe('dense');

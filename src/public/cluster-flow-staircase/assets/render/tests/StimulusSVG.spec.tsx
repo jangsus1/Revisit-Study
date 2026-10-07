@@ -3,9 +3,7 @@ import {
   afterEach, describe, expect, test,
 } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../../generator/config';
-import {
-  DOT_R, HOLLOW_STROKE, SQUARE_SIDE, TRIANGLE_R,
-} from '../../generator/geometry';
+import { DOT_R, MARK_POINTS, MARK_REACH } from '../../generator/geometry';
 import { Display, DisplayNode } from '../../generator/types';
 import { StimulusFrame, StimulusSVG } from '../StimulusSVG';
 
@@ -22,13 +20,13 @@ const display: Display = {
   seed: 1,
   cue: 'shape',
   density: 'sparse',
-  n: 6,
+  n: 7,
   width: C.CANVAS.width,
   height: C.CANVAS.height,
   background: C.BACKGROUND,
   nodes: [
-    node(0, 100, 'circle'), node(1, 200, 'square'), node(2, 300, 'triangle'),
-    node(3, 400, 'hollowCircle'), node(4, 500, 'hollowSquare'), node(5, 600, 'hollowTriangle'),
+    node(0, 100, 'circle'), node(1, 180, 'square'), node(2, 260, 'diamond'), node(3, 340, 'triangle'),
+    node(4, 420, 'star'), node(5, 500, 'y'), node(6, 580, 'pentagon'),
   ],
   edges: [
     {
@@ -40,7 +38,7 @@ const display: Display = {
   ],
   clusters: [{
     index: 0,
-    nodeIds: [0, 1, 2, 3, 4, 5],
+    nodeIds: [0, 1, 2, 3, 4, 5, 6],
     cx: 250,
     cy: 100,
     orderPos: 0,
@@ -60,27 +58,27 @@ describe('StimulusSVG', () => {
     expect(svg.getAttribute('height')).toBe(String(C.CANVAS.height));
   });
 
-  test('draws the six marks in the node colour, outlines inside the filled footprint', () => {
+  test('draws the seven marks filled in the node colour, with the generator\'s outlines', () => {
     const { container } = render(<StimulusSVG display={display} />);
-    const marks = [...container.querySelectorAll('[fill="#123456"], [stroke="#123456"]')];
-    expect(marks).toHaveLength(6);
-    const [circle, square, triangle, ring, box, outline] = marks;
+    const marks = [...container.querySelectorAll('[fill="#123456"]')];
+    expect(marks).toHaveLength(7);
+    expect(container.querySelector('[stroke="#123456"]')).toBeNull();
+    const [circle, ...polygons] = marks;
 
     expect(circle.tagName).toBe('circle');
     expect(Number(circle.getAttribute('r'))).toBeCloseTo(DOT_R, 9);
-    expect(square.tagName).toBe('rect');
-    expect(Number(square.getAttribute('width'))).toBeCloseTo(SQUARE_SIDE, 9);
-    expect(triangle.tagName).toBe('polygon');
-    // top vertex TRIANGLE_R above the centre
-    expect(Number((triangle.getAttribute('points') as string).split(' ')[0].split(',')[1])).toBeCloseTo(100 - TRIANGLE_R, 9);
-
-    [ring, box, outline].forEach((m) => {
-      expect(m.getAttribute('fill')).toBe('none');
-      expect(Number(m.getAttribute('stroke-width'))).toBeCloseTo(HOLLOW_STROKE, 9);
+    (['square', 'diamond', 'triangle', 'star', 'y', 'pentagon'] as const).forEach((shape, k) => {
+      const el = polygons[k];
+      expect(el.tagName).toBe('polygon');
+      const pts = (el.getAttribute('points') as string).split(' ').map((p) => p.split(',').map(Number));
+      expect(pts).toHaveLength(MARK_POINTS[shape].length);
+      const cx = 180 + 80 * k;
+      pts.forEach(([x, y], v) => {
+        expect(x - cx).toBeCloseTo(MARK_POINTS[shape][v][0], 9);
+        expect(y - 100).toBeCloseTo(MARK_POINTS[shape][v][1], 9);
+        expect(Math.hypot(x - cx, y - 100)).toBeLessThanOrEqual(MARK_REACH[shape] + 1e-9);
+      });
     });
-    expect(Number(ring.getAttribute('r')) + HOLLOW_STROKE / 2).toBeCloseTo(DOT_R, 9);
-    expect(Number(box.getAttribute('width')) + HOLLOW_STROKE).toBeCloseTo(SQUARE_SIDE, 9);
-    expect(Number((outline.getAttribute('points') as string).split(' ')[0].split(',')[1])).toBeCloseTo(100 - (TRIANGLE_R - HOLLOW_STROKE), 9);
   });
 
   test('dashes only the dashed link, with round caps and the Sterzik level-3 pattern', () => {

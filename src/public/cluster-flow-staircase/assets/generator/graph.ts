@@ -4,6 +4,7 @@
  * consecutive clusters (SPEC 8), and the dense-variant extras.
  */
 import { GENERATOR_CONFIG as C } from './config';
+import { MAX_MARK_REACH, conflictsWithAny, linkIsClear } from './invariants';
 import { LayoutPoint } from './layout';
 import { Rng, randperm } from './prng';
 import { Density, DisplayEdge } from './types';
@@ -85,6 +86,22 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density)
   const seen = new Set<string>();
   const key = (s: number, t: number) => `${s}>${t}`;
 
+  // Where the builder has a choice it takes a link that crosses, touches or overlaps no link drawn
+  // so far and keeps clear of every other dot's largest possible mark (SPEC deviation 22), so the
+  // invariants rarely have to reject the display. The rng draws are the same as before; only the
+  // candidate that is finally taken changes.
+  const dots = clusters.flatMap((c) => c.nodeIds.map((id, i) => ({ id, x: c.positions[i].x, y: c.positions[i].y })));
+  const dotById = new Map(dots.map((d) => [d.id, d]));
+  const at = (id: number) => dotById.get(id) as { id: number; x: number; y: number };
+  const crossesNothing = (u: number, v: number) => !conflictsWithAny(at(u), at(v), edges, at);
+  const usable = (u: number, v: number) => crossesNothing(u, v) && linkIsClear(at(u), at(v), dots, MAX_MARK_REACH);
+  /** The first candidate that is usable, else the first that crosses nothing, else `fallback`. */
+  const pick = <T>(candidates: T[], ends: (c: T) => [number, number], fallback: T | null): T | null => (
+    candidates.find((c) => usable(...ends(c)))
+    ?? candidates.find((c) => crossesNothing(...ends(c)))
+    ?? fallback
+  );
+
   const addWithin = (u: number, v: number, extra: boolean): boolean => {
     if (u === v || rank[u] === rank[v]) return false;
     const s = rank[u] < rank[v] ? u : v;
@@ -107,9 +124,11 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density)
     topo.forEach((local, q) => { rank[c.nodeIds[local]] = q; });
     const treeEdges: [number, number][] = [];
     for (let k = 1; k < n; k += 1) {
-      const other = attach[Math.floor(rng() * k)];
+      // the drawn earlier node first, then the others in turn
+      const first = Math.floor(rng() * k);
       const u = c.nodeIds[attach[k]];
-      const v = c.nodeIds[other];
+      const options = Array.from({ length: k }, (_, off) => c.nodeIds[attach[(first + off) % k]]);
+      const v = pick(options, (o): [number, number] => [u, o], options[0]) as number;
       addWithin(u, v, false);
       const s = rank[u] < rank[v] ? u : v;
       treeEdges.push([s, s === u ? v : u]);
@@ -122,12 +141,31 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density)
 
   const order = greedyOrder(clusters);
 
-  /** The nearest-sink -> nearest-source link between two clusters (SPEC 8). */
+  /**
+   * The nearest-sink -> nearest-source link between two clusters (SPEC 8). When that pair would
+   * cross a link or graze a mark, the next pair by the same distance sum is taken. A backbone link
+   * falls back to the nearest pair (the invariants then reject the display); a skip link that has
+   * no usable pair is left out.
+   */
   const linkClusters = (a: number, b: number, extra: boolean) => {
     const ca = clusters[a];
     const cb = clusters[b];
-    const source = nearest(sinks[a], idToPos, cb.cx, cb.cy);
-    const target = nearest(sources[b], idToPos, ca.cx, ca.cy);
+    const d = (id: number, x: number, y: number) => {
+      const p = idToPos.get(id) as LayoutPoint;
+      return Math.sqrt(dist2(p.x, p.y, x, y));
+    };
+    const nearestPair: [number, number] = [nearest(sinks[a], idToPos, cb.cx, cb.cy), nearest(sources[b], idToPos, ca.cx, ca.cy)];
+    const pairs = sinks[a].flatMap((s) => sources[b].map((t) => [s, t] as [number, number]))
+      .map((pair) => ({ pair, cost: d(pair[0], cb.cx, cb.cy) + d(pair[1], ca.cx, ca.cy) }))
+      .sort((p, q) => p.cost - q.cost)
+      .map(({ pair }) => pair);
+    // the separable cost puts the nearest pair first; it is moved to the front explicitly for ties
+    const ordered = [nearestPair, ...pairs.filter(([s, t]) => s !== nearestPair[0] || t !== nearestPair[1])];
+    const chosen = extra
+      ? ordered.find(([s, t]) => usable(s, t)) ?? null
+      : pick(ordered, (p) => p, nearestPair);
+    if (!chosen) return;
+    const [source, target] = chosen;
     if (source === target || seen.has(key(source, target))) return;
     seen.add(key(source, target));
     edges.push({
@@ -149,7 +187,8 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density)
         for (let draw = 0; draw < C.EXTRA_ARROW_MAX_DRAWS && !added; draw += 1) {
           const u = c.nodeIds[Math.floor(rng() * n)];
           const v = c.nodeIds[Math.floor(rng() * n)];
-          added = addWithin(u, v, true);
+          // a draw whose link would cross a link or graze a mark counts as a failed draw
+          added = u !== v && usable(u, v) && addWithin(u, v, true);
         }
       }
     });

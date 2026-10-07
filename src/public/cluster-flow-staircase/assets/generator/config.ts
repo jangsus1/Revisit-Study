@@ -94,18 +94,24 @@ export const GENERATOR_CONFIG = {
    */
   BETWEEN_DASH: { dash: 5.45, gap: 14.55 },
   /**
-   * The six marks of the shape cue: circle, square and triangle, each filled and outlined. Every
-   * cluster of A gets its own mark. The filled circle comes first because it is the default node.
+   * The pool of the shape cue: seven filled silhouettes (the user's reference sheet). Every
+   * stimulus A of the shape cue draws six distinct ones at random (seeded) and gives one to each
+   * cluster; its B draws its marks from the same six. The circle comes first because it is the
+   * default node.
    */
-  SHAPES: ['circle', 'square', 'triangle', 'hollowCircle', 'hollowSquare', 'hollowTriangle'] as const,
-  /** Outline width of the hollow marks, in source px (0.25 x RDOT), drawn inside the footprint. */
-  HOLLOW_STROKE: 2.5,
+  SHAPES: ['circle', 'square', 'diamond', 'triangle', 'star', 'y', 'pentagon'] as const,
   /**
-   * Circumradius of the (upward) triangle in multiples of RDOT. An equal-area triangle would
-   * reach 1.56 RDOT and its tip would touch the arrowheads, which stop at 1.4 RDOT; 1.35 keeps
-   * the tip clear at three quarters of the circle's area.
+   * Every mark has the circle's area unless that would take it further than this many RDOT from
+   * its centre: the arrowheads stop at 1.4 RDOT, so 1.35 keeps every tip clear of them. The
+   * diamond, triangle, star and Y are capped (see `NODE_INK`); the square and pentagon are not.
    */
-  TRIANGLE_R: 1.35,
+  MARK_MAX_R: 1.35,
+  /** Width / height of the diamond (a rhombus taller than wide). */
+  DIAMOND_ASPECT: 0.6,
+  /** Inner radius of the five-point star, as a fraction of its outer radius. */
+  STAR_INNER: 0.42,
+  /** Width of each arm of the Y, as a fraction of the arm's length from the centre. */
+  Y_ARM_WIDTH: 0.7,
   /** How many derived seeds `generateDisplay` may try before giving up on the invariants. */
   MAX_SEED_ATTEMPTS: 200,
   /** Rejection-sampling budget for placing all stimulus B dots; exceeding it reseeds. */
@@ -139,15 +145,20 @@ export const GENERATOR_CONFIG = {
    * many nearest usable dots. Trials always pair B with A, so this only serves stand-alone calls.
    */
   B_NEAREST_K: 3,
-  /** Dense stimulus B: extra rank-respecting arrows per 24 nodes (matches A's 6 x 2). */
-  B_DENSE_EXTRA_PER_24: 12,
+  /**
+   * Dense stimulus B: extra rank-respecting arrows per 24 nodes, matching dense A's extras. A asks
+   * for 6 x 2 within-cluster extras and 4 x 0.3 skip links, but since links may not cross (SPEC
+   * deviation 22) only about 8.6 within and 0.6 skip links fit (200 seeds: 32.2 links in all,
+   * 23 of them the trees and backbone), so B adds 9 per 24 nodes (was 12).
+   */
+  B_DENSE_EXTRA_PER_24: 9,
   /**
    * Proportion of stimulus B arrows drawn dashed under the `edge` cue, so B matches A's
    * dashed/solid statistics without any grouping. Sparse A has 18 within + 5 between arrows,
-   * so 5/23 = 0.217 are dashed. Dense A has 18 + 12 within and 5 + 4 * DENSE_SKIP_P = 6.2
-   * between arrows on average, so 6.2/36.2 = 0.171.
+   * so 5/23 = 0.217 are dashed. Dense A has on average 32.2 arrows of which 5.62 are between
+   * clusters once crossing links are ruled out (SPEC deviation 22; was 6.2 of 36.2), so 0.175.
    */
-  B_DASH_PROPORTION: { sparse: 5 / 23, dense: 6.2 / 36.2 },
+  B_DASH_PROPORTION: { sparse: 5 / 23, dense: 5.62 / 32.2 },
   /** Retries allowed when drawing a random node pair for an extra (dense) arrow. */
   EXTRA_ARROW_MAX_DRAWS: 20,
 } as const;
