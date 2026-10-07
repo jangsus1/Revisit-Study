@@ -6,9 +6,11 @@ This study is not a study: it is a reviewer page for the stimuli used by the
 The next page shows, for one seed, the five grouping cues: **proximity** (the control: grey dots and
 solid links, with a gap of two within-cluster spacings between clusters), **rect** (outlines around
 each cluster), **color** (one colour per cluster from a tilted ellipse in CIELAB, so hue, chroma and
-lightness all differ), **shape** (one of six marks per cluster: circle, square and triangle, filled
-and outlined) and **edge** (dashed between-cluster links). Every cue except proximity uses the **even** layout, where the gap
+lightness all differ), **shape** (six of seven filled marks per display, one per cluster: circle,
+square, diamond, triangle, star, Y and pentagon; the pool is shown at the top of the gallery) and **edge** (dashed between-cluster links). Every cue except proximity uses the **even** layout, where the gap
 between neighbouring clusters equals the spacing inside a cluster, so only the cue groups.
+
+No two links of any display cross, touch or overlap.
 
 Each row puts the grouped **stimulus A** (24 items in 6 clusters, wired into a directed flow) next
 to its **stimulus B** baseline, built exactly as a trial builds it. B is the same for every cue:
