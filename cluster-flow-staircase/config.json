@@ -81,22 +81,17 @@
       "response": []
     },
     "consent": {
-      "type": "markdown",
-      "path": "cluster-flow-staircase/assets/consent.md",
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/ConsentPage.tsx",
       "response": [
         {
           "id": "accept",
-          "prompt": "Do you consent to take part in this study?",
+          "prompt": "Consent",
           "location": "belowStimulus",
-          "type": "radio",
-          "options": [
-            "Decline",
-            "Accept"
-          ],
-          "requiredValue": "Accept"
+          "type": "reactive",
+          "hidden": true
         }
-      ],
-      "nextButtonText": "Agree"
+      ]
     },
     "setup": {
       "type": "react-component",
@@ -118,6 +113,11 @@
       "parameters": {
         "page": "instructions"
       },
+      "response": []
+    },
+    "examples": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/ExamplePage.tsx",
       "response": []
     },
     "practice-intro": {
@@ -148,10 +148,7 @@
       "baseComponent": "trial-base"
     },
     "practice-trial": {
-      "baseComponent": "trial-base",
-      "provideFeedback": true,
-      "trainingAttempts": 1,
-      "allowFailedTraining": true
+      "baseComponent": "trial-base"
     }
   },
   "sequence": {
@@ -168,6 +165,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-proximity-sparse",
@@ -194,6 +192,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-proximity-dense",
@@ -220,6 +219,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-rect-sparse",
@@ -246,6 +246,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-rect-dense",
@@ -272,6 +273,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-color-sparse",
@@ -298,6 +300,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-color-dense",
@@ -324,6 +327,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-shape-sparse",
@@ -350,6 +354,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-shape-dense",
@@ -376,6 +381,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-edge-sparse",
@@ -402,6 +408,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-edge-dense",

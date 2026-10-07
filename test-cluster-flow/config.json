@@ -51,7 +51,8 @@
       "type": "react-component",
       "path": "cluster-flow-staircase/assets/InfoPage.tsx",
       "parameters": {
-        "page": "introduction"
+        "page": "introduction",
+        "readingSeconds": 1
       },
       "response": []
     },
@@ -59,15 +60,25 @@
       "type": "react-component",
       "path": "cluster-flow-staircase/assets/InfoPage.tsx",
       "parameters": {
-        "page": "instructions"
+        "page": "instructions",
+        "readingSeconds": 1
       },
       "response": []
+    },
+    "examples": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/ExamplePage.tsx",
+      "response": [],
+      "parameters": {
+        "readingSeconds": 1
+      }
     },
     "practice-intro": {
       "type": "react-component",
       "path": "cluster-flow-staircase/assets/InfoPage.tsx",
       "parameters": {
-        "page": "practice"
+        "page": "practice",
+        "readingSeconds": 1
       },
       "response": []
     },
@@ -75,7 +86,8 @@
       "type": "react-component",
       "path": "cluster-flow-staircase/assets/InfoPage.tsx",
       "parameters": {
-        "page": "main"
+        "page": "main",
+        "readingSeconds": 1
       },
       "response": []
     },
@@ -109,10 +121,7 @@
       "baseComponent": "trial-base"
     },
     "practice-trial": {
-      "baseComponent": "trial-base",
-      "provideFeedback": true,
-      "trainingAttempts": 1,
-      "allowFailedTraining": true
+      "baseComponent": "trial-base"
     }
   },
   "sequence": {
@@ -128,6 +137,7 @@
           {
             "order": "fixed",
             "components": [
+              "examples",
               "practice-intro",
               {
                 "id": "practice-color-sparse",
@@ -135,8 +145,7 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "color",
-                  "density": "sparse",
-                  "trials": 2
+                  "density": "sparse"
                 }
               },
               "block-intro",
