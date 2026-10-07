@@ -2,7 +2,8 @@
  * Pure staircase bookkeeping for the cluster-flow experiment.
  *
  * Two interleaved 2-down-1-up staircases run per cell, one starting above the reference count
- * (N_A = 24) and one below it, with a step of one item and 20 reversals each. The starting levels
+ * (N_A = 24) and one below it, with a step of one item and 20 reversals each (at most 90 trials
+ * per arm, and at most 196 trials in the whole block, catch trials included). The starting levels
  * are drawn per participant by `staircaseBlock` (`drawStarts`) and passed in through the config. The whole state is *derived* from the stored trial history on
  * every call so the dynamic block stays stateless and a reload cannot desynchronise it.
  *
@@ -29,6 +30,11 @@ export interface StaircaseConfig {
   maxReversals: number;
   /** ... or after this many trials, whichever comes first */
   maxTrials: number;
+  /**
+   * the whole block (both arms and the catch trials) ends once it has run this many trials,
+   * whatever the arms' state, so a session never exceeds its trial budget
+   */
+  maxBlockTrials: number;
   /** insert a catch trial after this many main trials */
   catchEvery: number;
   /** the N_B values used by catch trials, used alternately */
@@ -43,7 +49,8 @@ export const DEFAULT_STAIRCASE_CONFIG: StaircaseConfig = {
   min: 8,
   max: 48,
   maxReversals: 20,
-  maxTrials: 100,
+  maxTrials: 90,
+  maxBlockTrials: 196,
   catchEvery: 15,
   catchValues: [12, 40],
 };
@@ -193,15 +200,24 @@ export interface NextTrialSpec {
 }
 
 /**
+ * True once the block has run `maxBlockTrials` trials (catch trials included): it then ends even
+ * when an arm has not reached its reversals or its own trial cap.
+ */
+export function blockCapReached(state: StaircaseState, cfg: StaircaseConfig = DEFAULT_STAIRCASE_CONFIG): boolean {
+  return state.totalTrials >= cfg.maxBlockTrials;
+}
+
+/**
  * Picks the next trial of a block: a catch trial when one is due, otherwise a uniform random
- * draw among the staircases that are not finished. Returns null when the block is complete.
+ * draw among the staircases that are not finished. Returns null when the block is complete: both
+ * arms are done, or the block has reached `maxBlockTrials`.
  */
 export function nextTrial(
   state: StaircaseState,
   cfg: StaircaseConfig = DEFAULT_STAIRCASE_CONFIG,
   rng: () => number = Math.random,
 ): NextTrialSpec | null {
-  if (state.above.done && state.below.done) {
+  if ((state.above.done && state.below.done) || blockCapReached(state, cfg)) {
     return null;
   }
 

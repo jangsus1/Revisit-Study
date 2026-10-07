@@ -24,6 +24,8 @@ export interface StaircaseBlockParameters {
   cue: Cue;
   density: Density;
   maxTrials?: number;
+  /** hard cap on the whole block, catch trials included; default 196 */
+  maxBlockTrials?: number;
   maxReversals?: number;
   catchEvery?: number;
   /** offer the `rest` page after every this many main (non-catch) trials; default 60, 0 = never */
@@ -147,7 +149,7 @@ export default function staircaseBlock({
   answers, customParameters, currentStep, currentBlock,
 }: JumpFunctionParameters<StaircaseBlockParameters>): JumpFunctionReturnVal {
   const {
-    cellId, cue, density, maxTrials, maxReversals, catchEvery, restEvery,
+    cellId, cue, density, maxTrials, maxBlockTrials, maxReversals, catchEvery, restEvery,
   } = customParameters;
 
   const { sessionSalt, refreshMs, pxPerCm } = readSetupAnswer(answers);
@@ -158,6 +160,7 @@ export default function staircaseBlock({
     startAbove: starts.above,
     startBelow: starts.below,
     ...(maxTrials === undefined ? {} : { maxTrials }),
+    ...(maxBlockTrials === undefined ? {} : { maxBlockTrials }),
     ...(maxReversals === undefined ? {} : { maxReversals }),
     ...(catchEvery === undefined ? {} : { catchEvery }),
   };

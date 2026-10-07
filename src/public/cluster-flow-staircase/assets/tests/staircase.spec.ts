@@ -6,6 +6,7 @@ import {
   DISCARD_REVERSALS,
   StaircaseConfig,
   StaircaseTrial,
+  blockCapReached,
   deriveState,
   nextTrial,
   summarise,
@@ -34,10 +35,11 @@ function run(id: 'above' | 'below', results: boolean[], config: StaircaseConfig 
 }
 
 describe('deriveState', () => {
-  test('defaults: step 1, 20 reversals, 100 trials per arm, bounds 8 to 48', () => {
+  test('defaults: step 1, 20 reversals, 90 trials per arm, 196 per block, bounds 8 to 48', () => {
     expect(cfg.step).toBe(1);
     expect(cfg.maxReversals).toBe(20);
-    expect(cfg.maxTrials).toBe(100);
+    expect(cfg.maxTrials).toBe(90);
+    expect(cfg.maxBlockTrials).toBe(196);
     expect([cfg.min, cfg.max, cfg.target]).toEqual([8, 48, 24]);
   });
 
@@ -330,21 +332,57 @@ function simulateBlock(seed: number, pse = 22, scale = 2.5) {
   return { state, trials };
 }
 
+describe('block cap', () => {
+  test('nextTrial ends the block once maxBlockTrials trials have run, catch trials included', () => {
+    const config: StaircaseConfig = { ...cfg, maxBlockTrials: 5, catchEvery: 2 };
+    const trials: StaircaseTrial[] = [];
+    let next = nextTrial(deriveState(trials, config), config, mulberry32(3));
+    while (next !== null) {
+      trials.push({
+        staircaseId: next.staircaseId, nB: next.nB, correct: true, trialIndex: trials.length,
+      });
+      next = nextTrial(deriveState(trials, config), config, mulberry32(3 + trials.length));
+    }
+    const state = deriveState(trials, config);
+    expect(trials).toHaveLength(5);
+    expect(trials.some((t) => t.staircaseId === 'catch')).toBe(true);
+    expect(blockCapReached(state, config)).toBe(true);
+    // the arms themselves are not finished
+    expect(state.above.done || state.below.done).toBe(false);
+  });
+
+  test('is not reached below the cap', () => {
+    const state = deriveState([{
+      staircaseId: 'above', nB: 31, correct: true, trialIndex: 0,
+    }], cfg);
+    expect(blockCapReached(state, cfg)).toBe(false);
+    expect(nextTrial(state, cfg, () => 0)).not.toBeNull();
+  });
+});
+
 describe('simulated observer', () => {
   const runs = Array.from({ length: 60 }, (_, i) => simulateBlock(1000 + i));
   const totals = runs.map(({ trials }) => trials.length).sort((a, b) => a - b);
   const medianTotal = (totals[29] + totals[30]) / 2;
 
-  test('a block finishes in a median of under 220 trials (about 10 minutes at 2.6 s a trial)', () => {
-    expect(medianTotal).toBeLessThan(220);
+  test('a block finishes in a median of under 160 trials and never runs past 196', () => {
+    expect(medianTotal).toBeLessThan(160);
+    expect(totals[totals.length - 1]).toBeLessThanOrEqual(196);
     runs.forEach(({ state }) => {
-      expect(state.above.done && state.below.done).toBe(true);
+      expect((state.above.done && state.below.done) || blockCapReached(state, cfg)).toBe(true);
     });
   });
 
-  test('both arms usually finish on their 20 reversals, not on the trial cap', () => {
+  test('both arms usually finish on their 20 reversals, not on a trial cap', () => {
     const capped = runs.filter(({ state }) => state.above.reversals.length < 20 || state.below.reversals.length < 20);
     expect(capped.length).toBeLessThan(runs.length / 10);
+  });
+
+  test('a slow observer (scale 3.5) never runs past 196 trials either', () => {
+    // two arms of at most 90 plus a catch trial every 15 main trials is at most 192, so the block
+    // cap is a safeguard (it is exercised directly in the block-cap tests above)
+    const slow = Array.from({ length: 60 }, (_, i) => simulateBlock(5000 + i, 22, 3.5));
+    slow.forEach(({ trials }) => expect(trials.length).toBeLessThanOrEqual(196));
   });
 
   test('the averaged threshold shows the observer\'s bias toward fewer items in A', () => {
