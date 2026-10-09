@@ -208,3 +208,49 @@ export function generateTrialPair(
   });
   return { displayA, displayB };
 }
+
+export interface AttentionPairOptions {
+  cue: Cue;
+  density: Density;
+  /** item counts of the two displays */
+  few: number;
+  many: number;
+  hueOffset?: number;
+}
+
+/**
+ * The two displays of an attention check: both ungrouped, built by the B builder in the same
+ * reference field and with the same link budget as a trial's B for `seedA`, and with the cue's
+ * features (colours, the A's six marks, dashes), so the check looks like any other trial.
+ * `displayA` holds `few` items (seed `hashSeed(seedB, 'few')`), `displayB` holds `many` (seed
+ * `seedB`); both have `kind: 'B'`.
+ */
+export function generateAttentionPair(
+  seedA: number,
+  seedB: number,
+  opts: AttentionPairOptions,
+): { displayA: Display; displayB: Display } {
+  const hueOffset = opts.hueOffset ?? 0;
+  const reference = generateDisplay(seedA, {
+    kind: 'A', cue: 'proximity', layout: 'even', density: opts.density,
+  });
+  const metricsRef = measureDisplay(reference);
+  const shapes = opts.cue === 'shape'
+    ? shapeSubset(generateDisplay(seedA, {
+      kind: 'A', cue: 'shape', density: opts.density, hueOffset,
+    }))
+    : undefined;
+  const common: GenerateOptions = {
+    kind: 'B',
+    cue: opts.cue,
+    density: opts.density,
+    hueOffset,
+    field: nodeBounds(reference),
+    inkTarget: { linkLength: metricsRef.linkLength, edges: reference.edges.length },
+    ...(shapes ? { shapes } : {}),
+  };
+  return {
+    displayA: generateDisplay(hashSeed(seedB, 'few'), { ...common, nB: opts.few }),
+    displayB: generateDisplay(seedB, { ...common, nB: opts.many }),
+  };
+}

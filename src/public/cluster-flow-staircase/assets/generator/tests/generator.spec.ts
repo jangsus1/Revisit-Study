@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import { GENERATOR_CONFIG as C } from '../config';
 import {
-  generateDisplay, generateTrialPair, hashSeed, nodeBounds,
+  generateAttentionPair, generateDisplay, generateTrialPair, hashSeed, nodeBounds,
 } from '../generator';
 import { checkInvariants, linksConflict } from '../invariants';
 import { measureDisplay } from '../metrics';
@@ -256,4 +256,38 @@ describe('generateTrialPair', () => {
       expect(mean(rect.map(({ b }) => b)) / mean(rect.map(({ a }) => a))).toBeLessThan(1.1);
     }, 60000);
   });
+});
+
+describe('generateAttentionPair', () => {
+  test('5 and 30 ungrouped items in the trial B\'s field, with the cue\'s features and no crossings', () => {
+    for (const cue of CUES) {
+      for (const density of DENSITIES) {
+        for (let seed = 1; seed <= 5; seed += 1) {
+          const { displayA, displayB } = generateAttentionPair(seed, hashSeed(seed, 'B'), {
+            cue, density, few: 5, many: 30, hueOffset: 12,
+          });
+          const trialB = generateTrialPair(seed, hashSeed(seed, 'B'), {
+            cue, density, nB: 30, hueOffset: 12,
+          }).displayB;
+          expect(displayA.n).toBe(5);
+          expect(displayB.n).toBe(30);
+          [displayA, displayB].forEach((d) => {
+            expect(d.kind).toBe('B');
+            expect(d.clusters).toEqual([]);
+            expect(d.meta.field).toEqual(trialB.meta.field);
+            expect(checkInvariants(d)).toEqual([]);
+          });
+          // the 30-item display is exactly the trial's B for N_B = 30
+          expect(displayB).toEqual(trialB);
+          if (cue === 'color') displayA.nodes.forEach((n) => expect(makePalette(12)).toContain(n.fill));
+          if (cue === 'shape') {
+            const six = new Set(generateDisplay(seed, {
+              kind: 'A', cue, density, hueOffset: 12,
+            }).nodes.map((n) => n.shape));
+            displayA.nodes.forEach((n) => expect(six.has(n.shape)).toBe(true));
+          }
+        }
+      }
+    }
+  }, 60000);
 });

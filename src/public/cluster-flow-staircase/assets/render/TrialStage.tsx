@@ -34,13 +34,13 @@ export function TrialStage({
   const stage = (
     <div data-testid="trial-stage" data-scale={scale} style={{ position: 'relative', width, height }}>
       <StimulusFrame />
-      <div data-testid="layer-s1" data-stimulus={first.kind} style={layer(phase === 's1')}>
+      <div data-testid="layer-s1" data-stimulus={first.kind} data-n={first.n} style={layer(phase === 's1')}>
         <StimulusFrame display={first} />
       </div>
       <div data-testid="layer-mask" style={layer(phase === 'mask')}>
         <NoiseMask width={width} height={height} seed={maskSeed} />
       </div>
-      <div data-testid="layer-s2" data-stimulus={second.kind} style={layer(phase === 's2')}>
+      <div data-testid="layer-s2" data-stimulus={second.kind} data-n={second.n} style={layer(phase === 's2')}>
         <StimulusFrame display={second} />
       </div>
       <div data-testid="layer-fixation" style={{ ...layer(phase === 'fixation'), width, height }}>

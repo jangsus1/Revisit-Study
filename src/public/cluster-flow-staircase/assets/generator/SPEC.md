@@ -276,3 +276,9 @@ for i = 0 .. 4:
     (1.35), star 0.72 (1.35), diamond 0.70 (1.35). Node ink uses the exact polygon areas. The link
     clearance (4) is measured to each polygon's outline with an even-odd point-in-polygon test, so
     the concave star and Y are covered, and the builders' disc of the largest reach is 1.35 RDOT.
+24. **Attention-check displays.** The main block's attention checks (they replaced the N_B 12 / 40
+    catch trials) show two ungrouped displays built by the B builder, `generateAttentionPair`: 5
+    items (seed `hashSeed(seedB, 'few')`) and 30 items (seed `seedB`), both in the trial B's
+    reference field with its link budget and the cue's features (colours, the A's six marks,
+    dashes), so a check looks like any other trial. The 30-item display is exactly the B that
+    `generateTrialPair` would build for N_B = 30 with the same seeds.

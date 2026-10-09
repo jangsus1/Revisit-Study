@@ -2,7 +2,7 @@
 // the experiment components should use.
 export * from './types';
 export {
-  generateDisplay, generateTrialPair, hashSeed, nodeBounds,
+  generateAttentionPair, generateDisplay, generateTrialPair, hashSeed, nodeBounds,
 } from './generator';
 export { GENERATOR_CONFIG } from './config';
 export { measureDisplay } from './metrics';
