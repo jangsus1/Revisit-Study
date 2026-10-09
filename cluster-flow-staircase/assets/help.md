@@ -9,6 +9,9 @@
 - **What counts.** Count the nodes (dots and small marks) only. Arrows, outlines, colours and shapes
   do not count.
 - The two diagrams never have the same number of items, so always answer, even if you are guessing.
+- **Attention checks.** A few very easy trials (one diagram with 5 items, the other with 30) are
+  mixed in at random. If you miss one, a message tells you how many more misses are allowed; missing
+  more than 3 ends the study.
 - **Practice.** The three practice trials tell you right away whether you were correct; the next
   trial then starts by itself. The main task has no feedback.
 - **Waiting buttons.** Some pages keep their button grey with a countdown for a few seconds so

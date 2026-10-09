@@ -149,6 +149,11 @@
     },
     "practice-trial": {
       "baseComponent": "trial-base"
+    },
+    "attention-failed": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/AttentionFailed.tsx",
+      "response": []
     }
   },
   "sequence": {

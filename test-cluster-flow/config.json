@@ -122,6 +122,11 @@
     },
     "practice-trial": {
       "baseComponent": "trial-base"
+    },
+    "attention-failed": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/AttentionFailed.tsx",
+      "response": []
     }
   },
   "sequence": {
@@ -157,10 +162,10 @@
                   "cellId": "cell-color-sparse",
                   "cue": "color",
                   "density": "sparse",
-                  "maxReversals": 1,
-                  "maxTrials": 3,
-                  "catchEvery": 2,
-                  "restEvery": 2
+                  "maxTrials": 4,
+                  "restEvery": 4,
+                  "attentionGapMin": 2,
+                  "attentionGapMax": 3
                 }
               }
             ]
