@@ -7,7 +7,7 @@ import {
 } from 'vitest';
 import type { Display, GenerateOptions, TrialParams } from '../generator/types';
 import TrialRunner, {
-  FEEDBACK_MS, PROMPT_TEXT, READY_TEXT, forgetStartedTrials,
+  ATTENTION_MIN_MS, FEEDBACK_MS, PROMPT_TEXT, READY_TEXT, forgetStartedTrials,
 } from '../TrialRunner';
 import { fullscreenSession } from '../ui/fullscreen';
 
@@ -37,6 +37,10 @@ vi.mock('../generator', () => ({
   generateTrialPair: (seedA: number, seedB: number, opts: Omit<GenerateOptions, 'kind'> & { nB: number }) => ({
     displayA: fakeDisplay(seedA, { ...opts, kind: 'A' }),
     displayB: fakeDisplay(seedB, { ...opts, kind: 'B' }),
+  }),
+  generateAttentionPair: (seedA: number, seedB: number, opts: Omit<GenerateOptions, 'kind'> & { few: number, many: number }) => ({
+    displayA: fakeDisplay(seedA, { ...opts, kind: 'B', nB: opts.few }),
+    displayB: fakeDisplay(seedB, { ...opts, kind: 'B', nB: opts.many }),
   }),
   measureDisplay: (display: Display) => ({ ink: display.n, meanNN: 1 }),
   hashSeed: (...parts: (string | number)[]) => parts.join('|').length,
@@ -594,5 +598,105 @@ describe('TrialRunner', () => {
       Reflect.deleteProperty(document, 'fullscreenElement');
       Reflect.deleteProperty(document.documentElement, 'requestFullscreen');
     }
+  });
+
+  describe('attention checks', () => {
+    // 5 vs 30 with A (the 5) first: the second interval is correct
+    const check = (overrides: Partial<TrialParams> = {}) => renderTrial({
+      staircaseId: 'attention', nA: 5, nB: 30, aFirst: true, attentionMisses: 0, maxAttentionMisses: 3, ...overrides,
+    });
+
+    test('shows the 5- and 30-item displays on the usual timeline; a correct answer moves on at once', () => {
+      const { setAnswer, advance } = check();
+      expect(screen.getByTestId('trial-runner').getAttribute('data-kind')).toBe('attention');
+      runFrames(200);
+      expect(screen.getByTestId('trial-prompt').textContent).toBe(PROMPT_TEXT);
+      fireEvent.keyDown(window, { key: 'j' });
+      expect(advance).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('attention-feedback')).toBeNull();
+      const { trialData } = setAnswer.mock.calls[0][0].answers;
+      expect(trialData.staircaseId).toBe('attention');
+      expect(trialData.nA).toBe(5);
+      expect(trialData.nB).toBe(30);
+      expect(trialData.correct).toBe(true);
+      expect(trialData.attentionMisses).toBe(0);
+    });
+
+    test('a miss shows the feedback with the misses left until a key, accepted after 1.5 s', () => {
+      const { setAnswer, advance } = check();
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(advance).not.toHaveBeenCalled();
+      expect(setAnswer.mock.calls[0][0].answers.trialData.correct).toBe(false);
+      expect(setAnswer.mock.calls[0][0].answers.trialData.attentionMisses).toBe(1);
+
+      const feedback = screen.getByTestId('attention-feedback');
+      expect(feedback.textContent).toContain('That was an attention check');
+      expect(screen.getByTestId('attention-feedback-answer').textContent).toBe('The second diagram had many more items.');
+      expect(screen.getByTestId('attention-lives-text').textContent).toBe('3 more missed checks will end the study');
+      expect(feedback.getAttribute('data-left')).toBe('3');
+
+      // keys and clicks before ATTENTION_MIN_MS do nothing, and do not reach reVISit
+      const seen: string[] = [];
+      const bubble = (event: KeyboardEvent) => { seen.push(event.key); };
+      window.addEventListener('keydown', bubble);
+      runFrames(1);
+      fireEvent.keyDown(window, { key: 'Enter' });
+      fireEvent.keyDown(window, { key: 'k' });
+      fireEvent.pointerDown(window);
+      expect(advance).not.toHaveBeenCalled();
+
+      clock += ATTENTION_MIN_MS + 200;
+      act(() => { vi.advanceTimersByTime(ATTENTION_MIN_MS); });
+      fireEvent.keyDown(window, { key: 'k' });
+      window.removeEventListener('keydown', bubble);
+      expect(seen).toEqual([]);
+      expect(advance).toHaveBeenCalledTimes(1);
+      const final = setAnswer.mock.calls[setAnswer.mock.calls.length - 1][0].answers.trialData;
+      expect(final.correct).toBe(false);
+      expect(final.feedbackShownMs).toBeGreaterThanOrEqual(ATTENTION_MIN_MS);
+    });
+
+    test('the wording counts down: 2 more, then one more', () => {
+      check({ attentionMisses: 1 });
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(screen.getByTestId('attention-lives-text').textContent).toBe('2 more missed checks will end the study');
+      cleanup();
+      check({ attentionMisses: 2 });
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'ArrowLeft' });
+      expect(screen.getByTestId('attention-lives-text').textContent).toBe('One more missed check will end the study');
+      expect(screen.getByTestId('attention-feedback').getAttribute('data-left')).toBe('1');
+    });
+
+    test('a click dismisses the feedback too', () => {
+      const { advance } = check({ aFirst: false });
+      runFrames(200);
+      // B (the 30) first: J was wrong
+      fireEvent.keyDown(window, { key: 'j' });
+      expect(screen.getByTestId('attention-feedback-answer').textContent).toBe('The first diagram had many more items.');
+      runFrames(1);
+      act(() => { vi.advanceTimersByTime(ATTENTION_MIN_MS); });
+      fireEvent.pointerDown(window);
+      expect(advance).toHaveBeenCalledTimes(1);
+    });
+
+    test('the miss that ends the study moves on at once to the rejection page', () => {
+      const { setAnswer, advance } = check({ attentionMisses: 3 });
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(advance).toHaveBeenCalledTimes(1);
+      expect(screen.queryByTestId('attention-feedback')).toBeNull();
+      expect(setAnswer.mock.calls[0][0].answers.trialData.attentionMisses).toBe(4);
+    });
+
+    test('main trials carry the running miss count and no correctness', () => {
+      const { setAnswer } = renderTrial({ attentionMisses: 2 });
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(setAnswer.mock.calls[0][0].answers.trialData.attentionMisses).toBe(2);
+      expect(setAnswer.mock.calls[0][0].answers.trialData.correct).toBeUndefined();
+    });
   });
 });

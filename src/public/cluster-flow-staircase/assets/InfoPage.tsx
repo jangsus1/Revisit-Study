@@ -12,7 +12,7 @@
  * and density from the upcoming practice block's parameters (or from `parameters.cue/density`).
  */
 import {
-  IconBolt, IconClock, IconCoffee, IconDeviceDesktop, IconDeviceDesktopCheck, IconKeyboard, IconMaximize,
+  IconBolt, IconClock, IconCoffee, IconEyeCheck, IconDeviceDesktop, IconDeviceDesktopCheck, IconKeyboard, IconMaximize,
   IconMessageOff, IconMessageQuestion, IconSchool, IconSignature,
 } from '@tabler/icons-react';
 import {
@@ -21,9 +21,12 @@ import {
 import type { StimulusParams } from '../../../store/types';
 import type { Cue, Density, TrialAnswer } from './generator';
 import { generateDisplay } from './generator';
+import { DEFAULT_ATTENTION_CONFIG } from './attention';
 import { StimulusSVG } from './render/StimulusSVG';
 import { drawHueOffset, readSetupAnswer } from './staircaseBlock';
-import { ItemCountFigure, PracticeStoryboard, TrialStoryboard } from './ui/figures';
+import {
+  AttentionMini, ItemCountFigure, PracticeStoryboard, TrialStoryboard,
+} from './ui/figures';
 import { AnswerKeys } from './ui/KeyCap';
 import { FullscreenGate, Panel } from './ui/Panel';
 import { ReadingButton, useReadingTime } from './ui/readingTime';
@@ -163,6 +166,24 @@ function IntroductionPage({ practiceTrials }: { practiceTrials: number }) {
         <span aria-hidden>·</span>
         <Meta icon={IconMaximize}>full screen</Meta>
       </div>
+      <div
+        data-testid="attention-note"
+        style={{
+          alignSelf: 'center',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '6px 14px',
+          borderRadius: 999,
+          background: '#fff4e6',
+          color: '#7a3e00',
+          fontSize: 15.5,
+          fontWeight: 600,
+        }}
+      >
+        <IconEyeCheck size={18} stroke={1.8} />
+        {`A few easy attention checks are mixed in at random — missing more than ${DEFAULT_ATTENTION_CONFIG.maxMisses} ends the study.`}
+      </div>
     </div>
   );
 }
@@ -170,14 +191,26 @@ function IntroductionPage({ practiceTrials }: { practiceTrials: number }) {
 function InstructionsPage() {
   return (
     <div data-testid="info-instructions" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <TrialStoryboard maxHeight="34vh" />
+      <TrialStoryboard maxHeight="31vh" />
+      <div
+        data-testid="attention-line"
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, fontSize: 16.5, color: UI.ink,
+        }}
+      >
+        <AttentionMini height={40} />
+        <span>
+          <strong>Attention checks</strong>
+          {` are this easy (5 vs 30 items). Missing more than ${DEFAULT_ATTENTION_CONFIG.maxMisses} ends the study.`}
+        </span>
+      </div>
       <div style={{
         fontSize: 15, fontWeight: 700, letterSpacing: 0.7, textTransform: 'uppercase', color: UI.accent, marginTop: 4,
       }}
       >
         What counts as an item
       </div>
-      <ItemCountFigure maxHeight="22vh" />
+      <ItemCountFigure maxHeight="20vh" />
       <div style={{ fontSize: 18, color: UI.ink }}>
         Count the nodes only. Arrows, outlines, colours and shapes don&apos;t count.
       </div>
@@ -240,6 +273,7 @@ function MainPage() {
       <div style={{ display: 'flex', justifyContent: 'center', gap: 24 }}>
         <RuleChip icon={IconMessageOff}>No feedback from now on</RuleChip>
         <RuleChip icon={IconBolt}>Answer with your first impression</RuleChip>
+        <RuleChip icon={IconEyeCheck}>{`Easy attention checks: missing more than ${DEFAULT_ATTENTION_CONFIG.maxMisses} ends the study`}</RuleChip>
         <RuleChip icon={IconCoffee}>Breaks are offered</RuleChip>
       </div>
       <AnswerKeys size={52} />
@@ -252,7 +286,7 @@ export function countMainTrials(answers: StimulusParams<unknown>['answers']): nu
   return Object.values(answers ?? {}).filter((record) => {
     const data = record?.answer?.trialData as unknown as TrialAnswer | undefined;
     return record.endTime > -1 && !!data && typeof data === 'object'
-      && (data.staircaseId === 'above' || data.staircaseId === 'below' || data.staircaseId === 'catch');
+      && (data.staircaseId === 'above' || data.staircaseId === 'below' || data.staircaseId === 'attention');
   }).length;
 }
 
@@ -308,7 +342,7 @@ export const PAGES: Record<InfoPageName, PageSpec> = {
     kicker: 'Practice', title: '3 easy trials with feedback', button: 'Start practice', maxWidth: 1000, gate: true, minReadSeconds: 8,
   },
   main: {
-    kicker: 'Practice done', title: 'Main task', button: 'Start the main task', maxWidth: 760, gate: true, minReadSeconds: 5,
+    kicker: 'Practice done', title: 'Main task', button: 'Start the main task', maxWidth: 960, gate: true, minReadSeconds: 5,
   },
   rest: {
     kicker: 'Main task', title: 'Short break', button: 'Continue', maxWidth: 700, gate: true, minReadSeconds: null,

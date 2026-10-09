@@ -30,6 +30,8 @@ interface StoredTrialData {
   fullscreenExits: number;
   correct?: boolean;
   feedbackShownMs?: number;
+  nA?: number;
+  attentionMisses?: number;
 }
 
 /** One stored trial: the platform record around the hidden telemetry. */
@@ -73,6 +75,7 @@ async function readStoredTrials(page: Page): Promise<StoredTrial[]> {
 }
 
 test('cluster-flow staircase runs a shortened session and stores full trial records', async ({ page }) => {
+  test.setTimeout(150000);
   await resetClientStudyState(page);
   await page.goto(`/${STUDY_ID}`);
 
@@ -127,11 +130,16 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   // Practice and the shortened staircase cell. Correctness does not matter, so the keys alternate.
   // Practice trials show their feedback in the stream for 1.5 s and move on by themselves; main
   // trials advance as soon as the key is pressed. The block starts and the trial after each rest
-  // wait on the start gate; F is pressed there, and must not count as an answer.
+  // wait on the start gate; F is pressed there, and must not count as an answer. Attention checks
+  // (5 vs 30 items, after every 2 or 3 staircase trials in the test study) are answered correctly
+  // except the first, which is missed on purpose: its feedback shows the misses left and waits for
+  // a key press.
   const fullscreenGate = page.getByTestId('fullscreen-gate');
   const startGate = page.getByTestId('start-gate');
   const prompt = page.getByTestId('trial-prompt');
   const feedback = page.getByTestId('practice-feedback');
+  const attentionFeedback = page.getByTestId('attention-feedback');
+  const runner = page.getByTestId('trial-runner');
   const completed = page.getByText(COMPLETED_MESSAGE, { exact: true });
   const practiceIntro = page.getByTestId('info-page-practice');
   const blockIntro = page.getByTestId('info-page-main');
@@ -142,7 +150,9 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   let rests = 0;
   let intros = 0;
   let gates = 0;
-  const deadline = Date.now() + 60000;
+  let checks = 0;
+  let missesShown = 0;
+  const deadline = Date.now() + 110000;
   while (Date.now() < deadline) {
     if (await completed.isVisible()) {
       break;
@@ -168,6 +178,33 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
       await page.keyboard.press('f');
       await expect(startGate).toBeHidden({ timeout: 10000 });
     } else if (await prompt.isVisible()) {
+      if (await runner.getAttribute('data-kind') === 'attention') {
+        // the 30-item display is the correct one; miss the first check on purpose
+        const n1 = Number(await page.getByTestId('layer-s1').getAttribute('data-n'));
+        const n2 = Number(await page.getByTestId('layer-s2').getAttribute('data-n'));
+        expect([n1, n2].sort((a, b) => a - b)).toEqual([5, 30]);
+        const right = n1 > n2 ? 'f' : 'j';
+        const wrong = right === 'f' ? 'j' : 'f';
+        await page.keyboard.press(checks === 0 ? wrong : right);
+        checks += 1;
+        trials += 1;
+        await prompt.waitFor({ state: 'hidden', timeout: 10000 });
+        if (checks === 1) {
+          await expect(attentionFeedback).toBeVisible();
+          await expect(page.getByTestId('attention-lives-text')).toHaveText('3 more missed checks will end the study');
+          // a key press at once is ignored; after 1.5 s one moves on, with no start gate
+          await page.keyboard.press('k');
+          await expect(attentionFeedback).toBeVisible();
+          await page.waitForTimeout(1700);
+          await page.keyboard.press('k');
+          await expect(attentionFeedback).toBeHidden({ timeout: 5000 });
+          missesShown += 1;
+        } else {
+          await expect(attentionFeedback).toBeHidden();
+        }
+        // eslint-disable-next-line no-continue
+        continue;
+      }
       await page.keyboard.press(trials % 2 === 0 ? 'f' : 'ArrowRight');
       trials += 1;
       await prompt.waitFor({ state: 'hidden', timeout: 10000 });
@@ -183,9 +220,13 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   }
 
   await waitForStudyEndMessage(page);
-  // three practice trials plus the shortened cell, with its two intro pages and at least one rest
+  // three practice trials plus the shortened cell (8 staircase trials and 2 to 4 attention checks),
+  // with its two intro pages and one rest
   expect(practiceTrials).toBe(3);
-  expect(trials).toBeGreaterThanOrEqual(6);
+  expect(checks).toBeGreaterThanOrEqual(2);
+  expect(checks).toBeLessThanOrEqual(4);
+  expect(missesShown).toBe(1);
+  expect(trials).toBe(3 + 8 + checks);
   expect(intros).toBe(2);
   expect(rests).toBeGreaterThanOrEqual(1);
   // one start gate at the start of practice, one at the start of the main block, one after each rest
@@ -208,7 +249,20 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   expect(typeof first.trialData.seedA).toBe('number');
   expect(first.trialData.seedA).not.toBe(first.trialData.seedB);
   expect(typeof first.trialData.nB).toBe('number');
-  expect(['practice', 'above', 'below', 'catch']).toContain(first.trialData.staircaseId);
+  expect(['practice', 'above', 'below', 'attention']).toContain(first.trialData.staircaseId);
+  const attention = stored.filter((trial) => trial.trialData.staircaseId === 'attention');
+  expect(attention).toHaveLength(checks);
+  attention.forEach((trial, i) => {
+    expect(trial.trialData.nA).toBe(5);
+    expect(trial.trialData.nB).toBe(30);
+    expect(trial.trialData.correct).toBe(i > 0);
+    expect(trial.trialData.correct).toBe(trial.trial === trial.correctAnswer[0].answer);
+  });
+  // the running miss count: 0 before the first check, 1 from it on
+  stored.filter((trial) => trial.trialData.staircaseId !== 'practice').forEach((trial) => {
+    expect([0, 1]).toContain(trial.trialData.attentionMisses);
+  });
+  expect(stored.filter((t) => t.trialData.staircaseId === 'catch')).toHaveLength(0);
 
   // The stimuli are shown for 200 ms and the mask for 150 ms; allow two frames of slack for the
   // animation-frame scheduler.
@@ -246,7 +300,7 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
       expect(trial.checkAnswer).toBeUndefined();
       expect(trial.trialData.correct).toBe(trial.trial === trial.correctAnswer[0].answer);
       expect(Math.abs((trial.trialData.feedbackShownMs ?? 0) - 1500)).toBeLessThan(250);
-    } else {
+    } else if (trial.trialData.staircaseId !== 'attention') {
       expect(trial.trialData.correct).toBeUndefined();
     }
 

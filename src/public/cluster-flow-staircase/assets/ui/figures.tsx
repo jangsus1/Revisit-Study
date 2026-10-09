@@ -314,3 +314,37 @@ export function PracticeStoryboard({ maxHeight = '26vh' }: { maxHeight?: string 
     </svg>
   );
 }
+
+/** Two tiny frames, 5 vs 30 dots: what an attention check looks like (instructions page). */
+export function AttentionMini({ height = 46 }: { height?: number }) {
+  const W = 70;
+  const H = 56;
+  const dots = (n: number, seed: number) => {
+    const rng = mulberry32(seed);
+    const pts: Pt[] = [];
+    let tries = 0;
+    while (pts.length < n && tries < 5000) {
+      tries += 1;
+      const p: Pt = [6 + rng() * (W - 12), 6 + rng() * (H - 12)];
+      if (pts.every(([x, y]) => Math.hypot(x - p[0], y - p[1]) > (n > 10 ? 7.5 : 16))) pts.push(p);
+    }
+    return pts.map(([x, y]) => <circle key={`${x}-${y}`} cx={x} cy={y} r={2.4} fill={DOT} />);
+  };
+  return (
+    <svg
+      data-testid="attention-mini"
+      viewBox={`0 0 ${2 * W + 44} ${H + 4}`}
+      style={{
+        height, width: 'auto', display: 'inline-block', verticalAlign: 'middle',
+      }}
+      role="img"
+      aria-label="An attention check: 5 items against 30 items"
+    >
+      <rect x={1} y={2} width={W} height={H} fill="#ffffff" stroke={UI.ink} strokeWidth={2} />
+      <g transform="translate(1 2)">{dots(5, 11)}</g>
+      <text x={W + 22} y={H / 2 + 8} textAnchor="middle" fontFamily={UI.font} fontSize={16} fontWeight={700} fill={UI.muted}>vs</text>
+      <rect x={W + 43} y={2} width={W} height={H} fill="#ffffff" stroke={UI.ink} strokeWidth={2} />
+      <g transform={`translate(${W + 43} 2)`}>{dots(30, 23)}</g>
+    </svg>
+  );
+}

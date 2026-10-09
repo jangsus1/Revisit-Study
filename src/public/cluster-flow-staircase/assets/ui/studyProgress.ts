@@ -14,7 +14,7 @@
 export const SECONDS_PER_TRIAL = 2.8;
 /** A practice trial also shows its feedback for about 1.5 s. */
 export const SECONDS_PER_PRACTICE_TRIAL = 4.5;
-/** The main block's expected length in trials (simulated median about 147). */
+/** The main block's expected length in trials, attention checks included (simulated median about 147). */
 export const EXPECTED_MAIN_TRIALS = 150;
 export const DEFAULT_PRACTICE_TRIALS = 3;
 const SECONDS_PER_REST = 20;
@@ -55,7 +55,7 @@ export function blockEstimate(name: string, info: BlockInfo = {}): { steps: numb
     return { steps: trials, seconds: trials * SECONDS_PER_PRACTICE_TRIAL };
   }
   if (/^cell-/.test(name)) {
-    // a shortened block (tests) caps each arm at maxTrials; catch trials add about one in fifteen
+    // a shortened block (tests) caps each arm at maxTrials; attention checks add about one in fifteen
     const trials = info.maxTrials === undefined
       ? EXPECTED_MAIN_TRIALS
       : Math.min(EXPECTED_MAIN_TRIALS, Math.ceil(2 * info.maxTrials * (16 / 15)));

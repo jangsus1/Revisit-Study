@@ -86,6 +86,8 @@ describe('InfoPage', () => {
     expect(screen.getByTestId('session-steps').textContent).toContain('about 8 min');
     // without reVISit's sequence (this test) the fallback estimate is shown
     expect(screen.getByTestId('session-meta').textContent).toContain('About 15 minutes');
+    expect(screen.getByTestId('attention-note').textContent)
+      .toBe('A few easy attention checks are mixed in at random — missing more than 3 ends the study.');
     expect(screen.getByTestId('session-meta').textContent).toContain('full screen');
   });
 
@@ -100,6 +102,8 @@ describe('InfoPage', () => {
     expect(items.textContent).toContain('arrows are not items');
     expect(items.textContent).toContain('outlines are not items');
     expect(screen.getByTestId('never-equal').textContent).toContain('never have the same number of items');
+    expect(screen.getByTestId('attention-line').textContent).toContain('5 vs 30 items');
+    expect(screen.getByTestId('attention-mini')).toBeTruthy();
     expect(screen.getByTestId('primary-button').textContent).toMatch(/^Continue · \d+ s$/);
   });
 
@@ -133,7 +137,8 @@ describe('InfoPage', () => {
     renderPage({ page: 'main' });
     expect(screen.getByText('Main task')).toBeTruthy();
     const main = screen.getByTestId('info-main');
-    ['No feedback from now on', 'first impression', 'Breaks are offered'].forEach((text) => expect(main.textContent).toContain(text));
+    ['No feedback from now on', 'first impression', 'Easy attention checks: missing more than 3 ends the study', 'Breaks are offered']
+      .forEach((text) => expect(main.textContent).toContain(text));
     expect(screen.getByTestId('answer-keys').textContent).toContain('F');
     expect(screen.getByTestId('answer-keys').textContent).toContain('J');
     expect(screen.getByTestId('primary-button').textContent).toMatch(/^Start the main task/);
@@ -142,7 +147,7 @@ describe('InfoPage', () => {
   test('rest: the break, the number of main trials done and the keys', () => {
     const record = (staircaseId: string, endTime = 1) => ({ endTime, answer: { trialData: { staircaseId } } });
     const answers = {
-      a: record('practice'), b: record('above'), c: record('below'), d: record('catch'), e: record('above', -1), f: { endTime: 1, answer: {} },
+      a: record('practice'), b: record('above'), c: record('below'), d: record('attention'), e: record('above', -1), f: { endTime: 1, answer: {} },
     };
     expect(countMainTrials(answers as unknown as ParticipantData['answers'])).toBe(3);
     renderPage({ page: 'rest' }, answers);
