@@ -9,7 +9,12 @@ export type Density = 'sparse' | 'dense';
 export type StimulusKind = 'A' | 'B';
 /** The seven filled marks of the shape cue's pool (`GENERATOR_CONFIG.SHAPES`). */
 export type NodeShape = 'circle' | 'square' | 'diamond' | 'triangle' | 'star' | 'y' | 'pentagon';
-export type StaircaseId = 'above' | 'below' | 'catch' | 'practice';
+/**
+ * `above` / `below`: the two staircase arms; `attention`: an attention check (5 vs 30 items);
+ * `practice`; `catch`: the N_B 12 / 40 catch trials of blocks run before 2026-10-09 (no longer
+ * scheduled; old records are read harmlessly).
+ */
+export type StaircaseId = 'above' | 'below' | 'attention' | 'catch' | 'practice';
 /**
  * How stimulus A places its clusters. `grouped` (proximity) puts `PROXIMITY_GAP` within-cluster
  * pitches between the facing edges of neighbouring clusters; `even` puts exactly one pitch there,
@@ -172,6 +177,15 @@ export interface TrialParams {
   /** CSS px per cm from the setup's card check; null (or absent) without a card */
   pxPerCm?: number | null;
   /**
+   * attention checks only: the item count of the display in the A slot (the 5-item display; the
+   * 30-item one is `nB`). Main trials always show the 24-item A.
+   */
+  nA?: number;
+  /** main block: attention checks missed before this trial (drives the miss feedback) */
+  attentionMisses?: number;
+  /** main block: misses allowed before the study ends (default 3) */
+  maxAttentionMisses?: number;
+  /**
    * show the "press any key or click to start" gate before the fixation: set by the blocks on the
    * block's first trial and on the first trial after a rest page
    */
@@ -228,10 +242,15 @@ export interface TrialAnswer {
   stimulusWidthCm: number | null;
   /** ms from the start gate appearing to the key press or click that started the trial; null when there was no gate */
   startWaitMs: number | null;
-  /** practice only: whether the answer named the interval with more items (shown as feedback) */
+  /** practice and attention checks: whether the answer named the interval with more items */
   correct?: boolean;
-  /** practice only: how long the feedback was on screen, ms (about 1 500) */
+  /**
+   * practice: how long the feedback was on screen, ms (about 1 500); attention checks that were
+   * missed: how long the miss feedback stayed up before the key press or click that dismissed it
+   */
   feedbackShownMs?: number;
+  /** main block (staircase and attention trials): attention checks missed so far, this trial included */
+  attentionMisses?: number;
   metricsA: DisplayMetrics;
   metricsB: DisplayMetrics;
   displayA: Display;

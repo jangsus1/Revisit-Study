@@ -3,8 +3,10 @@ import {
 } from 'vitest';
 import type { ParticipantData } from '../../../../parser/types';
 import type { TrialAnswer, TrialParams } from '../generator/types';
+import { attentionDue, drawAttentionGaps } from '../attention';
+import { deriveState } from '../staircase';
 import staircaseBlock, {
-  collectBlockTrials, correctInterval, countRests, drawAFirst, drawHueOffset, drawStarts, readSetupAnswer, waitsForStart,
+  ATTENTION_FAILED, collectBlockTrials, correctInterval, countRests, drawAFirst, drawHueOffset, drawStarts, readSetupAnswer, waitsForStart,
 } from '../staircaseBlock';
 
 // The generator is mocked everywhere in these component tests: the block only needs `hashSeed`
@@ -341,19 +343,99 @@ describe('staircaseBlock', () => {
     expect((result.parameters as unknown as TrialParams).trialIndex).toBe(2);
   });
 
-  test('schedules a catch trial when catchEvery is reached', () => {
-    const result = staircaseBlock({
-      answers: answers(blockAnswers([
-        trialAnswer({ trialIndex: 0, staircaseId: 'above' }),
-        trialAnswer({ trialIndex: 1, staircaseId: 'below', nB: 17 }),
-      ])),
-      customParameters: { ...params, catchEvery: 2 },
+  describe('attention checks', () => {
+    const SALT = 4242;
+    const setup = { setup_2: { componentName: 'setup', endTime: 1, answer: { setup: { sessionSalt: SALT, refreshMs: 10 } } } };
+    const gaps = drawAttentionGaps(SALT, params.cellId);
+    /** n staircase trials, with attention checks (correct unless listed in `missed`) where they were due */
+    const history = (n: number, missed: number[] = []) => {
+      const list: FixtureTrial[] = [];
+      let staircase = 0;
+      let checks = 0;
+      while (staircase < n) {
+        if (attentionDue(staircase, checks, gaps)) {
+          list.push(trialAnswer({
+            trialIndex: list.length, staircaseId: 'attention', nB: 30, nA: 5, correct: !missed.includes(checks),
+          }));
+          checks += 1;
+        } else {
+          list.push(trialAnswer({
+            trialIndex: list.length, staircaseId: staircase % 2 ? 'below' : 'above', nB: staircase % 2 ? 17 : 31,
+          }));
+          staircase += 1;
+        }
+      }
+      return list;
+    };
+    const call = (trials: FixtureTrial[], extra: Partial<typeof params & { maxAttentionMisses: number; maxTrials: number; maxBlockTrials: number; maxReversals: number }> = {}) => staircaseBlock({
+      answers: answers({ ...setup, ...blockAnswers(trials) }),
+      customParameters: { ...params, restEvery: 0, ...extra },
       currentStep: STEP,
       currentBlock: BLOCK,
     });
-    const parameters = result.parameters as unknown as TrialParams;
-    expect(parameters.staircaseId).toBe('catch');
-    expect([12, 40]).toContain(parameters.nB);
+
+    test('the first check comes after the first gap of staircase trials: 5 vs 30, the 30 correct', () => {
+      expect(gaps).toHaveLength(10);
+      expect(call(history(gaps[0] - 1)).parameters).toMatchObject({ staircaseId: expect.stringMatching(/above|below/) });
+      const result = call(history(gaps[0]));
+      const parameters = result.parameters as unknown as TrialParams;
+      expect(result.component).toBe('trial');
+      expect(parameters.staircaseId).toBe('attention');
+      expect(parameters.nA).toBe(5);
+      expect(parameters.nB).toBe(30);
+      expect(parameters.attentionMisses).toBe(0);
+      expect(parameters.maxAttentionMisses).toBe(3);
+      expect(result.correctAnswer).toEqual([{ id: 'trial', answer: parameters.aFirst ? 'second' : 'first' }]);
+      // and right after it, the staircase carries on
+      const after = history(gaps[0] + 1);
+      expect(after.filter((t) => t.staircaseId === 'attention')).toHaveLength(1);
+    });
+
+    test('at most 10 checks, each after its own gap; re-derived identically from the stored trials', () => {
+      const all = history(gaps.reduce((a, b) => a + b, 0) + 30);
+      expect(all.filter((t) => t.staircaseId === 'attention')).toHaveLength(10);
+      // after the 10th, no more checks however long the block runs
+      expect((call(all, { maxTrials: 500, maxBlockTrials: 1000, maxReversals: 1000 }).parameters as unknown as TrialParams).staircaseId).not.toBe('attention');
+      // the same answers give the same next trial
+      expect(call(history(gaps[0]))).toEqual(call(history(gaps[0])));
+    });
+
+    test('checks do not move the arms', () => {
+      const withMiss = history(gaps[0] + 4, [0]);
+      const withoutChecks = withMiss.filter((t) => t.staircaseId !== 'attention');
+      const a = deriveState(collectBlockTrials(answers(blockAnswers(withMiss)), BLOCK, STEP));
+      const b = deriveState(collectBlockTrials(answers(blockAnswers(withoutChecks)), BLOCK, STEP));
+      expect(a.above).toEqual(b.above);
+      expect(a.below).toEqual(b.below);
+    });
+
+    test('the running miss count is passed to the next trial', () => {
+      const result = call(history(gaps[0] + gaps[1] + 2, [0, 1]));
+      expect((result.parameters as unknown as TrialParams).attentionMisses).toBe(2);
+    });
+
+    test('the 4th miss ends the study with the attention-failed component, which stays', () => {
+      const four = history(gaps.slice(0, 4).reduce((a, b) => a + b, 0) + 1, [0, 1, 2, 3]);
+      // three misses are still allowed
+      const three = four.slice(0, four.map((t) => t.staircaseId).lastIndexOf('attention'));
+      expect(call(three).component).toBe('trial');
+      const result = call(four);
+      expect(result).toEqual({ component: ATTENTION_FAILED, parameters: { misses: 4, maxMisses: 3 } });
+      // a reload (the same stored trials, plus the unfinished rejection record) lands there again
+      const reloaded = staircaseBlock({
+        answers: answers({
+          ...setup,
+          ...blockAnswers(four),
+          [`${BLOCK}_${STEP}_attention-failed_${four.length}`]: { componentName: 'attention-failed', endTime: -1, answer: {} },
+        }),
+        customParameters: { ...params, restEvery: 0 },
+        currentStep: STEP,
+        currentBlock: BLOCK,
+      });
+      expect(reloaded.component).toBe(ATTENTION_FAILED);
+      // a config override of the allowed misses
+      expect(call(history(gaps[0] + 1, [0]), { maxAttentionMisses: 0 }).component).toBe(ATTENTION_FAILED);
+    });
   });
 
   test('returns a null component when both staircases are finished', () => {
@@ -380,7 +462,7 @@ describe('staircaseBlock', () => {
     ];
     const result = staircaseBlock({
       answers: answers(blockAnswers(trials)),
-      customParameters: { ...params, maxReversals: 1, catchEvery: 99 },
+      customParameters: { ...params, maxReversals: 1 },
       currentStep: STEP,
       currentBlock: BLOCK,
     });
@@ -394,7 +476,7 @@ describe('staircaseBlock', () => {
     const call = (entries: Record<string, unknown>, restEvery?: number) => staircaseBlock({
       answers: answers(entries),
       customParameters: {
-        ...params, catchEvery: 999, ...(restEvery === undefined ? {} : { restEvery }),
+        ...params, attentionGapMin: 999, attentionGapMax: 999, ...(restEvery === undefined ? {} : { restEvery }),
       },
       currentStep: STEP,
       currentBlock: BLOCK,
@@ -427,8 +509,8 @@ describe('staircaseBlock', () => {
       expect(call(blockAnswers(mainTrials(2)), 0).component).toBe('trial');
     });
 
-    test('catch trials do not count toward a rest', () => {
-      const trials = [...mainTrials(1), trialAnswer({ trialIndex: 1, staircaseId: 'catch', nB: 12 })];
+    test('attention checks do not count toward a rest', () => {
+      const trials = [...mainTrials(1), trialAnswer({ trialIndex: 1, staircaseId: 'attention', nB: 30 })];
       expect(call(blockAnswers(trials), 2).component).toBe('trial');
     });
 

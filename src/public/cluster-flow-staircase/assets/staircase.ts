@@ -3,7 +3,8 @@
  *
  * Two interleaved 2-down-1-up staircases run per cell, one starting above the reference count
  * (N_A = 24) and one below it, with a step of one item and 20 reversals each (at most 90 trials
- * per arm, and at most 196 trials in the whole block, catch trials included). The starting levels
+ * per arm, and at most 190 trials in the whole block, attention checks included; the checks
+ * themselves are scheduled by `attention.ts` and never feed an arm). The starting levels
  * are drawn per participant by `staircaseBlock` (`drawStarts`) and passed in through the config. The whole state is *derived* from the stored trial history on
  * every call so the dynamic block stays stateless and a reload cannot desynchronise it.
  *
@@ -36,14 +37,11 @@ export interface StaircaseConfig {
   /** ... or after this many trials, whichever comes first */
   maxTrials: number;
   /**
-   * the whole block (both arms and the catch trials) ends once it has run this many trials,
-   * whatever the arms' state, so a session never exceeds its trial budget
+   * the whole block (both arms and the attention checks) ends once it has run this many trials,
+   * whatever the arms' state, so a session never exceeds its trial budget (2 x 90 + 10 checks =
+   * 190, so it is a safeguard)
    */
   maxBlockTrials: number;
-  /** insert a catch trial after this many main trials */
-  catchEvery: number;
-  /** the N_B values used by catch trials, used alternately */
-  catchValues: number[];
 }
 
 export const DEFAULT_STAIRCASE_CONFIG: StaircaseConfig = {
@@ -55,9 +53,7 @@ export const DEFAULT_STAIRCASE_CONFIG: StaircaseConfig = {
   max: 48,
   maxReversals: 20,
   maxTrials: 90,
-  maxBlockTrials: 196,
-  catchEvery: 15,
-  catchValues: [12, 40],
+  maxBlockTrials: 190,
 };
 
 /** Reversals discarded from the front of each arm before averaging (the approach phase). */
@@ -89,11 +85,10 @@ export interface ArmState {
 export interface StaircaseState {
   above: ArmState;
   below: ArmState;
-  /** main (non-catch) trials since the last catch trial */
-  mainTrialsSinceCatch: number;
-  catchTotal: number;
-  catchCorrect: number;
-  /** every trial of the block, catch trials included */
+  /** attention checks run and answered correctly (they do not feed the arms) */
+  attentionTotal: number;
+  attentionCorrect: number;
+  /** every trial of the block, attention checks included */
   totalTrials: number;
 }
 
@@ -104,8 +99,8 @@ export interface StaircaseSummary {
   threshold: number | null;
   reversalsAbove: number;
   reversalsBelow: number;
-  catchCorrect: number;
-  catchTotal: number;
+  attentionCorrect: number;
+  attentionTotal: number;
 }
 
 function clamp(value: number, min: number, max: number) {
@@ -167,15 +162,15 @@ function applyTrial(arm: ArmState, correct: boolean, cfg: StaircaseConfig): void
 
 /**
  * Replays the block's trial history (in `trialIndex` order) and returns the resulting state.
- * Catch and practice trials do not feed the staircases; catch trials reset the catch counter.
+ * Attention checks and practice trials do not feed the staircases (nor do the 'catch' trials of
+ * blocks run before 2026-10-09, which are counted only in `totalTrials`).
  */
 export function deriveState(trials: StaircaseTrial[], cfg: StaircaseConfig = DEFAULT_STAIRCASE_CONFIG): StaircaseState {
   const state: StaircaseState = {
     above: newArm(cfg.startAbove),
     below: newArm(cfg.startBelow),
-    mainTrialsSinceCatch: 0,
-    catchTotal: 0,
-    catchCorrect: 0,
+    attentionTotal: 0,
+    attentionCorrect: 0,
     totalTrials: 0,
   };
 
@@ -183,16 +178,14 @@ export function deriveState(trials: StaircaseTrial[], cfg: StaircaseConfig = DEF
 
   ordered.forEach((trial) => {
     state.totalTrials += 1;
-    if (trial.staircaseId === 'catch') {
-      state.catchTotal += 1;
-      state.catchCorrect += trial.correct ? 1 : 0;
-      state.mainTrialsSinceCatch = 0;
+    if (trial.staircaseId === 'attention') {
+      state.attentionTotal += 1;
+      state.attentionCorrect += trial.correct ? 1 : 0;
       return;
     }
     if (trial.staircaseId !== 'above' && trial.staircaseId !== 'below') {
       return;
     }
-    state.mainTrialsSinceCatch += 1;
     applyTrial(state[trial.staircaseId], trial.correct, cfg);
   });
 
@@ -205,7 +198,7 @@ export interface NextTrialSpec {
 }
 
 /**
- * True once the block has run `maxBlockTrials` trials (catch trials included): it then ends even
+ * True once the block has run `maxBlockTrials` trials (attention checks included): it then ends even
  * when an arm has not reached its reversals or its own trial cap.
  */
 export function blockCapReached(state: StaircaseState, cfg: StaircaseConfig = DEFAULT_STAIRCASE_CONFIG): boolean {
@@ -213,8 +206,8 @@ export function blockCapReached(state: StaircaseState, cfg: StaircaseConfig = DE
 }
 
 /**
- * Picks the next trial of a block: a catch trial when one is due, otherwise a uniform random
- * draw among the staircases that are not finished. Returns null when the block is complete: both
+ * Picks the next staircase trial of a block: a uniform random draw among the staircases that are
+ * not finished (`staircaseBlock` decides when an attention check comes first). Returns null when the block is complete: both
  * arms are done, or the block has reached `maxBlockTrials`.
  */
 export function nextTrial(
@@ -224,13 +217,6 @@ export function nextTrial(
 ): NextTrialSpec | null {
   if ((state.above.done && state.below.done) || blockCapReached(state, cfg)) {
     return null;
-  }
-
-  if (state.mainTrialsSinceCatch >= cfg.catchEvery && cfg.catchValues.length > 0) {
-    return {
-      staircaseId: 'catch',
-      nB: cfg.catchValues[state.catchTotal % cfg.catchValues.length],
-    };
   }
 
   const open: ('above' | 'below')[] = [];
@@ -265,7 +251,7 @@ export function summarise(state: StaircaseState): StaircaseSummary {
     threshold: mean(arms),
     reversalsAbove: state.above.reversals.length,
     reversalsBelow: state.below.reversals.length,
-    catchCorrect: state.catchCorrect,
-    catchTotal: state.catchTotal,
+    attentionCorrect: state.attentionCorrect,
+    attentionTotal: state.attentionTotal,
   };
 }

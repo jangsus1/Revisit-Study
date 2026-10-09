@@ -8,6 +8,12 @@
  * be regenerated from the stored data. Every `restEvery` main trials the block inserts the `rest`
  * page before the next trial. The block's first trial and the first trial after each rest wait for a
  * key press or click before they start (`waitForStart`).
+ *
+ * Attention checks (`attention.ts`) are mixed in after every 10 to 20 staircase trials (seeded
+ * gaps, at most 10 per block): two ungrouped displays of 5 and 30 items, the 30 being correct.
+ * They never feed the arms. Once more than `maxAttentionMisses` (3) checks are missed, the block
+ * returns the terminal `attention-failed` component, which ends the study for the participant;
+ * since that follows from the stored trials, a reload lands on it again.
  */
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
 import type {
@@ -16,20 +22,31 @@ import type {
 import { hashSeed } from './generator';
 import { mulberry32 } from './generator/prng';
 import {
+  AttentionConfig, DEFAULT_ATTENTION_CONFIG, attentionDue, countAttention, drawAttentionGaps, isRejected,
+} from './attention';
+import {
   DEFAULT_STAIRCASE_CONFIG, StaircaseConfig, deriveState, nextTrial,
 } from './staircase';
+
+/** The terminal component the block returns once too many attention checks were missed. */
+export const ATTENTION_FAILED = 'attention-failed';
 
 export interface StaircaseBlockParameters {
   cellId: string;
   cue: Cue;
   density: Density;
   maxTrials?: number;
-  /** hard cap on the whole block, catch trials included; default 196 */
+  /** hard cap on the whole block, attention checks included; default 190 */
   maxBlockTrials?: number;
   maxReversals?: number;
-  catchEvery?: number;
-  /** offer the `rest` page after every this many main (non-catch) trials; default 60, 0 = never */
+  /** offer the `rest` page after every this many staircase trials; default 60, 0 = never */
   restEvery?: number;
+  /** attention checks: gap range in staircase trials (default 10..20) and at most this many (10) */
+  attentionGapMin?: number;
+  attentionGapMax?: number;
+  maxAttentionChecks?: number;
+  /** attention checks allowed to be missed; the next miss ends the study (default 3) */
+  maxAttentionMisses?: number;
 }
 
 const DEFAULT_REFRESH_MS = 1000 / 60;
@@ -149,7 +166,8 @@ export default function staircaseBlock({
   answers, customParameters, currentStep, currentBlock,
 }: JumpFunctionParameters<StaircaseBlockParameters>): JumpFunctionReturnVal {
   const {
-    cellId, cue, density, maxTrials, maxBlockTrials, maxReversals, catchEvery, restEvery,
+    cellId, cue, density, maxTrials, maxBlockTrials, maxReversals, restEvery,
+    attentionGapMin, attentionGapMax, maxAttentionChecks, maxAttentionMisses,
   } = customParameters;
 
   const { sessionSalt, refreshMs, pxPerCm } = readSetupAnswer(answers);
@@ -162,10 +180,21 @@ export default function staircaseBlock({
     ...(maxTrials === undefined ? {} : { maxTrials }),
     ...(maxBlockTrials === undefined ? {} : { maxBlockTrials }),
     ...(maxReversals === undefined ? {} : { maxReversals }),
-    ...(catchEvery === undefined ? {} : { catchEvery }),
+  };
+  const attention: AttentionConfig = {
+    ...DEFAULT_ATTENTION_CONFIG,
+    ...(attentionGapMin === undefined ? {} : { gapMin: attentionGapMin }),
+    ...(attentionGapMax === undefined ? {} : { gapMax: attentionGapMax }),
+    ...(maxAttentionChecks === undefined ? {} : { maxChecks: maxAttentionChecks }),
+    ...(maxAttentionMisses === undefined ? {} : { maxMisses: maxAttentionMisses }),
   };
 
   const trials = collectBlockTrials(answers, currentBlock, currentStep);
+  const { checks, misses } = countAttention(trials);
+  if (isRejected(misses, attention.maxMisses)) {
+    // terminal: the study ends here, and re-deriving from the stored trials keeps it so
+    return { component: ATTENTION_FAILED, parameters: { misses, maxMisses: attention.maxMisses } };
+  }
   const state = deriveState(trials, cfg);
 
   const trialIndex = trials.length;
@@ -176,33 +205,46 @@ export default function staircaseBlock({
     return { component: null };
   }
 
-  // A rest is due once another `restEvery` main trials have run since the last one.
+  // A rest is due once another `restEvery` staircase trials have run since the last one.
+  const staircaseTrials = trials.filter((t) => t.staircaseId === 'above' || t.staircaseId === 'below').length;
   const every = restEvery ?? DEFAULT_REST_EVERY;
   if (every > 0) {
-    const mainTrials = trials.filter((t) => t.staircaseId === 'above' || t.staircaseId === 'below').length;
-    if (Math.floor(mainTrials / every) > countRests(answers, currentBlock, currentStep)) {
+    if (Math.floor(staircaseTrials / every) > countRests(answers, currentBlock, currentStep)) {
       return { component: 'rest' };
     }
   }
 
   const aFirst = drawAFirst(sessionSalt, cellId, trialIndex);
-  const parameters: TrialParams = {
+  const common = {
     seedA: hashSeed(sessionSalt, cellId, trialIndex, 'A'),
     seedB: hashSeed(sessionSalt, cellId, trialIndex, 'B'),
-    nB: next.nB,
     cue,
     density,
     cellId,
     trialIndex,
-    staircaseId: next.staircaseId,
     aFirst,
     hueOffset: drawHueOffset(sessionSalt),
     starts,
     refreshMs,
     pxPerCm,
     waitForStart: waitsForStart(answers, currentBlock, currentStep),
+    attentionMisses: misses,
+    maxAttentionMisses: attention.maxMisses,
   };
 
+  // An attention check comes before the next staircase trial once its gap has run.
+  if (attentionDue(staircaseTrials, checks, drawAttentionGaps(sessionSalt, cellId, attention))) {
+    const parameters: TrialParams = {
+      ...common, staircaseId: 'attention', nA: attention.few, nB: attention.many,
+    };
+    return {
+      component: 'trial',
+      parameters: { ...parameters },
+      correctAnswer: [{ id: 'trial', answer: correctInterval(attention.many, aFirst, attention.few) }],
+    };
+  }
+
+  const parameters: TrialParams = { ...common, staircaseId: next.staircaseId, nB: next.nB };
   return {
     component: 'trial',
     parameters: { ...parameters },
