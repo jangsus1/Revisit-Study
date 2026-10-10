@@ -18,13 +18,24 @@ vi.mock('../generator', () => ({
 const BLOCK = 'practice';
 const STEP = 4;
 
-function storedTrials(count: number): ParticipantData['answers'] {
+const EXACT = {
+  fixation: 500, s1: 200, mask: 150, blank: 250, s2: 200, mask2: 150, blank2: 250,
+};
+/** s1 doubled, as on a display that keeps half the estimated refresh rate */
+const DOUBLED = { ...EXACT, s1: 400 };
+
+function storedTrials(count: number, offTarget: number[] = []): ParticipantData['answers'] {
   return Object.fromEntries(new Array(count).fill(null).map((_, index) => [
     `${BLOCK}_${STEP}_practice-trial_${index}`,
     {
       componentName: 'practice-trial',
       endTime: index + 1,
-      answer: { trial: 'first', trialData: { staircaseId: 'practice', trialIndex: index } as unknown as TrialAnswer },
+      answer: {
+        trial: 'first',
+        trialData: {
+          staircaseId: 'practice', trialIndex: index, measured: offTarget.includes(index) ? DOUBLED : EXACT, refreshMs: 1000 / 60,
+        } as unknown as TrialAnswer,
+      },
       correctAnswer: [{ id: 'trial', answer: 'first' }],
     },
   ])) as unknown as ParticipantData['answers'];
@@ -105,5 +116,44 @@ describe('practiceBlock', () => {
     expect(parameters.refreshMs).toBe(10);
     expect(parameters.pxPerCm).toBe(38.2);
     expect(parameters.seedA).not.toBe((runPractice(0).parameters as unknown as TrialParams).seedA);
+  });
+  describe('display-timing backstop', () => {
+    function finish(offTarget: number[], overrides: { maxOffTargetTrials?: number } = {}) {
+      return practiceBlock({
+        answers: storedTrials(3, offTarget), customParameters: { ...CELL, ...overrides }, currentStep: STEP, currentBlock: BLOCK,
+      });
+    }
+    test('none or one of three practice trials off target: on to the main task', () => {
+      expect(finish([])).toEqual({ component: null });
+      expect(finish([1])).toEqual({ component: null });
+    });
+    test('two or three of three off target end the session on display-failed', () => {
+      expect(finish([0, 2])).toEqual({ component: 'display-failed' });
+      expect(finish([0, 1, 2])).toEqual({ component: 'display-failed' });
+    });
+    test('a reload stays on the end page (it is re-derived from the stored trials)', () => {
+      const answers = storedTrials(3, [0, 1]);
+      const call = () => practiceBlock({
+        answers, customParameters: CELL, currentStep: STEP, currentBlock: BLOCK,
+      });
+      expect(call()).toEqual({ component: 'display-failed' });
+      expect(call()).toEqual({ component: 'display-failed' });
+    });
+    test('only judged after the last practice trial', () => {
+      expect(runPractice(2).component).toBe('practice-trial');
+      expect(practiceBlock({
+        answers: storedTrials(2, [0, 1]), customParameters: CELL, currentStep: STEP, currentBlock: BLOCK,
+      }).component).toBe('practice-trial');
+    });
+    test('fixation off target does not count; maxOffTargetTrials can switch the backstop off', () => {
+      const answers = storedTrials(3);
+      Object.values(answers).forEach((record) => {
+        (record.answer.trialData as unknown as { measured: Record<string, number> }).measured.fixation = 600;
+      });
+      expect(practiceBlock({
+        answers, customParameters: CELL, currentStep: STEP, currentBlock: BLOCK,
+      })).toEqual({ component: null });
+      expect(finish([0, 1, 2], { maxOffTargetTrials: 3 })).toEqual({ component: null });
+    });
   });
 });

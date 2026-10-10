@@ -165,6 +165,16 @@
         "redirectUrl": "https://app.prolific.com/submissions/complete?cc=C14JYDHI",
         "redirectDelayMs": 8000
       }
+    },
+    "display-failed": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/DisplayFailed.tsx",
+      "response": [],
+      "parameters": {
+        "prolificCode": "C14JYDHI",
+        "redirectUrl": "https://app.prolific.com/submissions/complete?cc=C14JYDHI",
+        "redirectDelayMs": 8000
+      }
     }
   },
   "sequence": {

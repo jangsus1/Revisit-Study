@@ -6,10 +6,16 @@
  * on by itself (no Check Answer step). The block still returns the `correctAnswer`, so reVISit
  * stores it on the record. Its first trial waits for a key press or click before it starts
  * (`waitForStart`).
+ *
+ * Display-timing backstop (`timingGuard.ts`): once the practice trials are done, if more than
+ * `maxOffTargetTrials` (default 1, i.e. two or more of three) had a stimulus or mask off target by
+ * more than 25 ms, the block returns the terminal `display-failed` component instead of ending, so the
+ * session ends before the main task. It follows from the stored trials, so a reload lands on it again.
  */
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
 import type { Cue, Density, TrialParams } from './generator';
 import { hashSeed } from './generator';
+import { PRACTICE_MAX_OFF_TRIALS, countOffTarget } from './timingGuard';
 import {
   collectBlockTrials, correctInterval, drawAFirst, drawHueOffset, readSetupAnswer, waitsForStart,
 } from './staircaseBlock';
@@ -19,7 +25,12 @@ export interface PracticeBlockParameters {
   density: Density;
   /** number of practice trials; defaults to 3 */
   trials?: number;
+  /** the session ends when more practice trials than this were off target (default 1) */
+  maxOffTargetTrials?: number;
 }
+
+/** The terminal component the block returns when the practice trials' display timing was off. */
+export const DISPLAY_FAILED = 'display-failed';
 
 const PRACTICE_CELL = 'practice';
 const PRACTICE_NB = [12, 40];
@@ -31,10 +42,13 @@ export default function practiceBlock({
 }: JumpFunctionParameters<PracticeBlockParameters>): JumpFunctionReturnVal {
   const { cue, density } = customParameters;
   const total = customParameters.trials ?? DEFAULT_PRACTICE_TRIALS;
-  const trialIndex = collectBlockTrials(answers, currentBlock, currentStep).length;
+  const trials = collectBlockTrials(answers, currentBlock, currentStep);
+  const trialIndex = trials.length;
 
   if (trialIndex >= total) {
-    return { component: null };
+    const maxOff = customParameters.maxOffTargetTrials ?? PRACTICE_MAX_OFF_TRIALS;
+    // terminal: no parameters, so the page gets its config parameters (Prolific code, redirect)
+    return countOffTarget(trials) > maxOff ? { component: DISPLAY_FAILED } : { component: null };
   }
 
   const { sessionSalt, refreshMs, pxPerCm } = readSetupAnswer(answers);

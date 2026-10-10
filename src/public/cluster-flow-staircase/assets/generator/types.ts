@@ -271,9 +271,52 @@ export interface TrialAnswer {
   displayB: Display;
 }
 
+/** One run of the setup's display test: the real trial timeline with real displays. */
+export interface DisplayTestRun {
+  measured: MeasuredDurations;
+  /** the judged phases (s1, mask, s2, mask2) off their nominal duration by more than 25 ms (`timingGuard.ts`) */
+  offPhases: (keyof MeasuredDurations)[];
+}
+
+/** One round of the display test (three runs back to back). */
+export interface DisplayTestRound {
+  runs: DisplayTestRun[];
+  /** runs with at least one off-target phase */
+  offRuns: number;
+  /** at most `maxOffRuns` off-target runs */
+  passed: boolean;
+}
+
+/** The setup's display test (since 2026-10-10). */
+export interface DisplayTestResult {
+  cue: Cue;
+  density: Density;
+  nB: number;
+  /** the [seedA, seedB] of each run of a round */
+  seeds: [number, number][];
+  /** the CSS scale of the stage (the trials' scale without a card) */
+  scale: number;
+  refreshMs: number;
+  /** a round fails with more off-target runs than this */
+  maxOffRuns: number;
+  /** one round, or two when the first failed */
+  rounds: DisplayTestRound[];
+  repeated: boolean;
+  passed: boolean;
+  /** rounds restarted because full screen was left during them (their runs are dropped) */
+  restarts: number;
+}
+
 export interface SetupAnswer {
   sessionSalt: number;
   refreshMs: number;
+  /**
+   * every refresh estimate made, ms: one, or two when the first was outside 50 to 300 Hz and was
+   * re-measured (`refreshMs` is the last); absent before 2026-10-10
+   */
+  refreshEstimatesMs?: number[];
+  /** the display test (`DisplayTest.tsx`); absent before 2026-10-10 */
+  displayTest?: DisplayTestResult;
   calibration: { targetMs: number; measuredMs: number }[];
   medianErrorMs: number;
   maxErrorMs: number;

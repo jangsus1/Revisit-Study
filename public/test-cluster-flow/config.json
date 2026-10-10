@@ -114,7 +114,10 @@
       ],
       "parameters": {
         "calibrationIntervals": 4,
-        "refreshSamples": 20
+        "refreshSamples": 20,
+        "refreshEndBelowHz": 1,
+        "refreshEndAboveHz": 100000,
+        "displayTestMaxOffRuns": 3
       }
     },
     "trial": {
@@ -126,6 +129,11 @@
     "attention-failed": {
       "type": "react-component",
       "path": "cluster-flow-staircase/assets/AttentionFailed.tsx",
+      "response": []
+    },
+    "display-failed": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/DisplayFailed.tsx",
       "response": []
     }
   },
@@ -150,7 +158,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "color",
-                  "density": "sparse"
+                  "density": "sparse",
+                  "maxOffTargetTrials": 3
                 }
               },
               "block-intro",
