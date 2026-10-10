@@ -78,17 +78,19 @@ describe('InfoPage', () => {
     expect(advance).toHaveBeenCalledTimes(1);
   });
 
-  test('introduction: the question, five session parts and the session facts', () => {
+  test('introduction: the question, the three parts still ahead and the session facts', () => {
     renderPage({ page: 'introduction' });
     expect(screen.getByText('Which diagram has more items?')).toBeTruthy();
-    expect(screen.getAllByTestId('session-step')).toHaveLength(5);
+    // consent and the setup come before it (since 2026-10-10)
+    expect(screen.getAllByTestId('session-step')).toHaveLength(3);
+    expect(screen.getByTestId('session-steps').textContent).not.toMatch(/Consent|Display check/);
+    expect(screen.getByTestId('session-steps').textContent).toContain('A few questions');
     expect(screen.getByTestId('session-steps').textContent).toContain('examples + 3 practice trials');
     expect(screen.getByTestId('session-steps').textContent).toContain('150–200 trials (about 8 min), a break every 50');
     // without reVISit's sequence (this test) the fallback estimate is shown
-    expect(screen.getByTestId('session-meta').textContent).toContain('About 15 minutes');
+    expect(screen.getByTestId('session-meta').textContent).toBe('About 13 minutes from here');
     expect(screen.getByTestId('attention-note').textContent)
       .toBe('A few easy attention checks are mixed in — missing more than 3 ends the study.');
-    expect(screen.getByTestId('session-meta').textContent).toContain('full screen');
   });
 
   test('instructions: the trial storyboard with durations and the item-count figure', () => {
@@ -160,7 +162,7 @@ describe('InfoPage', () => {
     expect(screen.getByTestId('answer-keys')).toBeTruthy();
   });
 
-  test('pages after the setup block on a closed full screen; the introduction does not', () => {
+  test('pages after the setup, the introduction included, block on a closed full screen', () => {
     let fullscreenElement: Element | null = null;
     Object.defineProperty(document, 'fullscreenElement', { configurable: true, get: () => fullscreenElement });
     Object.defineProperty(document.documentElement, 'requestFullscreen', {
@@ -168,7 +170,7 @@ describe('InfoPage', () => {
     });
     try {
       renderPage({ page: 'introduction' });
-      expect(screen.queryByTestId('fullscreen-gate')).toBeNull();
+      expect(screen.getByTestId('fullscreen-gate')).toBeTruthy();
       cleanup();
 
       renderPage({ page: 'rest' });

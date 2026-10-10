@@ -23,22 +23,28 @@ const REST_EVERY = 50;
 export const MAIN_BLOCK_MINUTES = Math.round(
   (EXPECTED_MAIN_TRIALS * SECONDS_PER_TRIAL + Math.floor(EXPECTED_MAIN_TRIALS / REST_EVERY) * SECONDS_PER_REST) / 60,
 );
-/** Fallback for the introduction when reVISit's sequence is not available (reviewer pages, tests). */
-export const DEFAULT_SESSION_MINUTES = 15;
+/**
+ * Fallback for the introduction's "about N minutes from here" when reVISit's sequence is not
+ * available (reviewer pages, tests): the session after the consent and the setup, which come first.
+ */
+export const DEFAULT_SESSION_MINUTES = 13;
 /** A dynamic block never shows more than this fraction done before it ends. */
 const BLOCK_CAP = 0.97;
 
+// in session order (since 2026-10-10 consent and setup come first, then the introduction)
 const PAGE_SECONDS: [RegExp, number][] = [
   [/^end$/, 0],
-  [/^introduction$/, 20],
   // the consent page has no minimum reading time; most people skim it
   [/^consent$/, 45],
-  [/^setup$/, 60],
+  // full screen, refresh estimate, screen check, display test (about 8 s) and card check
+  [/^setup$/, 70],
+  [/^introduction$/, 20],
   [/^instructions$/, 45],
   [/^examples$/, 50],
   [/^practice-intro$/, 20],
   [/^block-intro$/, 15],
-  [/^demographics$/, 90],
+  // the library component appears as `$demographics.components.demographics` in the flat sequence
+  [/(^|\.)demographics$/, 90],
 ];
 
 export interface BlockInfo {

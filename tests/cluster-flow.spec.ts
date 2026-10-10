@@ -82,10 +82,22 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   await resetClientStudyState(page);
   await page.goto(`/${STUDY_ID}`);
 
-  // Introduction (a TSX page in the Panel layout, advanced by its own button once the reading time,
-  // shortened to 1 s in the test study, has passed; Enter does nothing before that)
+  // Setup first (the test study skips the consent page, which the main study shows before it):
+  // full screen + timing, the silent display test (the real trial timeline three times; its
+  // thresholds cannot trip in the test study), then the screen-size card check ("I have no card").
+  await page.getByRole('button', { name: 'Enter full screen', exact: true }).click({ timeout: 15000 });
+  await expect(page.getByTestId('display-test')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('display-test-text')).toHaveText('A few diagrams will flash for about 10 seconds. Nothing to do.');
+  await expect(page.getByTestId('layer-s1')).toHaveAttribute('data-n', '24', { timeout: 5000 });
+  await expect(page.getByTestId('card-check')).toBeVisible({ timeout: 30000 });
+  await expect(page.getByTestId('setup-summary')).toHaveCount(0);
+  await page.getByRole('button', { name: 'I have no card' }).click();
+
+  // Introduction (a TSX page in the Panel layout, now after the setup, listing the three parts still
+  // ahead), advanced by its own button once the reading time, shortened to 1 s in the test study,
+  // has passed; Enter does nothing before that
   await expect(page.getByRole('heading', { name: 'Which diagram has more items?' })).toBeVisible({ timeout: 15000 });
-  await expect(page.getByTestId('session-step')).toHaveCount(5);
+  await expect(page.getByTestId('session-step')).toHaveCount(3);
   const primary = page.getByTestId('primary-button');
   await expect(primary).toBeDisabled();
   await expect(primary).toHaveText(/^Start · 1 s$/);
@@ -93,13 +105,6 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   await expect(page.getByRole('heading', { name: 'Which diagram has more items?' })).toBeVisible();
   await expect(primary).toBeEnabled({ timeout: 5000 });
   await primary.click();
-
-  // Setup: full screen + timing, then the screen-size card check ("I have no card").
-  // (the timing is measured silently: "One moment…", then straight to the card check)
-  await page.getByRole('button', { name: 'Enter full screen', exact: true }).click();
-  await expect(page.getByTestId('card-check')).toBeVisible({ timeout: 20000 });
-  await expect(page.getByTestId('setup-summary')).toHaveCount(0);
-  await page.getByRole('button', { name: 'I have no card' }).click();
 
   // Instructions: storyboard and item figure. Leaving full screen here brings up the gate, which
   // keeps Enter from advancing the page underneath.
@@ -242,6 +247,16 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   expect(setup?.screenInches).toBeNull();
   expect(setup?.confirmedImplausible).toBe(false);
   expect(typeof setup?.fullscreenExits).toBe('number');
+  // the display test's runs are stored with the setup
+  const displayTest = setup?.displayTest as {
+    passed: boolean, rounds: { runs: { measured: Record<string, number>, offPhases: string[] }[] }[], cue: string, nB: number,
+  };
+  expect(displayTest.passed).toBe(true);
+  expect(displayTest.cue).toBe('proximity');
+  expect(displayTest.nB).toBe(24);
+  expect(displayTest.rounds[0].runs).toHaveLength(3);
+  displayTest.rounds[0].runs.forEach((run) => expect(run.measured.s1).toBeGreaterThan(0));
+  expect((setup?.refreshEstimatesMs as number[]).length).toBeGreaterThanOrEqual(1);
 
   // the gate's key press was not an answer: every stored trial matches one prompt answer
   const stored = await readStoredTrials(page);

@@ -180,9 +180,9 @@
   "sequence": {
     "order": "fixed",
     "components": [
-      "introduction",
       "consent",
       "setup",
+      "introduction",
       "instructions",
       {
         "order": "latinSquare",

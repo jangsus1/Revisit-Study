@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import {
-  EXPECTED_MAIN_TRIALS, MAIN_BLOCK_MINUTES, SECONDS_PER_TRIAL, blockEstimate, pageSeconds, progressLabel, progressSummary,
+  DEFAULT_SESSION_MINUTES, EXPECTED_MAIN_TRIALS, MAIN_BLOCK_MINUTES, SECONDS_PER_TRIAL, blockEstimate, pageSeconds, progressLabel, progressSummary,
 } from '../studyProgress';
 
-const FLAT = ['introduction', 'consent', 'setup', 'instructions', 'examples', 'practice-intro', 'practice-color-sparse',
+const FLAT = ['consent', 'setup', 'introduction', 'instructions', 'examples', 'practice-intro', 'practice-color-sparse',
   'block-intro', 'cell-color-sparse', 'demographics'];
 
 describe('blockEstimate', () => {
@@ -25,6 +25,11 @@ describe('blockEstimate', () => {
 
   test('pages have fixed weights and unknown pages 10 s', () => {
     expect(pageSeconds('consent')).toBe(45);
+    expect(pageSeconds('setup')).toBe(70);
+    // the demographics library component, under its namespaced name too
+    expect(pageSeconds('demographics')).toBe(90);
+    expect(pageSeconds('$demographics.components.demographics')).toBe(90);
+    expect(pageSeconds('demographics.components.demographics')).toBe(90);
     expect(pageSeconds('examples')).toBe(50);
     expect(pageSeconds('end')).toBe(0);
     expect(pageSeconds('something-else')).toBe(10);
@@ -41,9 +46,14 @@ describe('progressSummary', () => {
     expect(MAIN_BLOCK_MINUTES).toBe(8);
   });
 
+  test('the introduction (after consent and setup) shows the fallback minutes the session has left', () => {
+    const atIntroduction = progressSummary(FLAT, 2, null)!;
+    expect(Math.ceil(atIntroduction.minutesLeft)).toBe(DEFAULT_SESSION_MINUTES);
+  });
+
   test('counts the pages before the current one', () => {
     const atInstructions = progressSummary(FLAT, 3, null);
-    expect(atInstructions?.done).toBe(20 + 45 + 60);
+    expect(atInstructions?.done).toBe(45 + 70 + 20);
   });
 
   test('moves through a dynamic block by its funcIndex, capped below the block end', () => {

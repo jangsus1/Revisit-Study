@@ -1,7 +1,8 @@
 /**
  * The study's information pages, in the Panel layout with figures instead of paragraphs. One
  * react-component, `parameters.page` picks the page:
- *  - `introduction`: what the task is and the five parts of the session (before full screen);
+ *  - `introduction`: what the task is and the parts of the session still ahead (since 2026-10-10 it
+ *    comes after the consent and the setup, in full screen);
  *  - `instructions`: the trial storyboard and "what counts as an item";
  *  - `practice`: the practice feedback loop and one real diagram of the participant's cue;
  *  - `main`: the main-task rules and answer keys;
@@ -12,8 +13,7 @@
  * and density from the upcoming practice block's parameters (or from `parameters.cue/density`).
  */
 import {
-  IconBolt, IconClock, IconCoffee, IconEyeCheck, IconDeviceDesktop, IconDeviceDesktopCheck, IconKeyboard, IconMaximize,
-  IconMessageOff, IconMessageQuestion, IconSchool, IconSignature,
+  IconBolt, IconClock, IconCoffee, IconEyeCheck, IconKeyboard, IconMessageOff, IconMessageQuestion, IconSchool,
 } from '@tabler/icons-react';
 import {
   ComponentType, ReactNode, useEffect, useMemo,
@@ -151,11 +151,9 @@ function IntroductionPage({ practiceTrials }: { practiceTrials: number }) {
           display: 'flex', justifyContent: 'center', alignItems: 'stretch', gap: 12, flexWrap: 'wrap',
         }}
       >
-        <StepChip n={1} icon={IconSignature} label="Consent" />
-        <StepChip n={2} icon={IconDeviceDesktopCheck} label="Display check" sub="full screen, screen size" />
-        <StepChip n={3} icon={IconSchool} label="Instructions" sub={`examples + ${practiceTrials} practice trials`} />
-        <StepChip n={4} icon={IconKeyboard} label="Main task" sub={`${MAIN_BLOCK_TRIALS} trials (about ${MAIN_BLOCK_MINUTES} min), a break every ${REST_EVERY}`} />
-        <StepChip n={5} icon={IconMessageQuestion} label="A few questions" />
+        <StepChip n={1} icon={IconSchool} label="Instructions" sub={`examples + ${practiceTrials} practice trials`} />
+        <StepChip n={2} icon={IconKeyboard} label="Main task" sub={`${MAIN_BLOCK_TRIALS} trials (about ${MAIN_BLOCK_MINUTES} min), a break every ${REST_EVERY}`} />
+        <StepChip n={3} icon={IconMessageQuestion} label="A few questions" />
       </div>
       <div
         data-testid="session-meta"
@@ -163,11 +161,7 @@ function IntroductionPage({ practiceTrials }: { practiceTrials: number }) {
           display: 'flex', justifyContent: 'center', gap: 22, flexWrap: 'wrap', fontSize: 16, color: UI.muted,
         }}
       >
-        <Meta icon={IconClock}>{`About ${minutes} minutes`}</Meta>
-        <span aria-hidden>·</span>
-        <Meta icon={IconDeviceDesktop}>laptop or desktop</Meta>
-        <span aria-hidden>·</span>
-        <Meta icon={IconMaximize}>full screen</Meta>
+        <Meta icon={IconClock}>{`About ${minutes} minutes from here`}</Meta>
       </div>
       <div
         data-testid="attention-note"
@@ -338,7 +332,7 @@ interface PageSpec {
  */
 export const PAGES: Record<InfoPageName, PageSpec> = {
   introduction: {
-    kicker: 'Research study', title: 'Which diagram has more items?', button: 'Start', maxWidth: 900, gate: false, readSeconds: 5,
+    kicker: 'Research study', title: 'Which diagram has more items?', button: 'Start', maxWidth: 900, gate: true, readSeconds: 5,
   },
   instructions: {
     title: 'How a trial works', button: 'Continue', maxWidth: 1100, gate: true, readSeconds: 15,
