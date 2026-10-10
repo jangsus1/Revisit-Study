@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest';
 import type { StaircaseId } from '../generator/types';
 import { mulberry32 } from '../generator/prng';
-import { attentionDue, drawAttentionGaps } from '../attention';
+import { attentionDue } from '../attention';
 import {
   DEFAULT_STAIRCASE_CONFIG,
   DISCARD_REVERSALS,
@@ -311,13 +311,12 @@ function simulateBlock(seed: number, pse = 22, scale = 2.5) {
     startBelow: 16 + Math.floor(rng() * 3),
   };
   // attention checks as staircaseBlock schedules them; this observer never misses one
-  const gaps = drawAttentionGaps(seed, 'sim');
   const trials: StaircaseTrial[] = [];
   let state = deriveState(trials, config);
   let next = nextTrial(state, config, rng);
   while (next !== null) {
     const staircaseTrials = state.above.trials + state.below.trials;
-    if (attentionDue(staircaseTrials, state.attentionTotal, gaps)) {
+    if (attentionDue(staircaseTrials, state.attentionTotal)) {
       trials.push({
         staircaseId: 'attention', nB: 30, correct: true, trialIndex: trials.length,
       });
@@ -378,8 +377,10 @@ describe('simulated observer', () => {
     expect(totals[totals.length - 1]).toBeLessThanOrEqual(190);
     runs.forEach(({ trials }) => {
       const checks = trials.filter((t) => t.staircaseId === 'attention').length;
-      expect(checks).toBeGreaterThanOrEqual(5);
-      expect(checks).toBeLessThanOrEqual(10);
+      // one per 15 staircase trials, at most 10 (none after the block's last staircase trial)
+      const n = trials.filter((t) => t.staircaseId !== 'attention').length;
+      expect(checks).toBeLessThanOrEqual(Math.min(10, Math.floor(n / 15)));
+      expect(checks).toBeGreaterThanOrEqual(Math.min(10, Math.floor((n - 1) / 15)));
     });
     runs.forEach(({ state }) => {
       expect((state.above.done && state.below.done) || blockCapReached(state, cfg)).toBe(true);

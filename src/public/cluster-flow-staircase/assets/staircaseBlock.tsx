@@ -5,12 +5,12 @@
  * stored for this block, asks `nextTrial` what to show, and returns the fully specified trial
  * parameters. Seeds, the interval order, the staircase starting levels and the colour-wheel
  * rotation are all derived from the session salt created in `SetupCheck`, so the whole session can
- * be regenerated from the stored data. Every `restEvery` main trials the block inserts the `rest`
+ * be regenerated from the stored data. Every `restEvery` (50) main-block trials the block inserts the `rest`
  * page before the next trial. The block's first trial and the first trial after each rest wait for a
  * key press or click before they start (`waitForStart`).
  *
- * Attention checks (`attention.ts`) are mixed in after every 10 to 20 staircase trials (seeded
- * gaps, at most 10 per block): two ungrouped displays of 5 and 30 items, the 30 being correct.
+ * Attention checks (`attention.ts`) are mixed in after every 15 staircase trials (at most 10 per
+ * block): two ungrouped displays of 5 and 30 items, the 30 being correct.
  * They never feed the arms. Once more than `maxAttentionMisses` (3) checks are missed, the block
  * returns the terminal `attention-failed` component, which ends the study for the participant;
  * since that follows from the stored trials, a reload lands on it again.
@@ -22,7 +22,7 @@ import type {
 import { hashSeed } from './generator';
 import { mulberry32 } from './generator/prng';
 import {
-  AttentionConfig, DEFAULT_ATTENTION_CONFIG, attentionDue, countAttention, drawAttentionGaps, isRejected,
+  AttentionConfig, DEFAULT_ATTENTION_CONFIG, attentionDue, countAttention, isRejected,
 } from './attention';
 import {
   DEFAULT_STAIRCASE_CONFIG, StaircaseConfig, deriveState, nextTrial,
@@ -39,11 +39,13 @@ export interface StaircaseBlockParameters {
   /** hard cap on the whole block, attention checks included; default 190 */
   maxBlockTrials?: number;
   maxReversals?: number;
-  /** offer the `rest` page after every this many staircase trials; default 60, 0 = never */
+  /**
+   * offer the `rest` page after every this many main-block trials, staircase trials and attention
+   * checks together (default 50: rests after trials 50, 100, 150); 0 = never
+   */
   restEvery?: number;
-  /** attention checks: gap range in staircase trials (default 10..20) and at most this many (10) */
-  attentionGapMin?: number;
-  attentionGapMax?: number;
+  /** attention checks: one after every this many staircase trials (default 15), at most this many (10) */
+  attentionEvery?: number;
   maxAttentionChecks?: number;
   /** attention checks allowed to be missed; the next miss ends the study (default 3) */
   maxAttentionMisses?: number;
@@ -52,7 +54,8 @@ export interface StaircaseBlockParameters {
 const DEFAULT_REFRESH_MS = 1000 / 60;
 const DEFAULT_SALT = 1;
 
-const DEFAULT_REST_EVERY = 60;
+/** Rests come after every this many main-block trials (staircase and attention), so at 50, 100, 150. */
+export const DEFAULT_REST_EVERY = 50;
 
 /** The interval that holds the display with more items: B's when N_B exceeds the reference, else A's. */
 export function correctInterval(nB: number, aFirst: boolean, target: number): 'first' | 'second' {
@@ -167,7 +170,7 @@ export default function staircaseBlock({
 }: JumpFunctionParameters<StaircaseBlockParameters>): JumpFunctionReturnVal {
   const {
     cellId, cue, density, maxTrials, maxBlockTrials, maxReversals, restEvery,
-    attentionGapMin, attentionGapMax, maxAttentionChecks, maxAttentionMisses,
+    attentionEvery, maxAttentionChecks, maxAttentionMisses,
   } = customParameters;
 
   const { sessionSalt, refreshMs, pxPerCm } = readSetupAnswer(answers);
@@ -183,8 +186,7 @@ export default function staircaseBlock({
   };
   const attention: AttentionConfig = {
     ...DEFAULT_ATTENTION_CONFIG,
-    ...(attentionGapMin === undefined ? {} : { gapMin: attentionGapMin }),
-    ...(attentionGapMax === undefined ? {} : { gapMax: attentionGapMax }),
+    ...(attentionEvery === undefined ? {} : { every: attentionEvery }),
     ...(maxAttentionChecks === undefined ? {} : { maxChecks: maxAttentionChecks }),
     ...(maxAttentionMisses === undefined ? {} : { maxMisses: maxAttentionMisses }),
   };
@@ -192,8 +194,10 @@ export default function staircaseBlock({
   const trials = collectBlockTrials(answers, currentBlock, currentStep);
   const { checks, misses } = countAttention(trials);
   if (isRejected(misses, attention.maxMisses)) {
-    // terminal: the study ends here, and re-deriving from the stored trials keeps it so
-    return { component: ATTENTION_FAILED, parameters: { misses, maxMisses: attention.maxMisses } };
+    // terminal: the study ends here, and re-deriving from the stored trials keeps it so. No
+    // parameters, so the page gets its own config parameters (Prolific code, redirect); it reads
+    // the misses from the stored trials.
+    return { component: ATTENTION_FAILED };
   }
   const state = deriveState(trials, cfg);
 
@@ -205,11 +209,11 @@ export default function staircaseBlock({
     return { component: null };
   }
 
-  // A rest is due once another `restEvery` staircase trials have run since the last one.
+  // A rest is due once another `restEvery` main-block trials (staircase and attention) have run.
   const staircaseTrials = trials.filter((t) => t.staircaseId === 'above' || t.staircaseId === 'below').length;
   const every = restEvery ?? DEFAULT_REST_EVERY;
   if (every > 0) {
-    if (Math.floor(staircaseTrials / every) > countRests(answers, currentBlock, currentStep)) {
+    if (Math.floor(trials.length / every) > countRests(answers, currentBlock, currentStep)) {
       return { component: 'rest' };
     }
   }
@@ -233,7 +237,7 @@ export default function staircaseBlock({
   };
 
   // An attention check comes before the next staircase trial once its gap has run.
-  if (attentionDue(staircaseTrials, checks, drawAttentionGaps(sessionSalt, cellId, attention))) {
+  if (attentionDue(staircaseTrials, checks, attention)) {
     const parameters: TrialParams = {
       ...common, staircaseId: 'attention', nA: attention.few, nB: attention.many,
     };

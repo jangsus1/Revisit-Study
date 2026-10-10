@@ -4,7 +4,7 @@
  * Every page of the participant's flat sequence gets its expected duration in seconds. The two
  * dynamic blocks appear in the flat sequence as one entry each (their trial counts are not known in
  * advance), so they are weighted by an estimate: practice is 3 trials of about 4.5 s including the
- * 1.5 s feedback, the main block about 150 trials of about 2.8 s plus a break every 60 (it is
+ * 1.5 s feedback, the main block about 150 trials of about 2.8 s plus a break every 50 (it is
  * capped at 196 trials). Inside a
  * dynamic block the reVISit `funcIndex` (one per trial or rest page) says how far along it is; the
  * fraction is capped below 1 because the staircase may run longer than the estimate.
@@ -18,7 +18,7 @@ export const SECONDS_PER_PRACTICE_TRIAL = 4.5;
 export const EXPECTED_MAIN_TRIALS = 150;
 export const DEFAULT_PRACTICE_TRIALS = 3;
 const SECONDS_PER_REST = 20;
-const REST_EVERY = 60;
+const REST_EVERY = 50;
 /** The main block's expected length in whole minutes (the introduction's "about N min"). */
 export const MAIN_BLOCK_MINUTES = Math.round(
   (EXPECTED_MAIN_TRIALS * SECONDS_PER_TRIAL + Math.floor(EXPECTED_MAIN_TRIALS / REST_EVERY) * SECONDS_PER_REST) / 60,

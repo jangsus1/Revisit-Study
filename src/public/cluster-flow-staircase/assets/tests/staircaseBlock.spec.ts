@@ -3,7 +3,7 @@ import {
 } from 'vitest';
 import type { ParticipantData } from '../../../../parser/types';
 import type { TrialAnswer, TrialParams } from '../generator/types';
-import { attentionDue, drawAttentionGaps } from '../attention';
+import { attentionDue } from '../attention';
 import { deriveState } from '../staircase';
 import staircaseBlock, {
   ATTENTION_FAILED, collectBlockTrials, correctInterval, countRests, drawAFirst, drawHueOffset, drawStarts, readSetupAnswer, waitsForStart,
@@ -346,14 +346,15 @@ describe('staircaseBlock', () => {
   describe('attention checks', () => {
     const SALT = 4242;
     const setup = { setup_2: { componentName: 'setup', endTime: 1, answer: { setup: { sessionSalt: SALT, refreshMs: 10 } } } };
-    const gaps = drawAttentionGaps(SALT, params.cellId);
+    // the fixed schedule: one check after every 15 staircase trials
+    const gaps = new Array<number>(10).fill(15);
     /** n staircase trials, with attention checks (correct unless listed in `missed`) where they were due */
     const history = (n: number, missed: number[] = []) => {
       const list: FixtureTrial[] = [];
       let staircase = 0;
       let checks = 0;
       while (staircase < n) {
-        if (attentionDue(staircase, checks, gaps)) {
+        if (attentionDue(staircase, checks)) {
           list.push(trialAnswer({
             trialIndex: list.length, staircaseId: 'attention', nB: 30, nA: 5, correct: !missed.includes(checks),
           }));
@@ -367,14 +368,16 @@ describe('staircaseBlock', () => {
       }
       return list;
     };
-    const call = (trials: FixtureTrial[], extra: Partial<typeof params & { maxAttentionMisses: number; maxTrials: number; maxBlockTrials: number; maxReversals: number }> = {}) => staircaseBlock({
+    const call = (trials: FixtureTrial[], extra: Partial<typeof params & {
+      maxAttentionMisses: number; maxTrials: number; maxBlockTrials: number; maxReversals: number; attentionEvery: number;
+    }> = {}) => staircaseBlock({
       answers: answers({ ...setup, ...blockAnswers(trials) }),
       customParameters: { ...params, restEvery: 0, ...extra },
       currentStep: STEP,
       currentBlock: BLOCK,
     });
 
-    test('the first check comes after the first gap of staircase trials: 5 vs 30, the 30 correct', () => {
+    test('the first check comes after 15 staircase trials: 5 vs 30, the 30 correct', () => {
       expect(gaps).toHaveLength(10);
       expect(call(history(gaps[0] - 1)).parameters).toMatchObject({ staircaseId: expect.stringMatching(/above|below/) });
       const result = call(history(gaps[0]));
@@ -391,13 +394,16 @@ describe('staircaseBlock', () => {
       expect(after.filter((t) => t.staircaseId === 'attention')).toHaveLength(1);
     });
 
-    test('at most 10 checks, each after its own gap; re-derived identically from the stored trials', () => {
+    test('at most 10 checks, one per 15 staircase trials; re-derived identically from the stored trials', () => {
       const all = history(gaps.reduce((a, b) => a + b, 0) + 30);
       expect(all.filter((t) => t.staircaseId === 'attention')).toHaveLength(10);
       // after the 10th, no more checks however long the block runs
       expect((call(all, { maxTrials: 500, maxBlockTrials: 1000, maxReversals: 1000 }).parameters as unknown as TrialParams).staircaseId).not.toBe('attention');
       // the same answers give the same next trial
       expect(call(history(gaps[0]))).toEqual(call(history(gaps[0])));
+      // the interval is a block parameter
+      const short = call(history(3), { attentionEvery: 3 });
+      expect((short.parameters as unknown as TrialParams).staircaseId).toBe('attention');
     });
 
     test('checks do not move the arms', () => {
@@ -420,7 +426,7 @@ describe('staircaseBlock', () => {
       const three = four.slice(0, four.map((t) => t.staircaseId).lastIndexOf('attention'));
       expect(call(three).component).toBe('trial');
       const result = call(four);
-      expect(result).toEqual({ component: ATTENTION_FAILED, parameters: { misses: 4, maxMisses: 3 } });
+      expect(result).toEqual({ component: ATTENTION_FAILED });
       // a reload (the same stored trials, plus the unfinished rejection record) lands there again
       const reloaded = staircaseBlock({
         answers: answers({
@@ -476,24 +482,28 @@ describe('staircaseBlock', () => {
     const call = (entries: Record<string, unknown>, restEvery?: number) => staircaseBlock({
       answers: answers(entries),
       customParameters: {
-        ...params, attentionGapMin: 999, attentionGapMax: 999, ...(restEvery === undefined ? {} : { restEvery }),
+        ...params, attentionEvery: 999, ...(restEvery === undefined ? {} : { restEvery }),
       },
       currentStep: STEP,
       currentBlock: BLOCK,
     });
 
-    test('offers the rest page after every 60 main trials by default', () => {
-      expect(call(blockAnswers(mainTrials(59))).component).toBe('trial');
-      expect(call(blockAnswers(mainTrials(60)))).toEqual({ component: 'rest' });
+    test('offers the rest page after every 50 main-block trials by default', () => {
+      expect(call(blockAnswers(mainTrials(49))).component).toBe('trial');
+      expect(call(blockAnswers(mainTrials(50)))).toEqual({ component: 'rest' });
+      expect(call({
+        ...blockAnswers(mainTrials(100)),
+        [`${BLOCK}_${STEP}_rest_50`]: { componentName: 'rest', endTime: 51, answer: {} },
+      })).toEqual({ component: 'rest' });
     });
 
     test('shows each rest once, then carries on with the next trial', () => {
       const afterRest = call({
-        ...blockAnswers(mainTrials(60)),
-        [`${BLOCK}_${STEP}_rest_60`]: { componentName: 'rest', endTime: 61, answer: {} },
+        ...blockAnswers(mainTrials(50)),
+        [`${BLOCK}_${STEP}_rest_50`]: { componentName: 'rest', endTime: 51, answer: {} },
       });
       expect(afterRest.component).toBe('trial');
-      expect((afterRest.parameters as unknown as TrialParams).trialIndex).toBe(60);
+      expect((afterRest.parameters as unknown as TrialParams).trialIndex).toBe(50);
       // the first trial after a rest waits for a key press or click
       expect((afterRest.parameters as unknown as TrialParams).waitForStart).toBe(true);
     });
@@ -501,7 +511,7 @@ describe('staircaseBlock', () => {
     test('only the block\'s first trial and the first after a rest wait for the start gate', () => {
       expect((call({}).parameters as unknown as TrialParams).waitForStart).toBe(true);
       expect((call(blockAnswers(mainTrials(1))).parameters as unknown as TrialParams).waitForStart).toBe(false);
-      expect((call(blockAnswers(mainTrials(59))).parameters as unknown as TrialParams).waitForStart).toBe(false);
+      expect((call(blockAnswers(mainTrials(49))).parameters as unknown as TrialParams).waitForStart).toBe(false);
     });
 
     test('honours the restEvery override and 0 turns rests off', () => {
@@ -509,9 +519,10 @@ describe('staircaseBlock', () => {
       expect(call(blockAnswers(mainTrials(2)), 0).component).toBe('trial');
     });
 
-    test('attention checks do not count toward a rest', () => {
+    test('attention checks count toward a rest like any main-block trial', () => {
       const trials = [...mainTrials(1), trialAnswer({ trialIndex: 1, staircaseId: 'attention', nB: 30 })];
-      expect(call(blockAnswers(trials), 2).component).toBe('trial');
+      expect(call(blockAnswers(trials), 2)).toEqual({ component: 'rest' });
+      expect(call(blockAnswers(mainTrials(1)), 2).component).toBe('trial');
     });
 
     test('no rest is offered once the block is finished', () => {

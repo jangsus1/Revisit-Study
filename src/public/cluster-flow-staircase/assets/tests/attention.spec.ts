@@ -1,54 +1,34 @@
 import { describe, expect, test } from 'vitest';
 import {
-  DEFAULT_ATTENTION_CONFIG, attentionDue, countAttention, drawAttentionGaps, isRejected, livesMessage, missesLeft,
+  DEFAULT_ATTENTION_CONFIG, attentionDue, countAttention, isRejected, livesMessage, missesLeft,
 } from '../attention';
 
-describe('drawAttentionGaps', () => {
-  test('ten gaps, each a whole number from 10 to 20', () => {
-    expect(DEFAULT_ATTENTION_CONFIG).toMatchObject({
-      gapMin: 10, gapMax: 20, maxChecks: 10, maxMisses: 3, few: 5, many: 30,
-    });
-    const seen = new Set<number>();
-    for (let salt = 0; salt < 200; salt += 1) {
-      const gaps = drawAttentionGaps(salt, 'cell-color-sparse');
-      expect(gaps).toHaveLength(10);
-      gaps.forEach((g) => {
-        expect(Number.isInteger(g)).toBe(true);
-        expect(g).toBeGreaterThanOrEqual(10);
-        expect(g).toBeLessThanOrEqual(20);
-        seen.add(g);
-      });
-    }
-    // every value in the range occurs
-    expect(seen.size).toBe(11);
-  });
-
-  test('is deterministic per session and cell, and differs between them', () => {
-    expect(drawAttentionGaps(7, 'cell-a')).toEqual(drawAttentionGaps(7, 'cell-a'));
-    expect(drawAttentionGaps(7, 'cell-a')).not.toEqual(drawAttentionGaps(8, 'cell-a'));
-    expect(drawAttentionGaps(7, 'cell-a')).not.toEqual(drawAttentionGaps(7, 'cell-b'));
-  });
-
-  test('honours a config override of the range and the count', () => {
-    const gaps = drawAttentionGaps(3, 'x', {
-      ...DEFAULT_ATTENTION_CONFIG, gapMin: 2, gapMax: 3, maxChecks: 4,
-    });
-    expect(gaps).toHaveLength(4);
-    gaps.forEach((g) => expect([2, 3]).toContain(g));
-  });
-});
-
 describe('attentionDue', () => {
-  const gaps = [12, 10, 20];
-  test('a check is due once the cumulative gap has run, one at a time, at most one per gap', () => {
-    expect(attentionDue(11, 0, gaps)).toBe(false);
-    expect(attentionDue(12, 0, gaps)).toBe(true);
-    expect(attentionDue(12, 1, gaps)).toBe(false);
-    expect(attentionDue(21, 1, gaps)).toBe(false);
-    expect(attentionDue(22, 1, gaps)).toBe(true);
-    expect(attentionDue(42, 2, gaps)).toBe(true);
-    // no more than there are gaps
-    expect(attentionDue(500, 3, gaps)).toBe(false);
+  test('defaults: one check after every 15 staircase trials, at most 10, 5 vs 30, 3 misses allowed', () => {
+    expect(DEFAULT_ATTENTION_CONFIG).toEqual({
+      every: 15, maxChecks: 10, maxMisses: 3, few: 5, many: 30,
+    });
+  });
+
+  test('a check is due after 15, 30, 45 ... staircase trials, one at a time', () => {
+    expect(attentionDue(14, 0)).toBe(false);
+    expect(attentionDue(15, 0)).toBe(true);
+    expect(attentionDue(15, 1)).toBe(false);
+    expect(attentionDue(29, 1)).toBe(false);
+    expect(attentionDue(30, 1)).toBe(true);
+    expect(attentionDue(149, 9)).toBe(false);
+    expect(attentionDue(150, 9)).toBe(true);
+  });
+
+  test('never more than maxChecks, whatever the block length', () => {
+    expect(attentionDue(500, 10)).toBe(false);
+    expect(attentionDue(10, 4, {
+      ...DEFAULT_ATTENTION_CONFIG, every: 2, maxChecks: 5,
+    })).toBe(true);
+    expect(attentionDue(100, 5, {
+      ...DEFAULT_ATTENTION_CONFIG, every: 2, maxChecks: 5,
+    })).toBe(false);
+    expect(attentionDue(100, 0, { ...DEFAULT_ATTENTION_CONFIG, every: 0 })).toBe(false);
   });
 });
 

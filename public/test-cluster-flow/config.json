@@ -164,8 +164,7 @@
                   "density": "sparse",
                   "maxTrials": 4,
                   "restEvery": 4,
-                  "attentionGapMin": 2,
-                  "attentionGapMax": 3
+                  "attentionEvery": 3
                 }
               }
             ]

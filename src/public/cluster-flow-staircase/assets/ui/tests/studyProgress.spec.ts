@@ -15,7 +15,7 @@ describe('blockEstimate', () => {
 
   test('the main block is about 150 trials (7-8 min) plus its rest pages', () => {
     const main = blockEstimate('cell-edge-dense');
-    expect(main?.steps).toBe(EXPECTED_MAIN_TRIALS + 2);
+    expect(main?.steps).toBe(EXPECTED_MAIN_TRIALS + 3);
     expect(main?.seconds).toBeGreaterThanOrEqual(7 * 60);
     expect(main?.seconds).toBeLessThanOrEqual(8.5 * 60);
     expect(main?.seconds).toBeGreaterThanOrEqual(EXPECTED_MAIN_TRIALS * SECONDS_PER_TRIAL);
@@ -52,7 +52,7 @@ describe('progressSummary', () => {
     const over = progressSummary(FLAT, 8, 400)!;
     const after = progressSummary(FLAT, 9, null)!;
     expect(half.done).toBeGreaterThan(start.done);
-    expect(half.done - start.done).toBeCloseTo(pageSeconds('cell-color-sparse') * 0.5, 0);
+    expect(half.done - start.done).toBeCloseTo(pageSeconds('cell-color-sparse') * (76 / 153), 6);
     expect(over.done).toBeLessThan(after.done);
   });
 
