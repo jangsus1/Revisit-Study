@@ -7,17 +7,24 @@
  *     each one paint-to-paint (about a second). The card check follows at once.
  *  2. Screen size: the card check (`ui/CardCheck.tsx`) gives CSS px per cm, which sets the
  *     stimulus size of every trial (`stimulusScale.ts`). "I have no card" stores nulls.
+ * Between the two, with `minScreenWidth` / `minScreenHeight` set, the full-screen viewport is checked
+ * against the study's minimum (`screenCheck.ts`; the largest viewport seen within `SCREEN_SETTLE_MS`
+ * of the end of the calibration, so the full-screen transition has finished): a smaller screen ends
+ * the session at once on `ScreenTooSmall` (rejected in reVISit, sent back to Prolific), before the
+ * participant spends time on instructions and practice.
  * The setup answer (session salt, timing, card) is written once, at the end, and the page then
  * advances by itself. A refused full-screen request is recorded (`fullscreen: false`), not blocking;
  * leaving full screen after it was entered brings up the full-screen gate.
  */
 import { Button, Loader } from '@mantine/core';
 import {
-  useCallback, useEffect, useRef, useState,
+  useCallback, useEffect, useMemo, useRef, useState,
 } from 'react';
 import type { JsonValue } from '../../../parser/types';
 import type { StimulusParams } from '../../../store/types';
 import type { SetupAnswer } from './generator';
+import { ScreenTooSmall } from './ScreenTooSmall';
+import { MinScreen, SCREEN_SETTLE_MS, screenTooSmall } from './screenCheck';
 import { CardCheck, CardResult } from './ui/CardCheck';
 import { enterFullscreen, fullscreenSession } from './ui/fullscreen';
 import { FullscreenGate, Panel } from './ui/Panel';
@@ -28,6 +35,13 @@ export interface SetupCheckParameters {
   calibrationIntervals?: number;
   /** how many animation frames to time when estimating the refresh period; defaults to 20 */
   refreshSamples?: number;
+  /** minimum full-screen viewport, CSS px; no screen check unless both are set */
+  minScreenWidth?: number;
+  minScreenHeight?: number;
+  /** shown and used on the screen-too-small page (main config only) */
+  prolificCode?: string;
+  redirectUrl?: string;
+  redirectDelayMs?: number;
 }
 
 const DEFAULT_REFRESH_MS = 1000 / 60;
@@ -61,7 +75,11 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
   const intervalCount = parameters?.calibrationIntervals ?? DEFAULT_INTERVALS;
   const refreshSamples = parameters?.refreshSamples ?? DEFAULT_REFRESH_SAMPLES;
 
-  const [stage, setStage] = useState<'idle' | 'running' | 'card' | 'done'>('idle');
+  const minW = parameters?.minScreenWidth;
+  const minH = parameters?.minScreenHeight;
+  const minScreen: MinScreen | null = useMemo(() => (minW && minH ? { width: minW, height: minH } : null), [minW, minH]);
+  const [stage, setStage] = useState<'idle' | 'running' | 'checking' | 'tooSmall' | 'card' | 'done'>('idle');
+  const [viewport, setViewport] = useState<{ width: number, height: number } | null>(null);
   const [timing, setTiming] = useState<Timing | null>(null);
   const rafRef = useRef(0);
   const cancelledRef = useRef(false);
@@ -83,9 +101,31 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
       medianErrorMs: median(errors),
       maxErrorMs: errors.length === 0 ? 0 : Math.max(...errors),
     });
-    // the timing is measured silently: straight on to the screen-size check
-    setStage('card');
-  }, []);
+    // the timing is measured silently: on to the full-screen size check (if any), then the card check
+    setStage(minScreen ? 'checking' : 'card');
+  }, [minScreen]);
+
+  // Judge the full-screen viewport by the largest size seen within SCREEN_SETTLE_MS (full screen only
+  // ever grows the viewport, and its transition may still be running when the calibration ends).
+  useEffect(() => {
+    if (stage !== 'checking' || !minScreen || typeof window === 'undefined') return undefined;
+    let width = window.innerWidth;
+    let height = window.innerHeight;
+    const onResize = () => {
+      width = Math.max(width, window.innerWidth);
+      height = Math.max(height, window.innerHeight);
+    };
+    window.addEventListener('resize', onResize);
+    const id = setTimeout(() => {
+      onResize();
+      setViewport({ width, height });
+      setStage(screenTooSmall(width, height, minScreen) ? 'tooSmall' : 'card');
+    }, SCREEN_SETTLE_MS);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      clearTimeout(id);
+    };
+  }, [stage, minScreen]);
 
   const finishSetup = useCallback((card: CardResult | null) => {
     if (!timing) return;
@@ -186,7 +226,20 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
     );
   }
 
-  if (stage === 'running' || timing === null) {
+  if (stage === 'tooSmall' && viewport && minScreen) {
+    return (
+      <ScreenTooSmall
+        width={viewport.width}
+        height={viewport.height}
+        min={minScreen}
+        prolificCode={parameters?.prolificCode}
+        redirectUrl={parameters?.redirectUrl}
+        redirectDelayMs={parameters?.redirectDelayMs}
+      />
+    );
+  }
+
+  if (stage === 'running' || stage === 'checking' || timing === null) {
     return (
       <>
         <Panel testId="setup-running" title="One moment…">

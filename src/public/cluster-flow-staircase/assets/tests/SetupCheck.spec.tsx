@@ -8,6 +8,8 @@ import {
 import SetupCheck, { SetupCheckParameters } from '../SetupCheck';
 
 vi.mock('../ui/studyContext', () => ({ useStudyProgress: () => null, useUpcomingCell: () => null }));
+const engine = { rejectCurrentParticipant: vi.fn(() => Promise.resolve()) };
+vi.mock('../../../../storage/storageEngineHooks', () => ({ useStorageEngine: () => ({ storageEngine: engine }) }));
 
 const START = 'Enter full screen';
 
@@ -195,5 +197,58 @@ describe('SetupCheck', () => {
     const { setAnswer } = renderSetup(null as unknown as undefined);
     completeSetup();
     expect(setAnswer.mock.calls[0][0].answers.setup.calibration).toHaveLength(2);
+  });
+
+  describe('full-screen size check', () => {
+    const MIN = {
+      calibrationIntervals: 2, refreshSamples: 6, minScreenWidth: 1280, minScreenHeight: 800,
+    };
+    function setViewport(width: number, height: number) {
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
+      Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
+    }
+    beforeEach(() => { vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }); engine.rejectCurrentParticipant.mockClear(); });
+    afterEach(() => { vi.useRealTimers(); });
+
+    test('a screen below the minimum ends the session at once and records the rejection', async () => {
+      setViewport(1200, 700);
+      const replace = vi.fn();
+      vi.stubGlobal('location', { ...window.location, replace });
+      const { setAnswer, advance } = renderSetup({
+        ...MIN, prolificCode: 'C14JYDHI', redirectUrl: 'https://example.test/return', redirectDelayMs: 8000,
+      });
+      fireEvent.click(screen.getByRole('button', { name: START }));
+      runFrames(400);
+      expect(screen.queryByTestId('card-check')).toBeNull();
+      await act(async () => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByTestId('screen-too-small').textContent).toContain('1200 x 700');
+      expect(screen.getByTestId('screen-too-small-code').textContent).toContain('C14JYDHI');
+      expect(engine.rejectCurrentParticipant).toHaveBeenCalledWith(expect.stringContaining('Screen too small: 1200 x 700'));
+      await act(async () => { await Promise.resolve(); vi.advanceTimersByTime(8000); });
+      expect(replace).toHaveBeenCalledWith('https://example.test/return');
+      expect(setAnswer).not.toHaveBeenCalled();
+      expect(advance).not.toHaveBeenCalled();
+    });
+
+    test('a large enough screen (judged by the largest size during the transition) goes on to the card check', async () => {
+      setViewport(1280, 700);
+      renderSetup(MIN);
+      fireEvent.click(screen.getByRole('button', { name: START }));
+      runFrames(400);
+      // the full-screen transition finishes during the settle window
+      setViewport(1440, 900);
+      act(() => { window.dispatchEvent(new Event('resize')); });
+      await act(async () => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByTestId('card-check')).toBeTruthy();
+      expect(engine.rejectCurrentParticipant).not.toHaveBeenCalled();
+    });
+
+    test('without a minimum there is no check', () => {
+      setViewport(800, 500);
+      renderSetup({ calibrationIntervals: 2, refreshSamples: 6 });
+      fireEvent.click(screen.getByRole('button', { name: START }));
+      runFrames(400);
+      expect(screen.getByTestId('card-check')).toBeTruthy();
+    });
   });
 });
