@@ -4,13 +4,15 @@
     "title": "Cluster Flow: Perceived Number in Grouped Node-Link Diagrams",
     "version": "pilot",
     "authors": [
-      "The reVISit Team"
+      "Minsuk Chang",
+      "Cindy Xiong Bearfield",
+      "Stefan Uddenberg",
+      "Markus Wallinger"
     ],
     "date": "2026-09-04",
     "description": "A staircased two-interval forced-choice study measuring how Gestalt grouping cues in flow diagrams change the perceived number of items. Each participant runs one cue x density cell.",
     "organizations": [
-      "University of Utah",
-      "WPI"
+      "Georgia Institute of Technology"
     ]
   },
   "uiConfig": {
@@ -24,7 +26,9 @@
     "autoDownloadStudy": false,
     "numSequences": 120,
     "urlParticipantIdParam": "PROLIFIC_PID",
-    "studyEndMsg": "Thank you for completing the study. Your responses have been recorded."
+    "studyEndMsg": "Thank you! Your responses have been recorded.\n\nYour Prolific completion code is **C197MLJ7**. You will be returned to Prolific in a few seconds.",
+    "studyEndAutoRedirectURL": "https://app.prolific.com/submissions/complete?cc=C197MLJ7",
+    "studyEndAutoRedirectDelay": 8000
   },
   "studyRules": {
     "display": {
@@ -153,7 +157,12 @@
     "attention-failed": {
       "type": "react-component",
       "path": "cluster-flow-staircase/assets/AttentionFailed.tsx",
-      "response": []
+      "response": [],
+      "parameters": {
+        "prolificCode": "C14JYDHI",
+        "redirectUrl": "https://app.prolific.com/submissions/complete?cc=C14JYDHI",
+        "redirectDelayMs": 8000
+      }
     }
   },
   "sequence": {
