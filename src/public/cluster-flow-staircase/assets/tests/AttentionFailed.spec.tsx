@@ -52,6 +52,7 @@ describe('AttentionFailed', () => {
   test('ends the study: the message, the contact, and nothing to continue to', () => {
     const { setAnswer, advance } = renderPage({ misses: 4, maxMisses: 3 });
     const page = screen.getByTestId('attention-failed');
+    expect(page.textContent).toContain('Attention check failed');
     expect(page.textContent).toContain('The study has ended');
     expect(page.textContent).toContain('You missed more than 3 attention checks, so we cannot use your responses.');
     expect(page.textContent).toContain('Please return the study on Prolific.');
@@ -72,7 +73,7 @@ describe('AttentionFailed', () => {
     renderPage({ misses: 4, maxMisses: 3 });
     expect(engine.rejectCurrentParticipant).toHaveBeenCalledTimes(1);
     expect(engine.rejectCurrentParticipant).toHaveBeenCalledWith(rejectionReason(4, 3));
-    expect(rejectionReason(4, 3)).toBe('Missed 4 attention checks (more than 3 allowed)');
+    expect(rejectionReason(4, 3)).toBe('Attention check failed: missed 4 attention checks (more than 3 allowed)');
   });
 
   test('reads the misses from the stored trials when the block passes no parameters', () => {

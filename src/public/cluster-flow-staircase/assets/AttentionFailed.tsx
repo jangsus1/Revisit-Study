@@ -7,7 +7,8 @@
  * The rejection itself uses reVISit's native API, `storageEngine.rejectCurrentParticipant(reason)`
  * (as the platform's own TrainingFailed page does): the participant record gets `rejected: { reason,
  * timestamp }` and their Latin-square row is freed for the next participant. The reason names the
- * number of misses; the trial that caused it also stores `attentionMisses` in its trialData.
+ * failure ("Attention check failed: missed N ...", so it reads as such in reVISit's participant
+ * table) and the number of misses; the trial that caused it also stores `attentionMisses` in its trialData.
  *
  * With `prolificCode` the page shows the participant's Prolific code, and with `redirectUrl` it
  * sends them back to Prolific `redirectDelayMs` (8 s) after the rejection has been stored, like
@@ -43,7 +44,7 @@ export const DEFAULT_CONTACT = 'minsuk@gatech.edu';
 
 /** The reason stored with reVISit's rejection. */
 export function rejectionReason(misses: number, maxMisses: number): string {
-  return `Missed ${misses} attention checks (more than ${maxMisses} allowed)`;
+  return `Attention check failed: missed ${misses} attention checks (more than ${maxMisses} allowed)`;
 }
 
 /** The participant's attention-check misses: the highest running total stored on a trial. */
@@ -107,10 +108,10 @@ export default function AttentionFailed({ parameters, answers, setAnswer }: Stim
   }, []);
 
   return (
-    <Panel testId="attention-failed" title="The study has ended" progress={false} maxWidth={620}>
+    <Panel testId="attention-failed" title="Attention check failed" progress={false} maxWidth={620}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ fontSize: 19, color: UI.ink }}>
-          {`You missed more than ${maxMisses} attention check${maxMisses === 1 ? '' : 's'}, so we cannot use your responses.${prolificCode ? '' : ' Please return the study on Prolific.'}`}
+          {`The study has ended. You missed more than ${maxMisses} attention check${maxMisses === 1 ? '' : 's'}, so we cannot use your responses.${prolificCode ? '' : ' Please return the study on Prolific.'}`}
         </div>
         {prolificCode && (
           <div data-testid="attention-failed-code" style={{ fontSize: 18, color: UI.ink }}>
