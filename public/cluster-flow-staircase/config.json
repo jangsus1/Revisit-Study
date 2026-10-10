@@ -106,8 +106,8 @@
         }
       ],
       "parameters": {
-        "minScreenWidth": 1280,
-        "minScreenHeight": 800,
+        "minScreenWidth": 1024,
+        "minScreenHeight": 660,
         "prolificCode": "C14JYDHI",
         "redirectUrl": "https://app.prolific.com/submissions/complete?cc=C14JYDHI",
         "redirectDelayMs": 8000

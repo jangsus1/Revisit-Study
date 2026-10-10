@@ -207,7 +207,21 @@ describe('SetupCheck', () => {
       Object.defineProperty(window, 'innerWidth', { configurable: true, value: width });
       Object.defineProperty(window, 'innerHeight', { configurable: true, value: height });
     }
-    beforeEach(() => { vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] }); engine.rejectCurrentParticipant.mockClear(); });
+    beforeEach(() => {
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+      engine.rejectCurrentParticipant.mockClear();
+      // a laptop: a fine pointer is present
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: query.includes('pointer: fine'),
+        media: query,
+        onchange: null,
+        addListener: () => undefined,
+        removeListener: () => undefined,
+        addEventListener: () => undefined,
+        removeEventListener: () => undefined,
+        dispatchEvent: () => false,
+      }));
+    });
     afterEach(() => { vi.useRealTimers(); });
 
     test('a screen below the minimum ends the session at once and records the rejection', async () => {
@@ -241,6 +255,29 @@ describe('SetupCheck', () => {
       await act(async () => { vi.advanceTimersByTime(1000); });
       expect(screen.getByTestId('card-check')).toBeTruthy();
       expect(engine.rejectCurrentParticipant).not.toHaveBeenCalled();
+    });
+
+    test('a portrait screen is treated as a phone or tablet', async () => {
+      setViewport(1366, 2000);
+      renderSetup(MIN);
+      fireEvent.click(screen.getByRole('button', { name: START }));
+      runFrames(400);
+      await act(async () => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByTestId('screen-too-small').textContent).toContain('laptop or desktop');
+      expect(engine.rejectCurrentParticipant).toHaveBeenCalledWith(expect.stringContaining('Unsupported device'));
+    });
+
+    test('a touch-only device (no fine pointer) is treated as a phone or tablet', async () => {
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: false, media: query, addEventListener: () => undefined, removeEventListener: () => undefined,
+      }));
+      setViewport(1366, 1024);
+      renderSetup(MIN);
+      fireEvent.click(screen.getByRole('button', { name: START }));
+      runFrames(400);
+      await act(async () => { vi.advanceTimersByTime(1000); });
+      expect(screen.getByTestId('screen-too-small').textContent).toContain('phone or tablet');
+      expect(engine.rejectCurrentParticipant).toHaveBeenCalledWith(expect.stringContaining('fine pointer no'));
     });
 
     test('without a minimum there is no check', () => {

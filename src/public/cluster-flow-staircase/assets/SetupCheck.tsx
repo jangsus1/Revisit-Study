@@ -10,7 +10,8 @@
  * Between the two, with `minScreenWidth` / `minScreenHeight` set, the full-screen viewport is checked
  * against the study's minimum (`screenCheck.ts`; the largest viewport seen within `SCREEN_SETTLE_MS`
  * of the end of the calibration, so the full-screen transition has finished): a smaller screen ends
- * the session at once on `ScreenTooSmall` (rejected in reVISit, sent back to Prolific), before the
+ * the session at once on `ScreenTooSmall` (rejected in reVISit, sent back to Prolific), and so does a
+ * phone or tablet that got past reVISit's device rules (portrait viewport or no fine pointer), before the
  * participant spends time on instructions and practice.
  * The setup answer (session salt, timing, card) is written once, at the end, and the page then
  * advances by itself. A refused full-screen request is recorded (`fullscreen: false`), not blocking;
@@ -24,7 +25,9 @@ import type { JsonValue } from '../../../parser/types';
 import type { StimulusParams } from '../../../store/types';
 import type { SetupAnswer } from './generator';
 import { ScreenTooSmall } from './ScreenTooSmall';
-import { MinScreen, SCREEN_SETTLE_MS, screenTooSmall } from './screenCheck';
+import {
+  MinScreen, SCREEN_SETTLE_MS, deviceUnsupported, hasFinePointer, screenTooSmall,
+} from './screenCheck';
 import { CardCheck, CardResult } from './ui/CardCheck';
 import { enterFullscreen, fullscreenSession } from './ui/fullscreen';
 import { FullscreenGate, Panel } from './ui/Panel';
@@ -79,7 +82,7 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
   const minH = parameters?.minScreenHeight;
   const minScreen: MinScreen | null = useMemo(() => (minW && minH ? { width: minW, height: minH } : null), [minW, minH]);
   const [stage, setStage] = useState<'idle' | 'running' | 'checking' | 'tooSmall' | 'card' | 'done'>('idle');
-  const [viewport, setViewport] = useState<{ width: number, height: number } | null>(null);
+  const [viewport, setViewport] = useState<{ width: number, height: number, device: boolean, fine: boolean } | null>(null);
   const [timing, setTiming] = useState<Timing | null>(null);
   const rafRef = useRef(0);
   const cancelledRef = useRef(false);
@@ -118,8 +121,12 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
     window.addEventListener('resize', onResize);
     const id = setTimeout(() => {
       onResize();
-      setViewport({ width, height });
-      setStage(screenTooSmall(width, height, minScreen) ? 'tooSmall' : 'card');
+      const fine = hasFinePointer();
+      const device = deviceUnsupported(width, height, fine);
+      setViewport({
+        width, height, device, fine,
+      });
+      setStage(device || screenTooSmall(width, height, minScreen) ? 'tooSmall' : 'card');
     }, SCREEN_SETTLE_MS);
     return () => {
       window.removeEventListener('resize', onResize);
@@ -232,6 +239,8 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
         width={viewport.width}
         height={viewport.height}
         min={minScreen}
+        reason={viewport.device ? 'device' : 'size'}
+        finePointer={viewport.fine}
         prolificCode={parameters?.prolificCode}
         redirectUrl={parameters?.redirectUrl}
         redirectDelayMs={parameters?.redirectDelayMs}

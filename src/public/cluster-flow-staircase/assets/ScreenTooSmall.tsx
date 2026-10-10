@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useStorageEngine } from '../../../storage/storageEngineHooks';
 import { DEFAULT_CONTACT, DEFAULT_REDIRECT_DELAY_MS, REJECTION_WAIT_MS } from './AttentionFailed';
-import { MinScreen, screenRejectionReason } from './screenCheck';
+import { MinScreen, deviceRejectionReason, screenRejectionReason } from './screenCheck';
 import { Panel } from './ui/Panel';
 import { UI } from './ui/theme';
 
@@ -17,6 +17,9 @@ export interface ScreenTooSmallProps {
   width: number;
   height: number;
   min: MinScreen;
+  /** 'size' (screen below the minimum) or 'device' (phone or tablet) */
+  reason?: 'size' | 'device';
+  finePointer?: boolean;
   prolificCode?: string;
   redirectUrl?: string;
   redirectDelayMs?: number;
@@ -24,7 +27,7 @@ export interface ScreenTooSmallProps {
 }
 
 export function ScreenTooSmall({
-  width, height, min, prolificCode, redirectUrl, redirectDelayMs = DEFAULT_REDIRECT_DELAY_MS, contactEmail = DEFAULT_CONTACT,
+  width, height, min, reason = 'size', finePointer = true, prolificCode, redirectUrl, redirectDelayMs = DEFAULT_REDIRECT_DELAY_MS, contactEmail = DEFAULT_CONTACT,
 }: ScreenTooSmallProps) {
   const { storageEngine } = useStorageEngine() ?? {};
   const rejected = useRef(false);
@@ -33,10 +36,12 @@ export function ScreenTooSmall({
   useEffect(() => {
     if (!storageEngine || rejected.current) return;
     rejected.current = true;
-    storageEngine.rejectCurrentParticipant(screenRejectionReason(width, height, min))
+    storageEngine.rejectCurrentParticipant(reason === 'device'
+      ? deviceRejectionReason(width, height, finePointer)
+      : screenRejectionReason(width, height, min))
       .catch(() => console.error('Could not mark the participant as rejected'))
       .finally(() => setStored(true));
-  }, [storageEngine, width, height, min]);
+  }, [storageEngine, width, height, min, reason, finePointer]);
 
   useEffect(() => {
     if (!redirectUrl) return undefined;
@@ -62,10 +67,17 @@ export function ScreenTooSmall({
   }, []);
 
   return (
-    <Panel testId="screen-too-small" title="Your screen is too small for this study" progress={false} maxWidth={620}>
+    <Panel
+      testId="screen-too-small"
+      title={reason === 'device' ? 'This study needs a laptop or desktop computer' : 'Your screen is too small for this study'}
+      progress={false}
+      maxWidth={620}
+    >
       <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
         <div style={{ fontSize: 19, color: UI.ink }}>
-          {`This study needs a screen of at least ${min.width} x ${min.height} pixels in full screen; yours is ${Math.round(width)} x ${Math.round(height)}. Please return the study on Prolific. Thank you for your time.`}
+          {reason === 'device'
+            ? 'It cannot be done on a phone or tablet. Please return the study on Prolific. Thank you for your time.'
+            : `This study needs a screen of at least ${min.width} x ${min.height} pixels in full screen; yours is ${Math.round(width)} x ${Math.round(height)}. Please return the study on Prolific. Thank you for your time.`}
         </div>
         {prolificCode && (
           <div data-testid="screen-too-small-code" style={{ fontSize: 18, color: UI.ink }}>
