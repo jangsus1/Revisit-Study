@@ -31,11 +31,6 @@
     "studyEndAutoRedirectDelay": 8000
   },
   "studyRules": {
-    "display": {
-      "minWidth": 1280,
-      "minHeight": 800,
-      "blockedMessage": "This study needs a window of at least 1280 x 800 pixels. Please maximise your browser window or use a larger screen."
-    },
     "devices": {
       "allowed": [
         "desktop"
@@ -109,7 +104,14 @@
           "type": "reactive",
           "hidden": true
         }
-      ]
+      ],
+      "parameters": {
+        "minScreenWidth": 1280,
+        "minScreenHeight": 800,
+        "prolificCode": "C14JYDHI",
+        "redirectUrl": "https://app.prolific.com/submissions/complete?cc=C14JYDHI",
+        "redirectDelayMs": 8000
+      }
     },
     "instructions": {
       "type": "react-component",
