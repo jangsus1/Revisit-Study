@@ -4,6 +4,7 @@ import {
 import type { ParticipantData } from '../../../../parser/types';
 import type { TrialAnswer, TrialParams } from '../generator/types';
 import practiceBlock from '../practiceBlock';
+import { PRACTICE_MAX_OFF_TRIALS } from '../timingGuard';
 import { correctInterval, drawHueOffset } from '../staircaseBlock';
 
 vi.mock('../generator', () => ({
@@ -118,7 +119,9 @@ describe('practiceBlock', () => {
     expect(parameters.seedA).not.toBe((runPractice(0).parameters as unknown as TrialParams).seedA);
   });
   describe('display-timing backstop', () => {
-    function finish(offTarget: number[], overrides: { maxOffTargetTrials?: number } = {}) {
+    // the main config's setting
+    const ON = { maxOffTargetTrials: PRACTICE_MAX_OFF_TRIALS };
+    function finish(offTarget: number[], overrides: { maxOffTargetTrials?: number } = ON) {
       return practiceBlock({
         answers: storedTrials(3, offTarget), customParameters: { ...CELL, ...overrides }, currentStep: STEP, currentBlock: BLOCK,
       });
@@ -134,7 +137,7 @@ describe('practiceBlock', () => {
     test('a reload stays on the end page (it is re-derived from the stored trials)', () => {
       const answers = storedTrials(3, [0, 1]);
       const call = () => practiceBlock({
-        answers, customParameters: CELL, currentStep: STEP, currentBlock: BLOCK,
+        answers, customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK,
       });
       expect(call()).toEqual({ component: 'display-failed' });
       expect(call()).toEqual({ component: 'display-failed' });
@@ -142,7 +145,7 @@ describe('practiceBlock', () => {
     test('only judged after the last practice trial', () => {
       expect(runPractice(2).component).toBe('practice-trial');
       expect(practiceBlock({
-        answers: storedTrials(2, [0, 1]), customParameters: CELL, currentStep: STEP, currentBlock: BLOCK,
+        answers: storedTrials(2, [0, 1]), customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK,
       }).component).toBe('practice-trial');
     });
     test('fixation off target does not count; maxOffTargetTrials can switch the backstop off', () => {
@@ -151,9 +154,12 @@ describe('practiceBlock', () => {
         (record.answer.trialData as unknown as { measured: Record<string, number> }).measured.fixation = 600;
       });
       expect(practiceBlock({
-        answers, customParameters: CELL, currentStep: STEP, currentBlock: BLOCK,
+        answers, customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK,
       })).toEqual({ component: null });
       expect(finish([0, 1, 2], { maxOffTargetTrials: 3 })).toEqual({ component: null });
+    });
+    test('off unless the block sets maxOffTargetTrials (sessions in flight under an older config)', () => {
+      expect(finish([0, 1, 2], {})).toEqual({ component: null });
     });
   });
 });

@@ -199,7 +199,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "proximity",
-                  "density": "sparse"
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -226,7 +227,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "proximity",
-                  "density": "dense"
+                  "density": "dense",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -253,7 +255,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "rect",
-                  "density": "sparse"
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -280,7 +283,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "rect",
-                  "density": "dense"
+                  "density": "dense",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -307,7 +311,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "color",
-                  "density": "sparse"
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -334,7 +339,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "color",
-                  "density": "dense"
+                  "density": "dense",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -361,7 +367,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "shape",
-                  "density": "sparse"
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -388,7 +395,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "shape",
-                  "density": "dense"
+                  "density": "dense",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -415,7 +423,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "edge",
-                  "density": "sparse"
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
@@ -442,7 +451,8 @@
                 "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
                 "parameters": {
                   "cue": "edge",
-                  "density": "dense"
+                  "density": "dense",
+                  "maxOffTargetTrials": 1
                 }
               },
               "block-intro",
