@@ -1,9 +1,10 @@
 /**
  * Session setup, in two stages on the study's Panel pages:
- *  1. Full screen and display timing. One button enters full screen and starts the calibration: the
- *     refresh period is estimated from a burst of animation-frame timestamps and then checked by
- *     presenting blank intervals of 200 ms and 400 ms with the same frame-count scheduler the trials
- *     use, measuring each one paint-to-paint (about a second). A short result and Continue follow.
+ *  1. Full screen and display timing. One button ("Enter full screen") enters full screen and starts
+ *     the calibration, silently (the participant only sees "One moment…"): the refresh period is
+ *     estimated from a burst of animation-frame timestamps and then checked by presenting blank
+ *     intervals of 200 ms and 400 ms with the same frame-count scheduler the trials use, measuring
+ *     each one paint-to-paint (about a second). The card check follows at once.
  *  2. Screen size: the card check (`ui/CardCheck.tsx`) gives CSS px per cm, which sets the
  *     stimulus size of every trial (`stimulusScale.ts`). "I have no card" stores nulls.
  * The setup answer (session salt, timing, card) is written once, at the end, and the page then
@@ -60,7 +61,7 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
   const intervalCount = parameters?.calibrationIntervals ?? DEFAULT_INTERVALS;
   const refreshSamples = parameters?.refreshSamples ?? DEFAULT_REFRESH_SAMPLES;
 
-  const [stage, setStage] = useState<'idle' | 'running' | 'timed' | 'card' | 'done'>('idle');
+  const [stage, setStage] = useState<'idle' | 'running' | 'card' | 'done'>('idle');
   const [timing, setTiming] = useState<Timing | null>(null);
   const rafRef = useRef(0);
   const cancelledRef = useRef(false);
@@ -82,7 +83,8 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
       medianErrorMs: median(errors),
       maxErrorMs: errors.length === 0 ? 0 : Math.max(...errors),
     });
-    setStage('timed');
+    // the timing is measured silently: straight on to the screen-size check
+    setStage('card');
   }, []);
 
   const finishSetup = useCallback((card: CardResult | null) => {
@@ -107,20 +109,6 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
     setAnswer({ status: true, answers: { setup: answer as unknown as JsonValue } });
     advance?.();
   }, [advance, setAnswer, timing]);
-
-  // Enter continues from the timing result to the card check (the page answer is not valid yet,
-  // so reVISit's own Enter handler does nothing here).
-  useEffect(() => {
-    if (stage !== 'timed') return undefined;
-    const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Enter' && !event.repeat) {
-        event.preventDefault();
-        setStage('card');
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [stage]);
 
   const start = useCallback(() => {
     // A refused request is recorded in the answer (`fullscreen: false`); the calibration runs anyway.
@@ -190,13 +178,10 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
     return (
       <Panel
         testId="setup-start"
-        kicker="Display check · 1 of 2"
-        title="Full screen and display timing"
-        actions={<Button size="lg" onClick={start}>Enter full screen and start</Button>}
+        title="Full screen"
+        actions={<Button size="lg" onClick={start}>Enter full screen</Button>}
       >
-        The diagrams flash for a fifth of a second, so the study runs in full screen and first
-        checks how fast your screen refreshes. This takes about a second; please do not switch
-        windows.
+        The study runs in full screen.
       </Panel>
     );
   }
@@ -204,38 +189,8 @@ export default function SetupCheck({ parameters, setAnswer, advance }: StimulusP
   if (stage === 'running' || timing === null) {
     return (
       <>
-        <Panel testId="setup-running" kicker="Display check · 1 of 2" title="Measuring your display">
+        <Panel testId="setup-running" title="One moment…">
           <Loader color={UI.accent} />
-        </Panel>
-        {gate}
-      </>
-    );
-  }
-
-  if (stage === 'timed') {
-    return (
-      <>
-        <Panel
-          testId="setup-summary"
-          kicker="Display check · 1 of 2"
-          title="Display timing checked"
-          actions={<Button size="lg" onClick={() => setStage('card')}>Continue</Button>}
-        >
-          <div style={{
-            display: 'flex', justifyContent: 'center', gap: 36, marginTop: 4,
-          }}
-          >
-            <div>
-              <div style={{ fontSize: 30, fontWeight: 700, color: UI.ink }} data-testid="setup-hz">
-                {`${(1000 / timing.refreshMs).toFixed(1)} Hz`}
-              </div>
-              <div style={{ fontSize: 15 }}>screen refresh</div>
-            </div>
-            <div>
-              <div style={{ fontSize: 30, fontWeight: 700, color: UI.ink }}>{`${timing.medianErrorMs.toFixed(1)} ms`}</div>
-              <div style={{ fontSize: 15 }}>timing error</div>
-            </div>
-          </div>
         </Panel>
         {gate}
       </>

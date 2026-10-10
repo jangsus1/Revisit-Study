@@ -25,7 +25,7 @@ the cue. Proximity's A is spread wider than its B, and rect A's outlines are not
 - **sparse / dense** switches the extra within-cluster arrows and the backbone skip links on.
 - **A first / B first** and **Play trial** run one trial in place with the real timing: fixation
   500 ms, first stimulus 200 ms, noise mask 150 ms, blank 250 ms, second stimulus 200 ms,
-  blank 400 ms.
+  second noise mask 150 ms, blank 250 ms.
 
 The gallery draws everything at its 800 x 640 design size. In the experiment the whole trial stage
 is scaled uniformly to 21 cm wide when the participant matched a bank card on the screen-size page

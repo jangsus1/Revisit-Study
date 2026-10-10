@@ -1,16 +1,18 @@
 # Help
 
+- **Length.** The main task has about 150–200 trials, with a short break every 50.
 - **Starting.** At the start of practice, of the main task and after every break, a *Ready?* screen
   appears. Put your fingers on **F** and **J**, then press any key or click to start.
 - **A trial.** A cross appears; look at it. The first diagram flashes, then a brief patch of grey
-  noise, then the second diagram at the same place.
+  noise, then the second diagram at the same place, then grey noise again.
 - **Answering.** Press **F** (or the **left arrow**) if the **first** diagram had more items,
-  **J** (or the **right arrow**) if the **second** one did. There is no time limit.
+  **J** (or the **right arrow**) if the **second** one did. You can answer as soon as the second
+  diagram is gone; there is no time limit.
 - **What counts.** Count the nodes (dots and small marks) only. Arrows, outlines, colours and shapes
   do not count.
 - The two diagrams never have the same number of items, so always answer, even if you are guessing.
 - **Attention checks.** A few very easy trials (one diagram with 5 items, the other with 30) are
-  mixed in at random. If you miss one, a message tells you how many more misses are allowed; missing
+  mixed in. If you miss one, a message tells you how many more misses are allowed; missing
   more than 3 ends the study.
 - **Practice.** The three practice trials tell you right away whether you were correct; the next
   trial then starts by itself. The main task has no feedback.

@@ -9,7 +9,7 @@ import SetupCheck, { SetupCheckParameters } from '../SetupCheck';
 
 vi.mock('../ui/studyContext', () => ({ useStudyProgress: () => null, useUpcomingCell: () => null }));
 
-const START = 'Enter full screen and start';
+const START = 'Enter full screen';
 
 const FRAME_MS = 1000 / 60;
 
@@ -49,7 +49,6 @@ function renderSetup(parameters: SetupCheckParameters | undefined = { calibratio
 function completeSetup(card: 'no-card' | 'done' = 'no-card') {
   fireEvent.click(screen.getByRole('button', { name: START }));
   runFrames(3000);
-  fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
   fireEvent.click(screen.getByRole('button', { name: card === 'no-card' ? 'I have no card' : 'Done' }));
 }
 
@@ -92,23 +91,25 @@ describe('SetupCheck', () => {
   test('offers the start button and does not answer before it runs', () => {
     const { setAnswer, advance } = renderSetup();
     expect(screen.getByRole('button', { name: START })).toBeTruthy();
+    // plain wording: no refresh rates or timing for the participant
+    expect(screen.getByTestId('setup-start').textContent).toContain('The study runs in full screen.');
+    expect(screen.getByTestId('setup-start').textContent).not.toMatch(/refresh|timing|second/i);
     runFrames(50);
     expect(setAnswer).not.toHaveBeenCalled();
     expect(advance).not.toHaveBeenCalled();
   });
 
-  test('measures the timing, shows a short result, and only answers after the card step', () => {
+  test('measures the timing silently and only answers after the card step', () => {
     const { setAnswer, advance } = renderSetup();
     fireEvent.click(screen.getByRole('button', { name: START }));
     expect(screen.getByTestId('setup-running')).toBeTruthy();
 
+    // the timing is measured silently: no numbers, straight on to the screen-size step
+    expect(screen.getByTestId('setup-running').textContent).toContain('One moment');
+    expect(screen.getByTestId('setup-running').textContent).not.toMatch(/Hz|refresh|timing/i);
     runFrames(400);
-    expect(screen.getByTestId('setup-summary')).toBeTruthy();
-    expect(screen.getByTestId('setup-hz').textContent).toBe('60.0 Hz');
+    expect(screen.queryByTestId('setup-summary')).toBeNull();
     expect(setAnswer).not.toHaveBeenCalled();
-
-    // Enter continues to the screen-size step
-    fireEvent.keyDown(window, { key: 'Enter' });
     expect(screen.getByTestId('card-check')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: 'I have no card' }));
 
@@ -180,7 +181,6 @@ describe('SetupCheck', () => {
 
       runFrames(400);
       expect(screen.queryByTestId('fullscreen-gate')).toBeNull();
-      fireEvent.click(screen.getByRole('button', { name: 'Continue' }));
       fireEvent.click(screen.getByRole('button', { name: 'I have no card' }));
       expect(setAnswer).toHaveBeenCalledTimes(1);
       expect(setAnswer.mock.calls[0][0].answers.setup.fullscreen).toBe(false);

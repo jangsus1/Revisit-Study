@@ -4,7 +4,11 @@
  * Timeline (`useTrialTimeline`; every duration is a whole number of frames of the measured refresh
  * period):
  *   [start gate] -> fixation 500 ms -> stimulus 1 200 ms -> noise mask 150 ms -> blank 250 ms
- *   -> stimulus 2 200 ms -> blank 400 ms -> prompt (until a key).
+ *   -> stimulus 2 200 ms -> noise mask 2 150 ms -> blank 250 ms -> prompt (until a key). An answer
+ *   key is accepted from the end of the second display (mask2 onset): pressed during mask2 or
+ *   blank2, it ends the trial at once (`rtMs` is negative, `respondedDuring` 'mask2' or 'blank2',
+ *   the current phase's `measured` duration is cut short); keys during the second display or
+ *   earlier are ignored.
  *
  * Both stimuli appear at one screen location. Which interval holds A is drawn per trial (`aFirst`)
  * and the answer names an interval: F / left arrow for the first, J / right arrow for the second.
@@ -53,10 +57,10 @@ import {
 import { correctInterval } from './staircaseBlock';
 import { stimulusScale } from './stimulusScale';
 import { fullscreenSession, useFullscreenGate } from './ui/fullscreen';
-import { AnswerKeys, KeyCap } from './ui/KeyCap';
+import { AnswerKeys, KeyPair } from './ui/KeyCap';
 import { FullscreenGatePanel, Panel } from './ui/Panel';
 import { UI } from './ui/theme';
-import { useTrialTimeline } from './useTrialTimeline';
+import { plannedMs, useTrialTimeline } from './useTrialTimeline';
 
 type Phase = 'ready' | 'running' | 'prompt' | 'feedback' | 'attention-miss' | 'done';
 
@@ -129,7 +133,7 @@ function PracticeFeedback({ correct, answer }: { correct: boolean; answer: Trial
           display: 'flex', alignItems: 'center', gap: 12, fontSize: 21, color: UI.ink, fontWeight: 600,
         }}
         >
-          <KeyCap label={answer === 'first' ? 'F' : 'J'} size={40} />
+          <KeyPair answer={answer} size={36} testId="practice-feedback-keys" />
           <span data-testid="practice-feedback-answer">{`The ${answer} diagram had more items.`}</span>
         </div>
       </div>
@@ -172,7 +176,7 @@ function AttentionMissFeedback({
           display: 'flex', alignItems: 'center', gap: 12, fontSize: 20, color: UI.ink, fontWeight: 600,
         }}
         >
-          <KeyCap label={answer === 'first' ? 'F' : 'J'} size={38} />
+          <KeyPair answer={answer} size={34} testId="attention-feedback-keys" />
           <span data-testid="attention-feedback-answer">{`The ${answer} diagram had many more items.`}</span>
         </div>
         <div data-testid="attention-lives" style={{ display: 'flex', gap: 8 }} aria-label={`${left} of ${maxMisses + 1} left`}>
@@ -194,6 +198,37 @@ function AttentionMissFeedback({
   );
 }
 
+/**
+ * Between two trials reVISit unmounts one trial component and mounts the next; for one to four
+ * frames (about 20 to 70 ms) nothing covers the window and the white page body shows through. While
+ * trials are mounted the body takes the trial surround colour, so that gap is the same grey; the
+ * body goes back to its own colour only once no trial has been mounted for a moment. Cosmetic only:
+ * no effect on timing, data or advancing.
+ */
+let mountedTrials = 0;
+let restoreTimer: ReturnType<typeof setTimeout> | undefined;
+export const BODY_RESTORE_MS = 400;
+
+function useSurroundBody() {
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    mountedTrials += 1;
+    if (restoreTimer !== undefined) {
+      clearTimeout(restoreTimer);
+      restoreTimer = undefined;
+    }
+    document.body.style.backgroundColor = C.SURROUND;
+    return () => {
+      mountedTrials -= 1;
+      if (mountedTrials > 0) return;
+      restoreTimer = setTimeout(() => {
+        restoreTimer = undefined;
+        if (mountedTrials === 0) document.body.style.backgroundColor = '';
+      }, BODY_RESTORE_MS);
+    };
+  }, []);
+}
+
 export default function TrialRunner({ parameters, setAnswer, advance }: StimulusParams<TrialParams>) {
   const {
     seedA, seedB, nB, cue, density, cellId, trialIndex, staircaseId, aFirst, hueOffset, starts, refreshMs,
@@ -201,6 +236,7 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
   } = parameters;
   const isPractice = staircaseId === 'practice';
   const isAttention = staircaseId === 'attention';
+  useSurroundBody();
 
   // An attention check shows two ungrouped displays (5 and 30 items) instead of A and B.
   const { displayA, displayB } = useMemo(() => (isAttention
@@ -211,6 +247,7 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
       cue, density, nB, hueOffset,
     })), [isAttention, seedA, seedB, cue, density, nA, nB, hueOffset]);
   const maskSeed = useMemo(() => hashSeed(seedA, seedB, 'mask'), [seedA, seedB]);
+  const mask2Seed = useMemo(() => hashSeed(seedA, seedB, 'mask2'), [seedA, seedB]);
 
   // Fixed for the trial: full screen is forced, so the window size at mount is the screen size.
   const [{ scale, widthCm }] = useState(() => stimulusScale({
@@ -314,11 +351,18 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
     return () => window.removeEventListener('keydown', onKeyDownCapture, true);
   }, [phase, armed, blocked, startTrial]);
 
-  const { measured, endedAt } = timeline;
+  const {
+    measured, endedAt, onsets, stop,
+  } = timeline;
+  // Answers count from the end of the second display (mask2 onset), not only once the prompt is
+  // up: an answer during mask2 or blank2 ends the trial at once. Keys during s2 or earlier are ignored.
+  const earlyPhase = phase === 'running' && (timeline.phase === 'mask2' || timeline.phase === 'blank2')
+    ? timeline.phase : null;
+  const acceptsResponse = phase === 'prompt' || earlyPhase !== null;
 
-  // Response collection: only f / left arrow and j / right arrow count, and only while the prompt is up.
+  // Response collection: only f / left arrow and j / right arrow count.
   useEffect(() => {
-    if (phase !== 'prompt') {
+    if (!acceptsResponse) {
       return undefined;
     }
 
@@ -329,6 +373,15 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
       }
       event.preventDefault();
       respondedRef.current = true;
+
+      const now = performance.now();
+      if (earlyPhase) stop(now);
+      // mask2 began when the second display ended; the prompt would have come a planned mask2 and
+      // blank2 later
+      const rtFromS2OffsetMs = now - (onsets.current.mask2 ?? now);
+      const rtMs = earlyPhase
+        ? rtFromS2OffsetMs - plannedMs('mask2', refreshMs) - plannedMs('blank2', refreshMs)
+        : now - endedAt.current;
 
       const chosen: TrialAnswer['response'] = FIRST_KEYS.has(key) ? 'first' : 'second';
       const isMiss = isAttention && chosen !== expected;
@@ -342,7 +395,9 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
         aFirst,
         hueOffset,
         starts,
-        rtMs: performance.now() - endedAt.current,
+        rtMs,
+        rtFromS2OffsetMs,
+        respondedDuring: earlyPhase ?? 'prompt',
         nA: displayA.n,
         nB,
         cue,
@@ -389,9 +444,9 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
-    advance, aFirst, attentionMisses, blocked, cellId, cue, density, displayA, displayB, endedAt, expected, hueOffset,
-    isAttention, isPractice, maxAttentionMisses, measured, nB, phase, refreshMs, scale, seedA, seedB, setAnswer,
-    staircaseId, starts, trialIndex, widthCm,
+    acceptsResponse, advance, aFirst, attentionMisses, blocked, cellId, cue, density, displayA, displayB, earlyPhase,
+    endedAt, expected, hueOffset, isAttention, isPractice, maxAttentionMisses, measured, nB, onsets, refreshMs,
+    scale, seedA, seedB, setAnswer, staircaseId, starts, stop, trialIndex, widthCm,
   ]);
 
   // Missed attention check: the feedback is timed from its first paint; input is accepted after
@@ -473,6 +528,7 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
           first={aFirst ? displayA : displayB}
           second={aFirst ? displayB : displayA}
           maskSeed={maskSeed}
+          mask2Seed={mask2Seed}
           phase={phase === 'running' ? timeline.phase : 'end'}
           scale={scale}
         />
@@ -487,14 +543,14 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
         >
           {phase === 'prompt' && (
             <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <KeyCap label="F" size={36} />
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }} data-testid="prompt-keys-first">
+                <KeyPair answer="first" size={34} />
                 <span style={{ fontSize: 16, color: UI.muted }}>first</span>
               </span>
               <span data-testid="trial-prompt" style={{ fontSize: 22, fontWeight: 700 }}>{PROMPT_TEXT}</span>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ display: 'flex', alignItems: 'center', gap: 8 }} data-testid="prompt-keys-second">
                 <span style={{ fontSize: 16, color: UI.muted }}>second</span>
-                <KeyCap label="J" size={36} />
+                <KeyPair answer="second" size={34} />
               </span>
             </div>
           )}

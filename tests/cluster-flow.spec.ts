@@ -22,7 +22,7 @@ interface StoredTrialData {
   metricsA: { ink: number, meanNN: number };
   metricsB: { ink: number, meanNN: number };
   measured: {
-    fixation: number, s1: number, mask: number, blank: number, s2: number, blank2: number,
+    fixation: number, s1: number, mask: number, blank: number, s2: number, mask2: number, blank2: number,
   };
   displayScale: number;
   stimulusWidthCm: number | null;
@@ -32,6 +32,9 @@ interface StoredTrialData {
   feedbackShownMs?: number;
   nA?: number;
   attentionMisses?: number;
+  respondedDuring?: string;
+  rtFromS2OffsetMs?: number;
+  rtMs: number;
 }
 
 /** One stored trial: the platform record around the hidden telemetry. */
@@ -92,10 +95,10 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   await primary.click();
 
   // Setup: full screen + timing, then the screen-size card check ("I have no card").
-  await page.getByRole('button', { name: 'Enter full screen and start' }).click();
-  await expect(page.getByTestId('setup-summary')).toBeVisible({ timeout: 20000 });
-  await page.getByRole('button', { name: 'Continue' }).click();
-  await expect(page.getByTestId('card-check')).toBeVisible();
+  // (the timing is measured silently: "One moment…", then straight to the card check)
+  await page.getByRole('button', { name: 'Enter full screen', exact: true }).click();
+  await expect(page.getByTestId('card-check')).toBeVisible({ timeout: 20000 });
+  await expect(page.getByTestId('setup-summary')).toHaveCount(0);
   await page.getByRole('button', { name: 'I have no card' }).click();
 
   // Instructions: storyboard and item figure. Leaving full screen here brings up the gate, which
@@ -131,7 +134,7 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   // Practice trials show their feedback in the stream for 1.5 s and move on by themselves; main
   // trials advance as soon as the key is pressed. The block starts and the trial after each rest
   // wait on the start gate; F is pressed there, and must not count as an answer. Attention checks
-  // (5 vs 30 items, after every 2 or 3 staircase trials in the test study) are answered correctly
+  // (5 vs 30 items, after every 3 staircase trials in the test study) are answered correctly
   // except the first, which is missed on purpose: its feedback shows the misses left and waits for
   // a key press.
   const fullscreenGate = page.getByTestId('fullscreen-gate');
@@ -220,11 +223,11 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
   }
 
   await waitForStudyEndMessage(page);
-  // three practice trials plus the shortened cell (8 staircase trials and 2 to 4 attention checks),
-  // with its two intro pages and one rest
+  // three practice trials plus the shortened cell (8 staircase trials and 2 attention checks, after
+  // staircase trials 3 and 6), with its two intro pages and rests after every 4 main-block trials
   expect(practiceTrials).toBe(3);
-  expect(checks).toBeGreaterThanOrEqual(2);
-  expect(checks).toBeLessThanOrEqual(4);
+  expect(checks).toBe(2);
+  expect(rests).toBe(2);
   expect(missesShown).toBe(1);
   expect(trials).toBe(3 + 8 + checks);
   expect(intros).toBe(2);
@@ -307,5 +310,10 @@ test('cluster-flow staircase runs a shortened session and stores full trial reco
     expect(Math.abs(trial.trialData.measured.s1 - 200)).toBeLessThanOrEqual(tolerance);
     expect(Math.abs(trial.trialData.measured.mask - 150)).toBeLessThanOrEqual(tolerance);
     expect(Math.abs(trial.trialData.measured.s2 - 200)).toBeLessThanOrEqual(tolerance);
+    // the second mask after the second display, then a 250 ms blank; this test answers at the prompt
+    expect(Math.abs(trial.trialData.measured.mask2 - 150)).toBeLessThanOrEqual(tolerance);
+    expect(Math.abs(trial.trialData.measured.blank2 - 250)).toBeLessThanOrEqual(tolerance);
+    expect(trial.trialData.respondedDuring).toBe('prompt');
+    expect(trial.trialData.rtFromS2OffsetMs).toBeGreaterThan(trial.trialData.rtMs);
   });
 });

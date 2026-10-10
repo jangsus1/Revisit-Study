@@ -7,7 +7,7 @@ import {
 } from 'vitest';
 import type { Display, GenerateOptions, TrialParams } from '../generator/types';
 import TrialRunner, {
-  ATTENTION_MIN_MS, FEEDBACK_MS, PROMPT_TEXT, READY_TEXT, forgetStartedTrials,
+  ATTENTION_MIN_MS, BODY_RESTORE_MS, FEEDBACK_MS, PROMPT_TEXT, READY_TEXT, forgetStartedTrials,
 } from '../TrialRunner';
 import { fullscreenSession } from '../ui/fullscreen';
 
@@ -193,13 +193,14 @@ describe('TrialRunner', () => {
     fireEvent.keyDown(window, { key: 'j' });
 
     const { measured } = setAnswer.mock.calls[0][0].answers.trialData;
-    expect(Object.keys(measured).sort()).toEqual(['blank', 'blank2', 'fixation', 'mask', 's1', 's2']);
+    expect(Object.keys(measured).sort()).toEqual(['blank', 'blank2', 'fixation', 'mask', 'mask2', 's1', 's2']);
     expect(measured.fixation).toBeCloseTo(500, 0);
     expect(measured.s1).toBeCloseTo(200, 0);
     expect(measured.mask).toBeCloseTo(150, 0);
     expect(measured.blank).toBeCloseTo(250, 0);
     expect(measured.s2).toBeCloseTo(200, 0);
-    expect(measured.blank2).toBeCloseTo(400, 0);
+    expect(measured.mask2).toBeCloseTo(150, 0);
+    expect(measured.blank2).toBeCloseTo(250, 0);
   });
 
   test('writes the chosen interval to the graded trial response', () => {
@@ -225,13 +226,18 @@ describe('TrialRunner', () => {
     expect(second.setAnswer.mock.calls[0][0].answers.trial).toBe('second');
   });
 
-  test('shows everything at one location: a single stage with blank, s1, mask, s2 and fixation layers', () => {
+  test('shows everything at one location: a single stage with blank, s1, mask, s2, mask2 and fixation layers', () => {
     renderTrial();
     expect(screen.getAllByTestId('trial-stage')).toHaveLength(1);
-    ['layer-s1', 'layer-mask', 'layer-s2', 'layer-fixation'].forEach((id) => {
+    ['layer-s1', 'layer-mask', 'layer-s2', 'layer-mask2', 'layer-fixation'].forEach((id) => {
       expect(screen.getByTestId('trial-stage').contains(screen.getByTestId(id))).toBe(true);
     });
-    expect(screen.getByTestId('layer-mask').contains(screen.getByTestId('noise-mask'))).toBe(true);
+    const masks = screen.getAllByTestId('noise-mask');
+    expect(masks).toHaveLength(2);
+    expect(screen.getByTestId('layer-mask').contains(masks[0])).toBe(true);
+    expect(screen.getByTestId('layer-mask2').contains(masks[1])).toBe(true);
+    // a different noise pattern after the second display
+    expect(masks[0].getAttribute('data-seed')).not.toBe(masks[1].getAttribute('data-seed'));
     expect(screen.queryByTestId('slot-left')).toBeNull();
     expect(screen.queryByTestId('slot-right')).toBeNull();
   });
@@ -257,7 +263,7 @@ describe('TrialRunner', () => {
   test('shows each layer only during its own phase', () => {
     renderTrial();
     const visibility = (testId: string) => screen.getByTestId(testId).style.visibility;
-    const visibleLayers = () => ['layer-fixation', 'layer-s1', 'layer-mask', 'layer-s2']
+    const visibleLayers = () => ['layer-fixation', 'layer-s1', 'layer-mask', 'layer-s2', 'layer-mask2']
       .filter((id) => visibility(id) === 'visible');
 
     runFrames(2);
@@ -278,11 +284,16 @@ describe('TrialRunner', () => {
     runFrames(16);
     expect(visibleLayers()).toEqual(['layer-s2']);
 
+    // s2 12 frames (+1), then the second mask, 9 frames
     runFrames(13);
+    expect(visibleLayers()).toEqual(['layer-mask2']);
+
+    // mask2 9 frames (+1), then the 15-frame blank2
+    runFrames(10);
     expect(visibleLayers()).toEqual([]);
     expect(screen.queryByTestId('trial-prompt')).toBeNull();
 
-    runFrames(25);
+    runFrames(16);
     expect(screen.getByTestId('trial-prompt')).toBeTruthy();
     expect(visibleLayers()).toEqual([]);
   });
@@ -698,5 +709,111 @@ describe('TrialRunner', () => {
       expect(setAnswer.mock.calls[0][0].answers.trialData.attentionMisses).toBe(2);
       expect(setAnswer.mock.calls[0][0].answers.trialData.correct).toBeUndefined();
     });
+  });
+
+  describe('early answers from the end of the second display', () => {
+    // frame counts at 60 Hz (see 'shows each layer only during its own phase'): s2 is up after 71
+    // frames, mask2 from about frame 84, blank2 from about frame 94, the prompt from about frame 110
+    const visible = () => ['layer-fixation', 'layer-s1', 'layer-mask', 'layer-s2', 'layer-mask2']
+      .filter((id) => screen.getByTestId(id).style.visibility === 'visible');
+    const EARLY_MS = 24 * FRAME_MS; // planned mask2 (9 frames) + blank2 (15 frames)
+
+    test('the prompt shows both keys for each answer', () => {
+      renderTrial();
+      runFrames(200);
+      expect(screen.getByTestId('prompt-keys-first').textContent).toBe('For←first');
+      expect(screen.getByTestId('prompt-keys-second').textContent).toBe('secondJor→');
+    });
+
+    test('a key during the second display is ignored; the answer then comes at the prompt as before', () => {
+      const { setAnswer } = renderTrial();
+      runFrames(72);
+      expect(visible()).toEqual(['layer-s2']);
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(setAnswer).not.toHaveBeenCalled();
+      runFrames(200);
+      fireEvent.keyDown(window, { key: 'j' });
+      const { trialData } = setAnswer.mock.calls[0][0].answers;
+      expect(trialData.response).toBe('second');
+      expect(trialData.respondedDuring).toBe('prompt');
+      expect(trialData.rtMs).toBeGreaterThanOrEqual(0);
+      // from the end of the second display: mask2, blank2 and the prompt time (the measured phases
+      // run from each phase's first painted frame, so their sum can miss one frame per change)
+      const sum = trialData.measured.mask2 + trialData.measured.blank2 + trialData.rtMs;
+      expect(Math.abs(trialData.rtFromS2OffsetMs - sum)).toBeLessThanOrEqual(2 * FRAME_MS + 0.5);
+    });
+
+    test('a key during the second mask ends the trial at once, with a negative rtMs', () => {
+      const { setAnswer, advance } = renderTrial();
+      runFrames(87);
+      expect(visible()).toEqual(['layer-mask2']);
+      fireEvent.keyDown(window, { key: 'ArrowLeft' });
+      expect(setAnswer).toHaveBeenCalledTimes(1);
+      expect(advance).toHaveBeenCalledTimes(1);
+      const { trial, trialData } = setAnswer.mock.calls[0][0].answers;
+      expect(trial).toBe('first');
+      expect(trialData.respondedDuring).toBe('mask2');
+      expect(trialData.rtFromS2OffsetMs).toBeGreaterThan(0);
+      expect(trialData.rtFromS2OffsetMs).toBeLessThan(150);
+      // rtMs keeps its meaning (from where the prompt would have appeared): negative here
+      expect(trialData.rtMs).toBeCloseTo(trialData.rtFromS2OffsetMs - EARLY_MS, 3);
+      // mask2 is cut at the answer and blank2 never ran
+      expect(trialData.measured.mask2).toBeCloseTo(trialData.rtFromS2OffsetMs, 3);
+      expect(trialData.measured.blank2).toBe(0);
+      expect(trialData.measured.s2).toBeCloseTo(200, 0);
+      runFrames(60);
+      expect(screen.queryByTestId('trial-prompt')).toBeNull();
+      expect(visible()).toEqual([]);
+    });
+
+    test('a key during blank2 ends the trial at once too', () => {
+      const { setAnswer } = renderTrial();
+      runFrames(100);
+      expect(visible()).toEqual([]);
+      expect(screen.queryByTestId('trial-prompt')).toBeNull();
+      fireEvent.keyDown(window, { key: 'j' });
+      const { trialData } = setAnswer.mock.calls[0][0].answers;
+      expect(trialData.respondedDuring).toBe('blank2');
+      expect(trialData.rtMs).toBeLessThan(0);
+      expect(trialData.rtMs).toBeCloseTo(trialData.rtFromS2OffsetMs - EARLY_MS, 3);
+      expect(trialData.measured.mask2).toBeCloseTo(150, 0);
+      expect(trialData.measured.blank2).toBeGreaterThan(0);
+      expect(trialData.measured.blank2).toBeLessThan(250);
+      expect(Math.abs(trialData.measured.mask2 + trialData.measured.blank2 - trialData.rtFromS2OffsetMs)).toBeLessThanOrEqual(FRAME_MS + 0.5);
+    });
+
+    test('early answers work for practice and attention trials too', () => {
+      const practice = renderTrial({
+        staircaseId: 'practice', cellId: 'practice', nB: 40, starts: null,
+      });
+      runFrames(90);
+      fireEvent.keyDown(window, { key: 'j' });
+      expect(practice.setAnswer.mock.calls[0][0].answers.trialData.respondedDuring).toBe('mask2');
+      expect(screen.getByTestId('practice-feedback')).toBeTruthy();
+      expect(screen.getByTestId('practice-feedback-keys').textContent).toBe('Jor→');
+      cleanup();
+
+      const check = renderTrial({
+        staircaseId: 'attention', nA: 5, nB: 30, aFirst: true, attentionMisses: 0,
+      });
+      runFrames(100);
+      fireEvent.keyDown(window, { key: 'f' });
+      expect(check.setAnswer.mock.calls[0][0].answers.trialData.respondedDuring).toBe('blank2');
+      expect(screen.getByTestId('attention-feedback-keys').textContent).toBe('Jor→');
+    });
+  });
+
+  test('keeps the page body in the surround grey across the gap between two trials', () => {
+    renderTrial();
+    expect(document.body.style.backgroundColor).toBe('rgb(230, 230, 230)');
+    cleanup();
+    // the next trial mounts within the gap: the body stays grey
+    act(() => { vi.advanceTimersByTime(BODY_RESTORE_MS / 2); });
+    expect(document.body.style.backgroundColor).toBe('rgb(230, 230, 230)');
+    renderTrial({ trialIndex: 9 });
+    cleanup();
+    act(() => { vi.advanceTimersByTime(BODY_RESTORE_MS + 10); });
+    // no trial for a while: the body gets its own colour back
+    expect(document.body.style.backgroundColor).toBe('');
   });
 });

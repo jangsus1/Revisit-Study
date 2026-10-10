@@ -92,3 +92,22 @@ export function SvgKeyCap({
     </g>
   );
 }
+
+/** The two keys that give one answer: F and ← for "first", J and → for "second". */
+export function KeyPair({
+  answer, size = 40, testId,
+}: { answer: 'first' | 'second'; size?: number; testId?: string }) {
+  const keys = answer === 'first' ? ['F', '←'] : ['J', '→'];
+  return (
+    <span
+      data-testid={testId}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: Math.round(size * 0.15),
+      }}
+    >
+      <KeyCap label={keys[0]} size={size} />
+      <span style={{ fontSize: Math.round(size * 0.36), color: UI.faint }}>or</span>
+      <KeyCap label={keys[1]} size={size} />
+    </span>
+  );
+}

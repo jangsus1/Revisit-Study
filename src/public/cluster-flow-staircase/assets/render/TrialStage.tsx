@@ -1,6 +1,7 @@
 /**
  * The single stimulus location of a trial: a blank canvas that is always visible, with the first
- * stimulus, the noise mask, the second stimulus and the fixation cross layered on top of it. Every
+ * stimulus, the first noise mask, the second stimulus, the second noise mask (a different pattern,
+ * since 2026-10-09) and the fixation cross layered on top of it. Every
  * layer is mounted for the whole trial and only its `visibility` follows the phase, so a phase
  * change costs a paint and not a layout. Used by the trial runner and the gallery preview.
  *
@@ -28,8 +29,8 @@ function layer(visible: boolean): CSSProperties {
 }
 
 export function TrialStage({
-  first, second, maskSeed, phase, scale = 1,
-}: { first: Display; second: Display; maskSeed: number; phase: TimelinePhase; scale?: number }) {
+  first, second, maskSeed, mask2Seed, phase, scale = 1,
+}: { first: Display; second: Display; maskSeed: number; mask2Seed: number; phase: TimelinePhase; scale?: number }) {
   const { width, height } = first;
   const stage = (
     <div data-testid="trial-stage" data-scale={scale} style={{ position: 'relative', width, height }}>
@@ -39,6 +40,9 @@ export function TrialStage({
       </div>
       <div data-testid="layer-mask" style={layer(phase === 'mask')}>
         <NoiseMask width={width} height={height} seed={maskSeed} />
+      </div>
+      <div data-testid="layer-mask2" style={layer(phase === 'mask2')}>
+        <NoiseMask width={width} height={height} seed={mask2Seed} />
       </div>
       <div data-testid="layer-s2" data-stimulus={second.kind} data-n={second.n} style={layer(phase === 's2')}>
         <StimulusFrame display={second} />

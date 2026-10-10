@@ -66,11 +66,11 @@ describe('InfoPage', () => {
     expect(setAnswer).toHaveBeenLastCalledWith({ status: false, answers: {} });
     const button = screen.getByTestId('primary-button') as HTMLButtonElement;
     expect(button.disabled).toBe(true);
-    expect(button.textContent).toMatch(/^Start · \d+ s$/);
+    expect(button.textContent).toBe('Start · 5 s');
     fireEvent.click(button);
     expect(advance).not.toHaveBeenCalled();
 
-    wait(60);
+    wait(5);
     expect(setAnswer).toHaveBeenLastCalledWith({ status: true, answers: {} });
     expect(button.disabled).toBe(false);
     expect(button.textContent).toBe('Start');
@@ -83,11 +83,11 @@ describe('InfoPage', () => {
     expect(screen.getByText('Which diagram has more items?')).toBeTruthy();
     expect(screen.getAllByTestId('session-step')).toHaveLength(5);
     expect(screen.getByTestId('session-steps').textContent).toContain('examples + 3 practice trials');
-    expect(screen.getByTestId('session-steps').textContent).toContain('about 8 min');
+    expect(screen.getByTestId('session-steps').textContent).toContain('150–200 trials (about 8 min), a break every 50');
     // without reVISit's sequence (this test) the fallback estimate is shown
     expect(screen.getByTestId('session-meta').textContent).toContain('About 15 minutes');
     expect(screen.getByTestId('attention-note').textContent)
-      .toBe('A few easy attention checks are mixed in at random — missing more than 3 ends the study.');
+      .toBe('A few easy attention checks are mixed in — missing more than 3 ends the study.');
     expect(screen.getByTestId('session-meta').textContent).toContain('full screen');
   });
 
@@ -95,8 +95,11 @@ describe('InfoPage', () => {
     renderPage({ page: 'instructions' });
     expect(screen.getByText('How a trial works')).toBeTruthy();
     const storyboard = screen.getByTestId('trial-storyboard');
-    ['Look at the cross', 'Diagram 1', 'Noise', 'Diagram 2', 'Which had more items?', '0.2 s', '0.15 s', 'first', 'second']
+    ['Look at the cross', 'Diagram 1', 'Noise', 'Diagram 2', 'Which had more?', '0.2 s', '0.15 s', 'first', 'second']
       .forEach((text) => expect(storyboard.textContent).toContain(text));
+    // two noise panels: after each diagram
+    expect((storyboard.textContent as string).match(/Noise/g)).toHaveLength(2);
+    expect((storyboard.textContent as string).match(/0\.15 s/g)).toHaveLength(2);
     const items = screen.getByTestId('item-count-figure');
     expect(screen.getAllByTestId('count-badge')).toHaveLength(7);
     expect(items.textContent).toContain('arrows are not items');
@@ -137,7 +140,8 @@ describe('InfoPage', () => {
     renderPage({ page: 'main' });
     expect(screen.getByText('Main task')).toBeTruthy();
     const main = screen.getByTestId('info-main');
-    ['No feedback from now on', 'first impression', 'Easy attention checks: missing more than 3 ends the study', 'Breaks are offered']
+    expect(screen.getByTestId('main-length').textContent).toBe('The main task has about 150–200 trials.');
+    ['No feedback from now on', 'first impression', 'Easy attention checks: missing more than 3 ends the study', 'Breaks are offered every 50 trials']
       .forEach((text) => expect(main.textContent).toContain(text));
     expect(screen.getByTestId('answer-keys').textContent).toContain('F');
     expect(screen.getByTestId('answer-keys').textContent).toContain('J');
@@ -199,37 +203,37 @@ describe('InfoPage', () => {
   });
 
   describe('reading time', () => {
-    test('each page uses its floor or the word count; the rest page has no timer', () => {
-      expect(PAGES.instructions.minReadSeconds).toBe(20);
-      expect(PAGES.practice.minReadSeconds).toBe(8);
-      expect(PAGES.main.minReadSeconds).toBe(5);
-      expect(PAGES.rest.minReadSeconds).toBeNull();
+    test('each page waits its fixed time; the rest page has no timer', () => {
+      expect(PAGES.introduction.readSeconds).toBe(5);
+      expect(PAGES.instructions.readSeconds).toBe(15);
+      expect(PAGES.practice.readSeconds).toBe(4);
+      expect(PAGES.main.readSeconds).toBe(3);
+      expect(PAGES.rest.readSeconds).toBeNull();
 
       const { setAnswer } = renderPage({ page: 'rest' });
       expect(setAnswer).toHaveBeenLastCalledWith({ status: true, answers: {} });
       expect((screen.getByTestId('primary-button') as HTMLButtonElement).disabled).toBe(false);
       cleanup();
 
-      // the instructions: the word count of their text and figure labels, at least 20 s
       renderPage({ page: 'instructions' });
       const button = screen.getByTestId('primary-button') as HTMLButtonElement;
-      const required = Number((button.textContent as string).match(/(\d+) s$/)?.[1]);
-      expect(required).toBeGreaterThanOrEqual(20);
-      wait(required - 1);
+      expect(button.textContent).toBe('Continue · 15 s');
+      wait(14);
       expect(button.disabled).toBe(true);
       expect(button.textContent).toBe('Continue · 1 s');
       wait(1);
       expect(button.disabled).toBe(false);
       cleanup();
 
-      // the main-task intro: its words, never under its 5 s floor
       renderPage({ page: 'main' });
-      const main = Number((screen.getByTestId('primary-button').textContent as string).match(/(\d+) s$/)?.[1]);
-      expect(main).toBeGreaterThanOrEqual(5);
-      expect(main).toBeLessThan(15);
+      expect(screen.getByTestId('primary-button').textContent).toBe('Start the main task · 3 s');
+      cleanup();
+      upcoming.cell = { cue: 'color', density: 'sparse' };
+      renderPage({ page: 'practice' });
+      expect(screen.getByTestId('primary-button').textContent).toBe('Start practice · 4 s');
     });
 
-    test('a config override replaces the computed time', () => {
+    test('a config override replaces the page\'s time', () => {
       renderPage({ page: 'instructions', readingSeconds: 2 });
       const button = screen.getByTestId('primary-button') as HTMLButtonElement;
       expect(button.textContent).toBe('Continue · 2 s');

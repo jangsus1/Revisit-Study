@@ -114,6 +114,7 @@ function TrialPreview({
         first={aFirst ? displayA : displayB}
         second={aFirst ? displayB : displayA}
         maskSeed={hashSeed(displayA.seed, displayB.seed, 'mask')}
+        mask2Seed={hashSeed(displayA.seed, displayB.seed, 'mask2')}
         phase={phase}
       />
     </Stack>
@@ -271,7 +272,7 @@ export default function Gallery() {
       <Group align="flex-start" gap="xl">
         <PaletteStrip hueOffset={hueOffset} />
         <Stack gap={4}>
-          <Text size="sm" fw={600}>Noise mask (150 ms between the two stimuli; shown at 1:3)</Text>
+          <Text size="sm" fw={600}>Noise masks (150 ms after each stimulus, two patterns; the first shown at 1:3)</Text>
           <div style={{ width: width * previewScale, height: height * previewScale, overflow: 'hidden' }}>
             <div style={{ transform: `scale(${previewScale})`, transformOrigin: 'top left' }}>
               <NoiseMask width={width} height={height} seed={hashSeed(seed, hashSeed(seed, 'B'), 'mask')} />

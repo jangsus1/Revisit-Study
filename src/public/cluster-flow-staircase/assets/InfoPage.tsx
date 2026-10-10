@@ -5,7 +5,7 @@
  *  - `instructions`: the trial storyboard and "what counts as an item";
  *  - `practice`: the practice feedback loop and one real diagram of the participant's cue;
  *  - `main`: the main-task rules and answer keys;
- *  - `rest`: the break page the staircase block inserts every 60 main trials.
+ *  - `rest`: the break page the staircase block inserts every 50 main-block trials.
  * Every page advances with its button (reVISit's `advance()`) or Enter (the study's `nextOnEnter`),
  * but only after its minimum reading time (`ui/readingTime.tsx`; none on the rest page).
  * Pages after the setup mount the full-screen gate. The practice page reads the participant's cue
@@ -16,14 +16,14 @@ import {
   IconMessageOff, IconMessageQuestion, IconSchool, IconSignature,
 } from '@tabler/icons-react';
 import {
-  ComponentType, ReactNode, useEffect, useMemo, useRef,
+  ComponentType, ReactNode, useEffect, useMemo,
 } from 'react';
 import type { StimulusParams } from '../../../store/types';
 import type { Cue, Density, TrialAnswer } from './generator';
 import { generateDisplay } from './generator';
 import { DEFAULT_ATTENTION_CONFIG } from './attention';
 import { StimulusSVG } from './render/StimulusSVG';
-import { drawHueOffset, readSetupAnswer } from './staircaseBlock';
+import { DEFAULT_REST_EVERY as REST_EVERY, drawHueOffset, readSetupAnswer } from './staircaseBlock';
 import {
   AttentionMini, ItemCountFigure, PracticeStoryboard, TrialStoryboard,
 } from './ui/figures';
@@ -44,6 +44,9 @@ export interface InfoPageParameters {
   /** replaces the computed minimum reading time, seconds (the shortened test study uses 1) */
   readingSeconds?: number;
 }
+
+/** How long the main block is, in words for participants (simulated median 147, p90 165, cap 190). */
+export const MAIN_BLOCK_TRIALS = '150–200';
 
 /** The seed of the practice page's example diagram (any fixed seed; it is not a trial). */
 export const PREVIEW_SEED = 20261006;
@@ -151,7 +154,7 @@ function IntroductionPage({ practiceTrials }: { practiceTrials: number }) {
         <StepChip n={1} icon={IconSignature} label="Consent" />
         <StepChip n={2} icon={IconDeviceDesktopCheck} label="Display check" sub="full screen, screen size" />
         <StepChip n={3} icon={IconSchool} label="Instructions" sub={`examples + ${practiceTrials} practice trials`} />
-        <StepChip n={4} icon={IconKeyboard} label="Main task" sub={`about ${MAIN_BLOCK_MINUTES} min, with breaks`} />
+        <StepChip n={4} icon={IconKeyboard} label="Main task" sub={`${MAIN_BLOCK_TRIALS} trials (about ${MAIN_BLOCK_MINUTES} min), a break every ${REST_EVERY}`} />
         <StepChip n={5} icon={IconMessageQuestion} label="A few questions" />
       </div>
       <div
@@ -182,7 +185,7 @@ function IntroductionPage({ practiceTrials }: { practiceTrials: number }) {
         }}
       >
         <IconEyeCheck size={18} stroke={1.8} />
-        {`A few easy attention checks are mixed in at random — missing more than ${DEFAULT_ATTENTION_CONFIG.maxMisses} ends the study.`}
+        {`A few easy attention checks are mixed in — missing more than ${DEFAULT_ATTENTION_CONFIG.maxMisses} ends the study.`}
       </div>
     </div>
   );
@@ -274,7 +277,10 @@ function MainPage() {
         <RuleChip icon={IconMessageOff}>No feedback from now on</RuleChip>
         <RuleChip icon={IconBolt}>Answer with your first impression</RuleChip>
         <RuleChip icon={IconEyeCheck}>{`Easy attention checks: missing more than ${DEFAULT_ATTENTION_CONFIG.maxMisses} ends the study`}</RuleChip>
-        <RuleChip icon={IconCoffee}>Breaks are offered</RuleChip>
+        <RuleChip icon={IconCoffee}>{`Breaks are offered every ${REST_EVERY} trials`}</RuleChip>
+      </div>
+      <div data-testid="main-length" style={{ fontSize: 18, color: UI.ink, fontWeight: 600 }}>
+        {`The main task has about ${MAIN_BLOCK_TRIALS} trials.`}
       </div>
       <AnswerKeys size={52} />
     </div>
@@ -322,30 +328,29 @@ interface PageSpec {
   button: string;
   maxWidth: number;
   gate: boolean;
-  /** minimum reading time: computed from the words, never below this floor; null = no timer */
-  minReadSeconds: number | null;
+  /** seconds before the button works (fixed per page); null = no timer */
+  readSeconds: number | null;
 }
 
 /**
- * Reading-time floors: the introduction is computed from its words alone; the instructions are
- * mostly figures, so at least 20 s; practice intro 8 s; main-task intro 5 s; no timer on the rest
- * page.
+ * Seconds before each page's button works (fixed, since 2026-10-09): introduction 5, instructions
+ * 15, practice intro 4, main-task intro 3; no timer on the rest page.
  */
 export const PAGES: Record<InfoPageName, PageSpec> = {
   introduction: {
-    kicker: 'Research study', title: 'Which diagram has more items?', button: 'Start', maxWidth: 900, gate: false, minReadSeconds: 0,
+    kicker: 'Research study', title: 'Which diagram has more items?', button: 'Start', maxWidth: 900, gate: false, readSeconds: 5,
   },
   instructions: {
-    title: 'How a trial works', button: 'Continue', maxWidth: 1100, gate: true, minReadSeconds: 20,
+    title: 'How a trial works', button: 'Continue', maxWidth: 1100, gate: true, readSeconds: 15,
   },
   practice: {
-    kicker: 'Practice', title: '3 easy trials with feedback', button: 'Start practice', maxWidth: 1000, gate: true, minReadSeconds: 8,
+    kicker: 'Practice', title: '3 easy trials with feedback', button: 'Start practice', maxWidth: 1000, gate: true, readSeconds: 4,
   },
   main: {
-    kicker: 'Practice done', title: 'Main task', button: 'Start the main task', maxWidth: 960, gate: true, minReadSeconds: 5,
+    kicker: 'Practice done', title: 'Main task', button: 'Start the main task', maxWidth: 960, gate: true, readSeconds: 3,
   },
   rest: {
-    kicker: 'Main task', title: 'Short break', button: 'Continue', maxWidth: 700, gate: true, minReadSeconds: null,
+    kicker: 'Main task', title: 'Short break', button: 'Continue', maxWidth: 700, gate: true, readSeconds: null,
   },
 };
 
@@ -363,10 +368,7 @@ export default function InfoPage({
 
   // The page answer stays invalid until the reading time has passed, so neither the button nor
   // reVISit's Enter handler can advance it early.
-  const textRef = useRef<HTMLDivElement>(null);
-  const reading = useReadingTime(textRef, {
-    minSeconds: spec.minReadSeconds ?? 0, fixedSeconds: parameters?.readingSeconds, enabled: spec.minReadSeconds !== null,
-  });
+  const reading = useReadingTime(spec.readSeconds === null ? null : parameters?.readingSeconds ?? spec.readSeconds);
   useEffect(() => {
     setAnswer({ status: reading.ready, answers: {} });
   }, [setAnswer, reading.ready]);
@@ -387,7 +389,6 @@ export default function InfoPage({
         kicker={spec.kicker}
         title={spec.title}
         maxWidth={spec.maxWidth}
-        textRef={textRef}
         actions={<ReadingButton reading={reading} onClick={() => advance?.()}>{spec.button}</ReadingButton>}
       >
         {body}

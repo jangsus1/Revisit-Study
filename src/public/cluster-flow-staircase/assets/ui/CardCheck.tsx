@@ -2,14 +2,13 @@
  * Screen-size calibration with a credit-card-sized card (adapted from scatterplot_gaze's
  * DeviceCheck.tsx; the card part of the "virtual chinrest", Li et al., 2020): the participant
  * resizes a picture of an ISO/IEC 7810 ID-1 card (85.60 x 53.98 mm) until it matches a real card
- * held against the screen, which gives CSS pixels per cm. The implied screen diagonal is shown
- * live; one outside 11-34 inches asks for a second look before it is accepted
+ * held against the screen, which gives CSS pixels per cm. The implied screen diagonal is computed
+ * internally (not shown since 2026-10-09); one outside 11-34 inches asks for a second look before it is accepted
  * (`confirmedImplausible`). "I have no card" returns null and the stimuli keep their nominal size.
  */
 import { Button, Slider } from '@mantine/core';
 import { useState } from 'react';
 import { Panel } from './Panel';
-import { UI } from './theme';
 
 export const CARD_W_CM = 8.56;
 const CARD_H_CM = 5.398;
@@ -55,7 +54,6 @@ export function CardCheck({ onDone }: { onDone: (result: CardResult | null) => v
   return (
     <Panel
       testId="card-check"
-      kicker="Display check · 2 of 2"
       title="Screen size"
       maxWidth={720}
       actions={warn ? (
@@ -71,7 +69,7 @@ export function CardCheck({ onDone }: { onDone: (result: CardResult | null) => v
       )}
     >
       Hold a bank card or ID card flat against the screen and drag the slider until the picture is
-      exactly as wide as the card. This sets the size of the diagrams.
+      exactly as wide as the card.
       <div style={{
         display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 22, marginTop: 24,
       }}
@@ -91,12 +89,6 @@ export function CardCheck({ onDone }: { onDone: (result: CardResult | null) => v
           label={null}
           aria-label="Card width"
         />
-        <div style={{ fontSize: 15, color: UI.muted }}>
-          That makes your screen about
-          {' '}
-          <strong>{`${Math.round(inches)} inches`}</strong>
-          {` (${Math.round(inches * 2.54)} cm) diagonally.`}
-        </div>
         {warn && (
           <div
             data-testid="card-warning"

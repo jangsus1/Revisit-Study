@@ -2,7 +2,7 @@
  * "Examples": two super-easy trials of the participant's own cue and density, each in its own
  * card, shown before the practice. Every card has a static side-by-side view (Diagram 1 and
  * Diagram 2, the one with more items marked) and a "Play as it will appear" button that runs the
- * real timeline in place (fixation, flash 1, noise mask, flash 2) on a small stage and then shows
+ * real timeline in place (fixation, flash 1, noise, flash 2, noise) on a small stage and then shows
  * the answer with the key that gives it. Both examples use fixed demo seeds and A first:
  *  (a) the grouped diagram (A, 24 items) against 10 items, so the first had more (F);
  *  (b) A against 44 items, so the second had more (J).
@@ -20,7 +20,7 @@ import { GENERATOR_CONFIG as C } from './generator/config';
 import { StimulusSVG } from './render/StimulusSVG';
 import { TrialStage } from './render/TrialStage';
 import { correctInterval, drawHueOffset, readSetupAnswer } from './staircaseBlock';
-import { KeyCap } from './ui/KeyCap';
+import { KeyPair } from './ui/KeyCap';
 import { FullscreenGate, Panel } from './ui/Panel';
 import { ReadingButton, useReadingTime } from './ui/readingTime';
 import { useUpcomingCell } from './ui/studyContext';
@@ -45,8 +45,8 @@ export const EXAMPLES = [
   },
 ] as const;
 
-/** Floor of the page's reading time, seconds (the word count is small; the plays take longer). */
-export const EXAMPLE_MIN_READ_SECONDS = 10;
+/** Seconds before Continue works (it also needs both examples played). */
+export const EXAMPLE_READ_SECONDS = 5;
 
 /** Window space around the two cards: title, intro line, button and paddings (px). */
 const FIXED_H = 360;
@@ -87,9 +87,9 @@ function ScaledDisplay({ display, scale, highlight }: { display: Display; scale:
 
 /** The real trial sequence on a small stage, replayed on every runKey change. */
 function PlayStage({
-  first, second, maskSeed, scale, refreshMs, runKey, onEnd,
+  first, second, maskSeed, mask2Seed, scale, refreshMs, runKey, onEnd,
 }: {
-  first: Display; second: Display; maskSeed: number; scale: number; refreshMs: number; runKey: number; onEnd: () => void;
+  first: Display; second: Display; maskSeed: number; mask2Seed: number; scale: number; refreshMs: number; runKey: number; onEnd: () => void;
 }) {
   const { phase } = useTrialTimeline(runKey > 0, refreshMs, runKey);
   const ended = useRef(onEnd);
@@ -99,7 +99,7 @@ function PlayStage({
   }, [phase]);
   return (
     <div data-testid="example-stage" data-phase={phase} style={{ background: C.SURROUND, padding: 6 }}>
-      <TrialStage first={first} second={second} maskSeed={maskSeed} phase={phase === 'idle' ? 'end' : phase} scale={scale} />
+      <TrialStage first={first} second={second} maskSeed={maskSeed} mask2Seed={mask2Seed} phase={phase === 'idle' ? 'end' : phase} scale={scale} />
     </div>
   );
 }
@@ -174,6 +174,7 @@ function ExampleCard({
         first={first}
         second={second}
         maskSeed={hashSeed(example.seedA, example.seedB, 'mask')}
+        mask2Seed={hashSeed(example.seedA, example.seedB, 'mask2')}
         scale={scale}
         refreshMs={refreshMs}
         runKey={runKey}
@@ -188,7 +189,7 @@ function ExampleCard({
       >
         {showAnswer ? (
           <>
-            <KeyCap label={answer === 'first' ? 'F' : 'J'} size={44} />
+            <KeyPair answer={answer} size={38} testId={`example-${example.id}-keys`} />
             <span data-testid={`example-${example.id}-answer`} style={{ fontSize: 17, fontWeight: 700, color: UI.ink }}>
               {`The ${answer} had more`}
             </span>
@@ -231,8 +232,7 @@ export default function ExamplePage({
   ));
   const [played, setPlayed] = useState<boolean[]>(EXAMPLES.map(() => false));
 
-  const textRef = useRef<HTMLDivElement>(null);
-  const reading = useReadingTime(textRef, { minSeconds: EXAMPLE_MIN_READ_SECONDS, fixedSeconds: parameters?.readingSeconds });
+  const reading = useReadingTime(parameters?.readingSeconds ?? EXAMPLE_READ_SECONDS);
   const allPlayed = played.every(Boolean);
   const ready = reading.ready && allPlayed;
 
@@ -246,7 +246,6 @@ export default function ExamplePage({
         testId="example-page"
         title="Two easy examples"
         maxWidth={1400}
-        textRef={textRef}
         actions={(
           <ReadingButton
             reading={reading}

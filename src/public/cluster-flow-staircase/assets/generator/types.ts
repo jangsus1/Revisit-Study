@@ -203,7 +203,12 @@ export interface MeasuredDurations {
   blank: number;
   /** second stimulus */
   s2: number;
-  /** blank before the prompt */
+  /**
+   * noise mask after the second stimulus (150 ms, since 2026-10-09; sessions before have no mask2
+   * and a 400 ms blank2)
+   */
+  mask2: number;
+  /** blank before the prompt (250 ms; 400 ms before 2026-10-09); cut short by an early answer */
   blank2: number;
 }
 
@@ -219,7 +224,16 @@ export interface TrialAnswer {
   aFirst: boolean;
   hueOffset: number;
   starts: { above: number; below: number } | null;
+  /**
+   * ms from prompt onset to the key press; negative when the answer came early, during mask2 or
+   * blank2 (the prompt would then have appeared a frame-counted 150 + 250 ms after the second
+   * display ended)
+   */
   rtMs: number;
+  /** ms from the end of the second display (mask2 onset) to the key press (since 2026-10-09) */
+  rtFromS2OffsetMs?: number;
+  /** when the answer came: during mask2, during blank2, or once the prompt was up (since 2026-10-09) */
+  respondedDuring?: 'mask2' | 'blank2' | 'prompt';
   nA: number;
   nB: number;
   cue: Cue;

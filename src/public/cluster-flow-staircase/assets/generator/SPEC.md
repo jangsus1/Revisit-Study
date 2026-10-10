@@ -282,3 +282,8 @@ for i = 0 .. 4:
     reference field with its link budget and the cue's features (colours, the A's six marks,
     dashes), so a check looks like any other trial. The 30-item display is exactly the B that
     `generateTrialPair` would build for N_B = 30 with the same seeds.
+25. **Second noise mask.** Since 2026-10-09 a second white-noise mask (150 ms, a different pattern,
+    seeded by `hashSeed(seedA, seedB, 'mask2')`) follows the second stimulus, and the blank before
+    the prompt is 250 ms instead of 400 ms, so the prompt still comes 1 700 ms after the fixation's
+    onset. Yu et al. (2019) masked after each display (500 ms) in Experiments 2 and 3; here each
+    mask lasts 150 ms.

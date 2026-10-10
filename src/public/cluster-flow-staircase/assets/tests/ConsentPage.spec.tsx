@@ -41,18 +41,24 @@ afterEach(() => {
 });
 
 describe('ConsentPage', () => {
-  test('shows the form text without duration or compensation amounts', () => {
+  test('shows only the key information and the consent sentence; the rest is in the PDF', () => {
     renderConsent();
     const text = screen.getByTestId('consent-text').textContent as string;
-    ['Flowchart Visualization', 'physically located in the United States', 'Compensation is not provided if you withdraw early',
-      'full compensation will not be given to those who withdraw early', 'Georgia Institute of Technology IRB', 'cxiong@gatech.edu',
-      'IRB@gatech.edu', 'There are no costs to you', 'you are consenting to be in the study']
+    ['Voluntary Participation', 'physically located in the United States', 'Compensation is not provided if you withdraw early',
+      'Minimal risks such as eye strain or fatigue', 'By clicking ‘Continue’ or ‘I Agree’, you are consenting to be in the study.']
       .forEach((phrase) => expect(text).toContain(phrase));
+    expect(screen.getByTestId('consent-key-information').querySelectorAll('li')).toHaveLength(6);
+    // the form's long sections are no longer on the page
+    ['Confidentiality', 'Georgia Institute of Technology IRB', 'There are no costs to you', 'What Am I Being Asked To Do?',
+      'Flowchart Visualization'].forEach((phrase) => expect(text).not.toContain(phrase));
+    expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0);
     // whatever may change between rounds is left out
     expect(text).not.toMatch(/\$\s?\d/);
     expect(text).not.toMatch(/minutes/i);
     expect(text).not.toMatch(/Duration/);
-    expect(screen.getByTestId('consent-key-information').querySelectorAll('li')).toHaveLength(6);
+    // the two buttons
+    expect(screen.getByTestId('consent-agree')).toBeTruthy();
+    expect(screen.getByTestId('consent-decline')).toBeTruthy();
   });
 
   test('links the PDF for viewing or download without embedding it', () => {

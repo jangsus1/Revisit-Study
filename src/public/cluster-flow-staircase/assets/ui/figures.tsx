@@ -112,8 +112,10 @@ const SKETCH_2: { nodes: Pt[]; edges: [number, number][] } = {
 };
 
 /** Square blocks of random grey, like the trial's noise mask. */
-function Noise({ w, h, block = 7 }: { w: number; h: number; block?: number }) {
-  const rng = mulberry32(7);
+function Noise({
+  w, h, block = 7, seed = 7,
+}: { w: number; h: number; block?: number; seed?: number }) {
+  const rng = mulberry32(seed);
   const cells: ReactNode[] = [];
   for (let y = 0; y < h; y += block) {
     for (let x = 0; x < w; x += block) {
@@ -138,25 +140,26 @@ const figureStyle = (maxHeight: string): CSSProperties => ({
 });
 
 /**
- * How a trial works: cross, diagram 1 (0.2 s), noise (0.15 s), diagram 2 (0.2 s), answer.
- * The blanks between the steps are not drawn; the arrows stand for them.
+ * How a trial works: cross, diagram 1 (0.2 s), noise (0.15 s), diagram 2 (0.2 s), noise (0.15 s),
+ * answer. The blanks between the steps are not drawn; the arrows stand for them.
  */
 export function TrialStoryboard({ maxHeight = '40vh' }: { maxHeight?: string }) {
-  const W = 196;
-  const H = 157;
-  const GAP = 50;
+  const W = 172;
+  const H = 138;
+  const GAP = 34;
   const TOP = 70;
-  const xs = [0, 1, 2, 3, 4].map((i) => 10 + i * (W + GAP));
+  const xs = [0, 1, 2, 3, 4, 5].map((i) => 10 + i * (W + GAP));
   const midY = TOP + H / 2;
+  const noiseFrame = <rect x={0} y={0} width={W} height={H} fill="none" stroke={UI.ink} strokeWidth={FRAME_STROKE} />;
   return (
     <svg
       data-testid="trial-storyboard"
-      viewBox="0 0 1200 330"
+      viewBox="0 0 1222 300"
       style={figureStyle(maxHeight)}
       role="img"
-      aria-label="A trial: look at the cross, diagram 1 for 0.2 seconds, noise for 0.15 seconds, diagram 2 for 0.2 seconds, then answer which had more items with F or J."
+      aria-label="A trial: look at the cross, diagram 1 for 0.2 seconds, noise for 0.15 seconds, diagram 2 for 0.2 seconds, noise for 0.15 seconds, then answer which had more items with F or left arrow, J or right arrow."
     >
-      {xs.slice(0, 4).map((x) => <FlowArrow key={x} x0={x + W + 8} x1={x + W + GAP - 8} y={midY} />)}
+      {xs.slice(0, 5).map((x) => <FlowArrow key={x} x0={x + W + 6} x1={x + W + GAP - 6} y={midY} />)}
 
       <StepFrame x={xs[0]} y={TOP} w={W} h={H} step={1} label="Look at the cross">
         <Cross cx={W / 2} cy={H / 2} />
@@ -166,26 +169,31 @@ export function TrialStoryboard({ maxHeight = '40vh' }: { maxHeight?: string }) 
       </StepFrame>
       <StepFrame x={xs[2]} y={TOP} w={W} h={H} step={3} label="Noise">
         <Noise w={W} h={H} />
-        <rect x={0} y={0} width={W} height={H} fill="none" stroke={UI.ink} strokeWidth={FRAME_STROKE} />
+        {noiseFrame}
       </StepFrame>
       <StepFrame x={xs[3]} y={TOP} w={W} h={H} step={4} label="Diagram 2">
         <Sketch w={W} h={H} nodes={SKETCH_2.nodes} edges={SKETCH_2.edges} />
       </StepFrame>
-      <StepFrame x={xs[4]} y={TOP} w={W} h={H} step={5} label="Which had more items?">
-        <SvgKeyCap x={14} y={48} label="F" />
-        <SvgKeyCap x={54} y={48} label="←" />
-        <text x={51} y={118} textAnchor="middle" fontFamily={UI.font} fontSize={17} fontWeight={700} fill={UI.ink}>first</text>
-        <SvgKeyCap x={108} y={48} label="J" />
-        <SvgKeyCap x={148} y={48} label="→" />
-        <text x={145} y={118} textAnchor="middle" fontFamily={UI.font} fontSize={17} fontWeight={700} fill={UI.ink}>second</text>
-        <line x1={W / 2} y1={40} x2={W / 2} y2={128} stroke={UI.line} strokeWidth={1.5} />
+      <StepFrame x={xs[4]} y={TOP} w={W} h={H} step={5} label="Noise">
+        <Noise w={W} h={H} seed={19} />
+        {noiseFrame}
+      </StepFrame>
+      <StepFrame x={xs[5]} y={TOP} w={W} h={H} step={6} label="Which had more?">
+        <SvgKeyCap x={12} y={40} label="F" size={31} />
+        <SvgKeyCap x={48} y={40} label="←" size={31} />
+        <text x={45} y={104} textAnchor="middle" fontFamily={UI.font} fontSize={16} fontWeight={700} fill={UI.ink}>first</text>
+        <SvgKeyCap x={93} y={40} label="J" size={31} />
+        <SvgKeyCap x={129} y={40} label="→" size={31} />
+        <text x={126} y={104} textAnchor="middle" fontFamily={UI.font} fontSize={16} fontWeight={700} fill={UI.ink}>second</text>
+        <line x1={W / 2 + 2} y1={32} x2={W / 2 + 2} y2={114} stroke={UI.line} strokeWidth={1.5} />
       </StepFrame>
 
       <Brace x0={xs[0] + 4} x1={xs[0] + W - 4} y={TOP + H + 10} label="0.5 s" />
       <Brace x0={xs[1] + 4} x1={xs[1] + W - 4} y={TOP + H + 10} label="0.2 s" />
       <Brace x0={xs[2] + 4} x1={xs[2] + W - 4} y={TOP + H + 10} label="0.15 s" />
       <Brace x0={xs[3] + 4} x1={xs[3] + W - 4} y={TOP + H + 10} label="0.2 s" />
-      <text x={xs[4] + W / 2} y={TOP + H + 52} textAnchor="middle" fontFamily={UI.font} fontSize={20} fontWeight={600} fill={UI.muted}>
+      <Brace x0={xs[4] + 4} x1={xs[4] + W - 4} y={TOP + H + 10} label="0.15 s" />
+      <text x={xs[5] + W / 2} y={TOP + H + 52} textAnchor="middle" fontFamily={UI.font} fontSize={20} fontWeight={600} fill={UI.muted}>
         no time limit
       </text>
     </svg>
@@ -287,14 +295,16 @@ export function PracticeStoryboard({ maxHeight = '26vh' }: { maxHeight?: string 
       viewBox="0 0 900 220"
       style={figureStyle(maxHeight)}
       role="img"
-      aria-label="Practice: answer with F or J, the feedback appears at once, then the next trial starts by itself."
+      aria-label="Practice: answer with F or left arrow (first) or J or right arrow (second), the feedback appears at once, then the next trial starts by itself."
     >
       {xs.slice(0, 2).map((x) => <FlowArrow key={x} x0={x + W + 8} x1={x + W + GAP - 8} y={midY} />)}
 
       <StepFrame x={xs[0]} y={TOP} w={W} h={H} step={1} label="Answer" frame={false}>
-        <SvgKeyCap x={W / 2 - 66} y={38} label="F" size={42} />
-        <text x={W / 2} y={60} textAnchor="middle" dominantBaseline="central" fontFamily={UI.font} fontSize={16} fill={UI.faint}>or</text>
-        <SvgKeyCap x={W / 2 + 24} y={38} label="J" size={42} />
+        <SvgKeyCap x={W / 2 - 92} y={42} label="F" size={34} />
+        <SvgKeyCap x={W / 2 - 52} y={42} label="←" size={34} />
+        <text x={W / 2} y={59} textAnchor="middle" dominantBaseline="central" fontFamily={UI.font} fontSize={15} fill={UI.faint}>or</text>
+        <SvgKeyCap x={W / 2 + 18} y={42} label="J" size={34} />
+        <SvgKeyCap x={W / 2 + 58} y={42} label="→" size={34} />
       </StepFrame>
       {caption(xs[0], 'first or second')}
 

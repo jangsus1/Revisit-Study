@@ -94,7 +94,8 @@ describe('ExamplePage', () => {
     runFrames(120);
     expect(stage().getAttribute('data-phase')).toBe('end');
     expect(screen.getByTestId('example-fewer-answer').textContent).toBe('The first had more');
-    expect(screen.getByTestId('example-fewer').textContent).toContain('F');
+    // both keys that give the answer: F and ←
+    expect(screen.getByTestId('example-fewer-keys').textContent).toBe('For←');
   });
 
   test('Continue needs both examples played and the reading time', () => {
