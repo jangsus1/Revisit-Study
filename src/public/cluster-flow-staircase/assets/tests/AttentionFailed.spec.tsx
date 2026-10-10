@@ -1,29 +1,36 @@
 import { MantineProvider } from '@mantine/core';
 import {
-  cleanup, fireEvent, render, screen,
+  act, cleanup, fireEvent, render, screen,
 } from '@testing-library/react';
 import {
   afterEach, beforeEach, describe, expect, test, vi,
 } from 'vitest';
-import AttentionFailed, { AttentionFailedParameters, rejectionReason } from '../AttentionFailed';
+import AttentionFailed, {
+  AttentionFailedParameters, REJECTION_WAIT_MS, rejectionReason, storedMisses,
+} from '../AttentionFailed';
 
-const engine = vi.hoisted(() => ({ rejectCurrentParticipant: vi.fn(() => Promise.resolve()) }));
+const engine = vi.hoisted(() => ({ rejectCurrentParticipant: vi.fn((): Promise<void> => Promise.resolve()) }));
 vi.mock('../../../../storage/storageEngineHooks', () => ({ useStorageEngine: () => ({ storageEngine: engine }) }));
 vi.mock('../ui/studyContext', () => ({ useStudyProgress: () => null, useUpcomingCell: () => null }));
 
-function renderPage(parameters?: AttentionFailedParameters) {
+function renderPage(parameters?: AttentionFailedParameters, answers: Record<string, unknown> = {}) {
   const setAnswer = vi.fn();
   const advance = vi.fn();
   render(
     <MantineProvider>
-      <AttentionFailed parameters={parameters} setAnswer={setAnswer} advance={advance} answers={{}} useTrrack={(() => undefined) as never} />
+      <AttentionFailed parameters={parameters} setAnswer={setAnswer} advance={advance} answers={answers as never} useTrrack={(() => undefined) as never} />
     </MantineProvider>,
   );
   return { setAnswer, advance };
 }
 
+const replace = vi.fn();
+
 beforeEach(() => {
-  engine.rejectCurrentParticipant.mockClear();
+  engine.rejectCurrentParticipant.mockReset();
+  engine.rejectCurrentParticipant.mockImplementation(() => Promise.resolve());
+  replace.mockReset();
+  vi.stubGlobal('location', { ...window.location, replace });
   vi.stubGlobal('matchMedia', (query: string) => ({
     matches: false,
     media: query,
@@ -66,5 +73,68 @@ describe('AttentionFailed', () => {
     expect(engine.rejectCurrentParticipant).toHaveBeenCalledTimes(1);
     expect(engine.rejectCurrentParticipant).toHaveBeenCalledWith(rejectionReason(4, 3));
     expect(rejectionReason(4, 3)).toBe('Missed 4 attention checks (more than 3 allowed)');
+  });
+
+  test('reads the misses from the stored trials when the block passes no parameters', () => {
+    const answers = {
+      a: { endTime: 1, answer: { trialData: { staircaseId: 'above', attentionMisses: 3 } } },
+      b: { endTime: 1, answer: { trialData: { staircaseId: 'attention', attentionMisses: 4 } } },
+      c: { endTime: 1, answer: {} },
+    };
+    expect(storedMisses(answers as never)).toBe(4);
+    expect(storedMisses({} as never)).toBeNull();
+    renderPage(undefined, answers);
+    expect(screen.getByTestId('attention-failed').textContent).toContain('You missed more than 3 attention checks');
+    expect(engine.rejectCurrentParticipant).toHaveBeenCalledWith(rejectionReason(4, 3));
+  });
+
+  test('without a code or URL (the test study) it shows no code and never redirects', async () => {
+    vi.useFakeTimers();
+    try {
+      renderPage({ misses: 4, maxMisses: 3 });
+      expect(screen.queryByTestId('attention-failed-code')).toBeNull();
+      await act(async () => { await vi.advanceTimersByTimeAsync(REJECTION_WAIT_MS + 20000); });
+      expect(replace).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('shows the Prolific code and redirects only after the rejection is stored and the delay has passed', async () => {
+    vi.useFakeTimers();
+    let resolve: () => void = () => undefined;
+    engine.rejectCurrentParticipant.mockImplementation(() => new Promise<void>((r) => { resolve = r; }));
+    try {
+      renderPage({
+        misses: 4, maxMisses: 3, prolificCode: 'C14JYDHI', redirectUrl: 'https://example.test/cc=C14JYDHI', redirectDelayMs: 8000,
+      });
+      expect(screen.getByTestId('attention-failed-code').textContent)
+        .toBe('Your Prolific code is C14JYDHI. You will be taken back to Prolific in a few seconds; please return your submission there.');
+      // the rejection is still being stored: no redirect, however long the delay
+      await act(async () => { await vi.advanceTimersByTimeAsync(9000); });
+      expect(replace).not.toHaveBeenCalled();
+      await act(async () => { resolve(); await Promise.resolve(); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(7900); });
+      expect(replace).not.toHaveBeenCalled();
+      await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+      expect(replace).toHaveBeenCalledWith('https://example.test/cc=C14JYDHI');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  test('redirects anyway when storing the rejection hangs', async () => {
+    vi.useFakeTimers();
+    engine.rejectCurrentParticipant.mockImplementation(() => new Promise<void>(() => {}));
+    try {
+      renderPage({ misses: 4, maxMisses: 3, redirectUrl: 'https://example.test/x' });
+      await act(async () => { await vi.advanceTimersByTimeAsync(REJECTION_WAIT_MS); });
+      await act(async () => { await vi.advanceTimersByTimeAsync(7900); });
+      expect(replace).not.toHaveBeenCalled();
+      await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+      expect(replace).toHaveBeenCalledWith('https://example.test/x');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });
