@@ -64,6 +64,7 @@
     "test-skip-logic",
     "test-step-logic",
     "cluster-flow-staircase",
+    "cluster-flow-followup",
     "cluster-flow-gallery",
     "test-cluster-flow"
   ],
@@ -314,6 +315,9 @@
     },
     "gaze_playground": {
       "path": "gaze_playground/config.json"
+    },
+    "cluster-flow-followup": {
+      "path": "cluster-flow-followup/config.json"
     }
   }
 }

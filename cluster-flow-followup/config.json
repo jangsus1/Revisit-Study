@@ -1,0 +1,376 @@
+{
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/StudyConfigSchema.json",
+  "studyMetadata": {
+    "title": "Cluster Flow follow-up: stimulus variants",
+    "version": "followup-1",
+    "authors": [
+      "Minsuk Chang",
+      "Cindy Xiong Bearfield",
+      "Stefan Uddenberg",
+      "Markus Wallinger"
+    ],
+    "date": "2026-09-04",
+    "description": "Follow-up to the cluster-flow staircase study (meeting 2026-10-21): one stimulus variant per participant, same task and staircase.",
+    "organizations": [
+      "Georgia Institute of Technology"
+    ]
+  },
+  "uiConfig": {
+    "contactEmail": "minsuk@gatech.edu",
+    "helpTextPath": "cluster-flow-staircase/assets/help.md",
+    "logoPath": "revisitAssets/revisitLogoSquare.svg",
+    "withProgressBar": false,
+    "withSidebar": false,
+    "showTitleBar": false,
+    "nextOnEnter": true,
+    "autoDownloadStudy": false,
+    "numSequences": 120,
+    "urlParticipantIdParam": "PROLIFIC_PID",
+    "studyEndMsg": "Thank you! Your responses have been recorded.\n\nYour Prolific completion code is **C197MLJ7**. You will be returned to Prolific in a few seconds.",
+    "studyEndAutoRedirectURL": "https://app.prolific.com/submissions/complete?cc=C197MLJ7",
+    "studyEndAutoRedirectDelay": 8000
+  },
+  "studyRules": {
+    "devices": {
+      "allowed": [
+        "desktop"
+      ],
+      "blockedMessage": "This study can only be taken on a desktop or laptop computer."
+    },
+    "inputs": {
+      "allowed": [
+        "mouse"
+      ],
+      "blockedMessage": "This study requires a keyboard and a mouse or trackpad."
+    }
+  },
+  "importedLibraries": [
+    "demographics"
+  ],
+  "baseComponents": {
+    "trial-base": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/TrialRunner.tsx",
+      "nextOnEnter": true,
+      "response": [
+        {
+          "id": "trial",
+          "prompt": "Trial",
+          "location": "belowStimulus",
+          "type": "reactive"
+        },
+        {
+          "id": "trialData",
+          "prompt": "Trial data",
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true,
+          "required": false
+        }
+      ]
+    }
+  },
+  "components": {
+    "introduction": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "introduction"
+      },
+      "response": []
+    },
+    "consent": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/ConsentPage.tsx",
+      "response": [
+        {
+          "id": "accept",
+          "prompt": "Consent",
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ]
+    },
+    "setup": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/SetupCheck.tsx",
+      "nextOnEnter": true,
+      "response": [
+        {
+          "id": "setup",
+          "prompt": "Display check",
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "parameters": {
+        "minScreenWidth": 1024,
+        "minScreenHeight": 660,
+        "prolificCode": "C14JYDHI",
+        "redirectUrl": "https://app.prolific.com/submissions/complete?cc=C14JYDHI",
+        "redirectDelayMs": 8000
+      }
+    },
+    "instructions": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "instructions"
+      },
+      "response": []
+    },
+    "examples": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/ExamplePage.tsx",
+      "response": []
+    },
+    "practice-intro": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "practice"
+      },
+      "response": []
+    },
+    "block-intro": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "main"
+      },
+      "response": []
+    },
+    "rest": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/InfoPage.tsx",
+      "parameters": {
+        "page": "rest"
+      },
+      "response": []
+    },
+    "trial": {
+      "baseComponent": "trial-base"
+    },
+    "practice-trial": {
+      "baseComponent": "trial-base"
+    },
+    "attention-failed": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/AttentionFailed.tsx",
+      "response": [],
+      "parameters": {
+        "prolificCode": "C14JYDHI",
+        "redirectUrl": "https://app.prolific.com/submissions/complete?cc=C14JYDHI",
+        "redirectDelayMs": 8000
+      }
+    },
+    "display-failed": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/DisplayFailed.tsx",
+      "response": [],
+      "parameters": {
+        "prolificCode": "C14JYDHI",
+        "redirectUrl": "https://app.prolific.com/submissions/complete?cc=C14JYDHI",
+        "redirectDelayMs": 8000
+      }
+    }
+  },
+  "sequence": {
+    "order": "fixed",
+    "components": [
+      "consent",
+      "setup",
+      "introduction",
+      "instructions",
+      {
+        "order": "latinSquare",
+        "numSamples": 1,
+        "components": [
+          {
+            "order": "fixed",
+            "components": [
+              "examples",
+              "practice-intro",
+              {
+                "id": "practice-edge-bold",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "edge",
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1,
+                  "variant": "edge-bold"
+                }
+              },
+              "block-intro",
+              {
+                "id": "cell-edge-bold",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-edge-bold",
+                  "cue": "edge",
+                  "density": "sparse",
+                  "variant": "edge-bold"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "examples",
+              "practice-intro",
+              {
+                "id": "practice-color-large",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "color",
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1,
+                  "variant": "color-large"
+                }
+              },
+              "block-intro",
+              {
+                "id": "cell-color-large",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-color-large",
+                  "cue": "color",
+                  "density": "sparse",
+                  "variant": "color-large"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "examples",
+              "practice-intro",
+              {
+                "id": "practice-color-distinct",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "color",
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1,
+                  "variant": "color-distinct"
+                }
+              },
+              "block-intro",
+              {
+                "id": "cell-color-distinct",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-color-distinct",
+                  "cue": "color",
+                  "density": "sparse",
+                  "variant": "color-distinct"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "examples",
+              "practice-intro",
+              {
+                "id": "practice-rect-shade",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "rect",
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1,
+                  "variant": "rect-shade"
+                }
+              },
+              "block-intro",
+              {
+                "id": "cell-rect-shade",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-rect-shade",
+                  "cue": "rect",
+                  "density": "sparse",
+                  "variant": "rect-shade"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "examples",
+              "practice-intro",
+              {
+                "id": "practice-intra-full",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "proximity",
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1,
+                  "variant": "intra-full"
+                }
+              },
+              "block-intro",
+              {
+                "id": "cell-intra-full",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-intra-full",
+                  "cue": "proximity",
+                  "density": "sparse",
+                  "variant": "intra-full"
+                }
+              }
+            ]
+          },
+          {
+            "order": "fixed",
+            "components": [
+              "examples",
+              "practice-intro",
+              {
+                "id": "practice-intra-full-plus",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/practiceBlock.tsx",
+                "parameters": {
+                  "cue": "proximity",
+                  "density": "sparse",
+                  "maxOffTargetTrials": 1,
+                  "variant": "intra-full-plus"
+                }
+              },
+              "block-intro",
+              {
+                "id": "cell-intra-full-plus",
+                "order": "dynamic",
+                "functionPath": "cluster-flow-staircase/assets/staircaseBlock.tsx",
+                "parameters": {
+                  "cellId": "cell-intra-full-plus",
+                  "cue": "proximity",
+                  "density": "sparse",
+                  "variant": "intra-full-plus"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "$demographics.components.demographics"
+    ]
+  }
+}
