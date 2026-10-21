@@ -6,7 +6,10 @@ import {
   afterAll, afterEach, beforeAll, beforeEach, describe, expect, test, vi,
 } from 'vitest';
 import Gallery from '../Gallery';
-import { CUES } from '../generator/types';
+import { CUES, VARIANTS } from '../generator/types';
+
+/** gallery rows: the five cues plus the follow-up variants */
+const ROWS = CUES.length + VARIANTS.length;
 
 class ResizeObserverMock {
   observe() {}
@@ -63,28 +66,29 @@ afterEach(() => {
 afterAll(() => vi.unstubAllGlobals());
 
 describe('Gallery', () => {
-  test('renders one A and one B stimulus for each of the five cues', () => {
+  test('renders one A and one B stimulus for each of the five cues and each follow-up variant', () => {
     const { container } = render(<MantineProvider><Gallery /></MantineProvider>);
     expect(CUES).toHaveLength(5);
-    expect(container.querySelectorAll('[data-testid="stimulus-svg"]')).toHaveLength(2 * CUES.length);
+    expect(container.querySelectorAll('[data-testid="stimulus-svg"]')).toHaveLength(2 * ROWS);
+    VARIANTS.forEach((v) => expect(screen.getByTestId(`gallery-variant-${v}`)).toBeTruthy());
     CUES.forEach((cue) => expect(screen.getByText(`cue: ${cue}`)).toBeTruthy());
     expect(screen.queryByText('cue: hull')).toBeNull();
   });
 
   test('shows the generator diagnostics, the metric footers and the B / A ratios', () => {
     render(<MantineProvider><Gallery /></MantineProvider>);
-    expect(screen.getAllByText(/sizes \[/).length).toBe(CUES.length);
-    expect(screen.getAllByText(/attempts \d/).length).toBe(2 * CUES.length);
-    expect(screen.getAllByText(/link target \d/).length).toBe(CUES.length);
+    expect(screen.getAllByText(/sizes \[/).length).toBe(ROWS);
+    expect(screen.getAllByText(/attempts \d/).length).toBe(2 * ROWS);
+    expect(screen.getAllByText(/link target \d/).length).toBe(ROWS);
     const footers = screen.getAllByTestId('metrics-footer');
-    expect(footers).toHaveLength(2 * CUES.length);
+    expect(footers).toHaveLength(2 * ROWS);
     footers.forEach((footer) => {
       expect(footer.textContent).toMatch(/ink \d+ px²/);
       expect(footer.textContent).toMatch(/NN mean [\d.]+ \/ min [\d.]+/);
       expect(footer.textContent).toMatch(/hull area \d+/);
     });
     const ratios = screen.getAllByTestId('ratios-line');
-    expect(ratios).toHaveLength(CUES.length);
+    expect(ratios).toHaveLength(ROWS);
     ratios.forEach((line) => expect(line.textContent).toMatch(/B \/ A: ink [\d.]+ · mean NN [\d.]+/));
   });
 

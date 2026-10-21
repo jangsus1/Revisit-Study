@@ -46,6 +46,8 @@ export function applyCue(display: Display, cue: Cue, rng: Rng, palette: readonly
     display.clusters.forEach((cluster) => {
       cluster.rect = paddedRect(display, cluster);
     });
+    // rect-shade: the areas are filled instead of outlined, and the nodes turn black
+    if (display.variant === 'rect-shade') display.nodes.forEach((node) => { node.fill = C.SHADE_NODE; });
   } else if (cue === 'color') {
     const perm = randperm(rng, palette.length);
     display.nodes.forEach((node) => {

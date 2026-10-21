@@ -232,7 +232,7 @@ function useSurroundBody() {
 export default function TrialRunner({ parameters, setAnswer, advance }: StimulusParams<TrialParams>) {
   const {
     seedA, seedB, nB, cue, density, cellId, trialIndex, staircaseId, aFirst, hueOffset, starts, refreshMs,
-    pxPerCm = null, waitForStart = false, nA, attentionMisses = 0, maxAttentionMisses = DEFAULT_ATTENTION_CONFIG.maxMisses,
+    pxPerCm = null, waitForStart = false, nA, attentionMisses = 0, maxAttentionMisses = DEFAULT_ATTENTION_CONFIG.maxMisses, variant,
   } = parameters;
   const isPractice = staircaseId === 'practice';
   const isAttention = staircaseId === 'attention';
@@ -241,11 +241,11 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
   // An attention check shows two ungrouped displays (5 and 30 items) instead of A and B.
   const { displayA, displayB } = useMemo(() => (isAttention
     ? generateAttentionPair(seedA, seedB, {
-      cue, density, few: nA ?? DEFAULT_ATTENTION_CONFIG.few, many: nB, hueOffset,
+      cue, density, few: nA ?? DEFAULT_ATTENTION_CONFIG.few, many: nB, hueOffset, variant,
     })
     : generateTrialPair(seedA, seedB, {
-      cue, density, nB, hueOffset,
-    })), [isAttention, seedA, seedB, cue, density, nA, nB, hueOffset]);
+      cue, density, nB, hueOffset, variant,
+    })), [isAttention, seedA, seedB, cue, density, nA, nB, hueOffset, variant]);
   const maskSeed = useMemo(() => hashSeed(seedA, seedB, 'mask'), [seedA, seedB]);
   const mask2Seed = useMemo(() => hashSeed(seedA, seedB, 'mask2'), [seedA, seedB]);
 
@@ -402,6 +402,7 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
         nB,
         cue,
         density,
+        variant: variant ?? null,
         cellId,
         staircaseId,
         trialIndex,
@@ -445,7 +446,7 @@ export default function TrialRunner({ parameters, setAnswer, advance }: Stimulus
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
     acceptsResponse, advance, aFirst, attentionMisses, blocked, cellId, cue, density, displayA, displayB, earlyPhase,
-    endedAt, expected, hueOffset, isAttention, isPractice, maxAttentionMisses, measured, nB, onsets, refreshMs,
+    endedAt, expected, hueOffset, isAttention, isPractice, maxAttentionMisses, measured, nB, onsets, refreshMs, variant,
     scale, seedA, seedB, setAnswer, staircaseId, starts, stop, trialIndex, widthCm,
   ]);
 

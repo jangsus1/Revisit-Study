@@ -8,6 +8,7 @@ import {
   DOT_R, LINK_W, MARK_POINTS, MARK_REACH, TRIM,
 } from './geometry';
 import { Display, NodeShape } from './types';
+import { allowsCrossings, nodeScale } from './variants';
 
 /** Minimum allowed distance between two dot centres, in canvas px. */
 export const MIN_CENTRE_DISTANCE = C.MIN_CENTRE_DISTANCE_FACTOR * C.RDOT * C.SCALE;
@@ -223,7 +224,30 @@ export function checkInvariants(display: Display): string[] {
     }
   });
 
-  // 4. no two links cross, touch or overlap
+  // larger nodes (color-large): centres and links keep the original white margins from the scaled disc
+  const scale = nodeScale(display.variant);
+  if (scale > 1) {
+    const r = DOT_R * scale;
+    for (let i = 0; i < nodes.length; i += 1) {
+      for (let j = i + 1; j < nodes.length; j += 1) {
+        const d = Math.hypot(nodes[i].x - nodes[j].x, nodes[i].y - nodes[j].y);
+        if (d < MIN_CENTRE_DISTANCE * scale - EPS) violations.push(`dots ${nodes[i].id} and ${nodes[j].id} are ${d.toFixed(2)}px apart (min ${(MIN_CENTRE_DISTANCE * scale).toFixed(2)} at node scale ${scale})`);
+      }
+    }
+    valid.forEach((edge) => {
+      const seg = linkSegment(at(edge.source), at(edge.target));
+      if (!seg) return;
+      const [[ax, ay], [bx, by]] = seg;
+      nodes.forEach((n) => {
+        if (n.id === edge.source || n.id === edge.target) return;
+        const d = pointSegmentDistance(n.x, n.y, ax, ay, bx, by) - r;
+        if (d < MARK_MARGIN - EPS) violations.push(`edge ${edge.source}->${edge.target} passes ${d.toFixed(2)}px from the scaled node ${n.id}`);
+      });
+    });
+  }
+
+  // 4. no two links cross, touch or overlap (the fully connected variants allow crossings)
+  if (allowsCrossings(display.variant)) return violations;
   for (let i = 0; i < valid.length; i += 1) {
     for (let j = i + 1; j < valid.length; j += 1) {
       const a = valid[i];

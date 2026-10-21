@@ -14,7 +14,9 @@ import {
   CSSProperties, useEffect, useMemo, useRef, useState,
 } from 'react';
 import type { StimulusParams } from '../../../store/types';
-import type { Cue, Density, Display } from './generator';
+import type {
+  Cue, Density, Display, Variant,
+} from './generator';
 import { generateTrialPair, hashSeed } from './generator';
 import { GENERATOR_CONFIG as C } from './generator/config';
 import { StimulusSVG } from './render/StimulusSVG';
@@ -31,6 +33,7 @@ export interface ExamplePageParameters {
   /** default: the participant's cell, read from the upcoming practice block */
   cue?: Cue;
   density?: Density;
+  variant?: Variant;
   /** replaces the computed minimum reading time, seconds (the shortened test study uses 1) */
   readingSeconds?: number;
 }
@@ -116,14 +119,14 @@ const cardStyle: CSSProperties = {
 };
 
 function ExampleCard({
-  index, cue, density, hueOffset, scale, refreshMs, played, onPlayed,
+  index, cue, density, variant, hueOffset, scale, refreshMs, played, onPlayed,
 }: {
-  index: number; cue: Cue; density: Density; hueOffset: number; scale: number; refreshMs: number; played: boolean; onPlayed: () => void;
+  index: number; cue: Cue; density: Density; variant?: Variant; hueOffset: number; scale: number; refreshMs: number; played: boolean; onPlayed: () => void;
 }) {
   const example = EXAMPLES[index];
   const { displayA, displayB } = useMemo(() => generateTrialPair(example.seedA, example.seedB, {
-    cue, density, nB: example.nB, hueOffset,
-  }), [example, cue, density, hueOffset]);
+    cue, density, nB: example.nB, hueOffset, variant,
+  }), [example, cue, density, hueOffset, variant]);
   const first = example.aFirst ? displayA : displayB;
   const second = example.aFirst ? displayB : displayA;
   const answer = correctInterval(example.nB, example.aFirst, displayA.n);
@@ -224,6 +227,7 @@ export default function ExamplePage({
   const upcoming = useUpcomingCell();
   const cue: Cue = parameters?.cue ?? upcoming?.cue ?? 'proximity';
   const density: Density = parameters?.density ?? upcoming?.density ?? 'sparse';
+  const variant: Variant | undefined = parameters?.variant ?? upcoming?.variant;
   const { sessionSalt, refreshMs } = readSetupAnswer(answers ?? {});
   const hueOffset = drawHueOffset(sessionSalt);
   const [scale] = useState(() => exampleScale(
@@ -267,6 +271,7 @@ export default function ExamplePage({
               index={i}
               cue={cue}
               density={density}
+              variant={variant}
               hueOffset={hueOffset}
               scale={scale}
               refreshMs={refreshMs}

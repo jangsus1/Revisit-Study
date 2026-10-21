@@ -17,7 +17,7 @@
  */
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
 import type {
-  Cue, Density, SetupAnswer, TrialAnswer, TrialParams,
+  Cue, Density, SetupAnswer, TrialAnswer, TrialParams, Variant,
 } from './generator';
 import { hashSeed } from './generator';
 import { mulberry32 } from './generator/prng';
@@ -35,6 +35,8 @@ export interface StaircaseBlockParameters {
   cellId: string;
   cue: Cue;
   density: Density;
+  /** follow-up stimulus variant of this cell; default none */
+  variant?: Variant;
   maxTrials?: number;
   /** hard cap on the whole block, attention checks included; default 190 */
   maxBlockTrials?: number;
@@ -169,7 +171,7 @@ export default function staircaseBlock({
   answers, customParameters, currentStep, currentBlock,
 }: JumpFunctionParameters<StaircaseBlockParameters>): JumpFunctionReturnVal {
   const {
-    cellId, cue, density, maxTrials, maxBlockTrials, maxReversals, restEvery,
+    cellId, cue, density, variant, maxTrials, maxBlockTrials, maxReversals, restEvery,
     attentionEvery, maxAttentionChecks, maxAttentionMisses,
   } = customParameters;
 
@@ -234,6 +236,7 @@ export default function staircaseBlock({
     waitForStart: waitsForStart(answers, currentBlock, currentStep),
     attentionMisses: misses,
     maxAttentionMisses: attention.maxMisses,
+    ...(variant ? { variant } : {}),
   };
 
   // An attention check comes before the next staircase trial once its gap has run.

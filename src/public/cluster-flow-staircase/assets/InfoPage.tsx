@@ -19,7 +19,9 @@ import {
   ComponentType, ReactNode, useEffect, useMemo,
 } from 'react';
 import type { StimulusParams } from '../../../store/types';
-import type { Cue, Density, TrialAnswer } from './generator';
+import type {
+  Cue, Density, TrialAnswer, Variant,
+} from './generator';
 import { generateDisplay } from './generator';
 import { DEFAULT_ATTENTION_CONFIG } from './attention';
 import { StimulusSVG } from './render/StimulusSVG';
@@ -219,10 +221,12 @@ function InstructionsPage() {
 }
 
 /** One real stimulus A of the participant's cell, small, as an example. */
-function StimulusPreview({ cue, density, hueOffset }: { cue: Cue; density: Density; hueOffset: number }) {
+function StimulusPreview({
+  cue, density, variant, hueOffset,
+}: { cue: Cue; density: Density; variant?: Variant; hueOffset: number }) {
   const display = useMemo(() => generateDisplay(PREVIEW_SEED, {
-    kind: 'A', cue, density, hueOffset,
-  }), [cue, density, hueOffset]);
+    kind: 'A', cue, density, hueOffset, variant,
+  }), [cue, density, hueOffset, variant]);
   const height = typeof window === 'undefined' ? 800 : window.innerHeight;
   const scale = Math.max(0.28, Math.min(0.45, (0.3 * height) / display.height));
   return (
@@ -250,7 +254,7 @@ function StimulusPreview({ cue, density, hueOffset }: { cue: Cue; density: Densi
   );
 }
 
-function PracticePage({ cell, hueOffset }: { cell: { cue: Cue; density: Density } | null; hueOffset: number }) {
+function PracticePage({ cell, hueOffset }: { cell: { cue: Cue; density: Density; variant?: Variant } | null; hueOffset: number }) {
   return (
     <div
       data-testid="info-practice"
@@ -259,7 +263,7 @@ function PracticePage({ cell, hueOffset }: { cell: { cue: Cue; density: Density 
       }}
     >
       <PracticeStoryboard maxHeight="24vh" />
-      {cell && <StimulusPreview cue={cell.cue} density={cell.density} hueOffset={hueOffset} />}
+      {cell && <StimulusPreview cue={cell.cue} density={cell.density} variant={cell.variant} hueOffset={hueOffset} />}
     </div>
   );
 }

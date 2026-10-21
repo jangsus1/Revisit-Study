@@ -16,7 +16,9 @@
  * has no `display-failed` component and must never be sent to one.
  */
 import type { JumpFunctionParameters, JumpFunctionReturnVal } from '../../../store/types';
-import type { Cue, Density, TrialParams } from './generator';
+import type {
+  Cue, Density, TrialParams, Variant,
+} from './generator';
 import { hashSeed } from './generator';
 import { countOffTarget } from './timingGuard';
 import {
@@ -26,6 +28,8 @@ import {
 export interface PracticeBlockParameters {
   cue: Cue;
   density: Density;
+  /** follow-up stimulus variant of the participant's cell; default none */
+  variant?: Variant;
   /** number of practice trials; defaults to 3 */
   trials?: number;
   /**
@@ -46,7 +50,7 @@ const TARGET = 24;
 export default function practiceBlock({
   answers, customParameters, currentStep, currentBlock,
 }: JumpFunctionParameters<PracticeBlockParameters>): JumpFunctionReturnVal {
-  const { cue, density } = customParameters;
+  const { cue, density, variant } = customParameters;
   const total = customParameters.trials ?? DEFAULT_PRACTICE_TRIALS;
   const trials = collectBlockTrials(answers, currentBlock, currentStep);
   const trialIndex = trials.length;
@@ -76,6 +80,7 @@ export default function practiceBlock({
     refreshMs,
     pxPerCm,
     waitForStart: waitsForStart(answers, currentBlock, currentStep),
+    ...(variant ? { variant } : {}),
   };
 
   return {

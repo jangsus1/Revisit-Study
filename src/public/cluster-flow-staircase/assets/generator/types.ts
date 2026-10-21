@@ -6,6 +6,34 @@
 /** `proximity` is the control: grey circles and solid links, grouped by the gapped layout only. */
 export type Cue = 'proximity' | 'rect' | 'color' | 'shape' | 'edge';
 export type Density = 'sparse' | 'dense';
+/**
+ * Follow-up stimulus variants (meeting 2026-10-21). Each one changes a single cue's drawing or the
+ * graph; leaving `variant` unset gives exactly the original displays.
+ * - `edge-bold`: edge cue with links twice as thick and between-cluster links as sparse grey dots.
+ * - `color-large`: colour cue with nodes 1.5 times the radius, so the colours are easier to see.
+ * - `color-distinct`, `color-distinct-b`: colour cue with the two most distinct six-colour sets of a
+ *   search over sRGB that also keeps the colours apart under protan and deutan simulation
+ *   (`DISTINCT_PALETTES`), instead of the CIELAB ellipse.
+ * - `rect-shade`: rect cue drawn as a faint yellow area under each cluster instead of an outline,
+ *   with black nodes; its B has the whole background in the same yellow.
+ * - `intra-full`: proximity layout, every cluster fully connected inside (every pair whose link
+ *   clears the other nodes), backbone between clusters as in sparse.
+ * - `intra-full-plus`: `intra-full` plus a second link between each pair of consecutive clusters.
+ */
+export type Variant = 'edge-bold' | 'color-large' | 'color-distinct' | 'color-distinct-b' | 'rect-shade'
+  | 'intra-full' | 'intra-full-plus';
+export const VARIANTS: Variant[] = ['edge-bold', 'color-large', 'color-distinct', 'color-distinct-b', 'rect-shade',
+  'intra-full', 'intra-full-plus'];
+/** The cue each variant belongs to (its layout follows `layoutModeFor` of that cue). */
+export const VARIANT_CUE: Record<Variant, Cue> = {
+  'edge-bold': 'edge',
+  'color-large': 'color',
+  'color-distinct': 'color',
+  'color-distinct-b': 'color',
+  'rect-shade': 'rect',
+  'intra-full': 'proximity',
+  'intra-full-plus': 'proximity',
+};
 export type StimulusKind = 'A' | 'B';
 /** The seven filled marks of the shape cue's pool (`GENERATOR_CONFIG.SHAPES`). */
 export type NodeShape = 'circle' | 'square' | 'diamond' | 'triangle' | 'star' | 'y' | 'pentagon';
@@ -92,6 +120,8 @@ export interface Display {
   clusters: DisplayCluster[];
   /** how many seeds were tried before one satisfied the invariants (1 = first try) */
   attempts: number;
+  /** follow-up variant this display was drawn with; absent for the original displays */
+  variant?: Variant;
   /** generator diagnostics for the gallery footer; A only */
   meta: {
     clusterSizes?: number[];
@@ -155,6 +185,8 @@ export interface GenerateOptions {
    * six its A uses. Default: the whole pool.
    */
   shapes?: readonly NodeShape[];
+  /** follow-up stimulus variant (see `Variant`); default none */
+  variant?: Variant;
 }
 
 export interface TrialParams {
@@ -190,6 +222,8 @@ export interface TrialParams {
    * block's first trial and on the first trial after a rest page
    */
   waitForStart?: boolean;
+  /** follow-up stimulus variant of the participant's cell; absent in the main study */
+  variant?: Variant;
 }
 
 /** Paint-to-paint durations of the timed phases, in ms. */
@@ -238,6 +272,8 @@ export interface TrialAnswer {
   nB: number;
   cue: Cue;
   density: Density;
+  /** follow-up stimulus variant (null in the main study; absent before 2026-10-21) */
+  variant?: Variant | null;
   cellId: string;
   staircaseId: StaircaseId;
   trialIndex: number;

@@ -9,14 +9,13 @@
  */
 import { GENERATOR_CONFIG as C } from './config';
 import { visibleLinkLength } from './geometry';
-import {
-  MAX_MARK_REACH, MIN_CENTRE_DISTANCE, conflictsWithAny, linkIsClear,
-} from './invariants';
+import { MIN_CENTRE_DISTANCE, conflictsWithAny, linkIsClear } from './invariants';
 import { makePalette } from './palette';
 import { Rng, mulberry32, randperm } from './prng';
 import {
-  Cue, Density, Display, DisplayEdge, DisplayNode, InkTarget, NodeShape, Rect,
+  Cue, Density, Display, DisplayEdge, DisplayNode, InkTarget, NodeShape, Rect, Variant,
 } from './types';
+import { allowsCrossings, markReach, nodeScale } from './variants';
 
 export interface BaselineOptions {
   /** where the dot centres may go, canvas px; default the whole canvas minus the margin */
@@ -27,6 +26,8 @@ export interface BaselineOptions {
   target?: InkTarget;
   /** shape cue: the marks to draw from (A's six); default the whole pool */
   shapes?: readonly NodeShape[];
+  /** follow-up variant: its clearance, crossings rule, link count and colours */
+  variant?: Variant;
 }
 
 /** How many extra rank-respecting arrows the dense variant adds for `n` nodes. */
@@ -34,8 +35,15 @@ export function denseExtraCount(n: number): number {
   return Math.round((n / C.NTOTAL) * C.B_DENSE_EXTRA_PER_24);
 }
 
-/** How many links B will have: the spanning tree plus, when dense, the matched extras. */
-export function plannedEdgeCount(n: number, density: Density): number {
+/**
+ * How many links B will have: the spanning tree plus, when dense, the matched extras. For the fully
+ * connected variants the extras match A's links beyond a spanning tree (`targetEdges`, from the
+ * reference A), scaled from 24 nodes to `n`.
+ */
+export function plannedEdgeCount(n: number, density: Density, variant?: Variant, targetEdges?: number): number {
+  if (allowsCrossings(variant) && targetEdges !== undefined) {
+    return n - 1 + Math.max(0, Math.round((n / C.NTOTAL) * (targetEdges - (C.NTOTAL - 1))));
+  }
   return n - 1 + (density === 'dense' ? denseExtraCount(n) : 0);
 }
 
@@ -100,7 +108,9 @@ export function buildBaseline(
 ): Display | null {
   const rng = mulberry32(seed);
   const field = clipField(options.field);
-  const spacing = baselineSpacing(nB, field);
+  const { variant } = options;
+  // larger nodes (color-large) keep the same white gap between them
+  const spacing = Math.max(baselineSpacing(nB, field), MIN_CENTRE_DISTANCE * nodeScale(variant));
   const pts = placeNodes(rng, nB, field, spacing);
   if (!pts) return null;
   const palette = options.palette ?? makePalette(0);
@@ -138,8 +148,9 @@ export function buildBaseline(
   // They also never cross, touch or overlap a link already drawn (SPEC deviation 22): every
   // candidate is checked against the links so far, so the crossing invariant rarely rejects a B.
   const dots = pts.map((p, id) => ({ id, x: p.x, y: p.y }));
-  const clear = (u: number, v: number) => linkIsClear(dots[u], dots[v], dots, MAX_MARK_REACH)
-    && !conflictsWithAny(dots[u], dots[v], edges, (id) => dots[id]);
+  const reach = markReach(variant);
+  const clear = (u: number, v: number) => linkIsClear(dots[u], dots[v], dots, reach)
+    && (allowsCrossings(variant) || !conflictsWithAny(dots[u], dots[v], edges, (id) => dots[id]));
   const dist = (a: number, b: number) => Math.hypot(dots[a].x - dots[b].x, dots[a].y - dots[b].y);
   const byDistance = (from: number, candidates: number[]) => [...candidates]
     .sort((a, b) => dist(a, from) - dist(b, from));
@@ -147,7 +158,7 @@ export function buildBaseline(
   // Link-length budget. Each link goes to the one of the few nearest usable candidates whose
   // visible length is closest to what is left of the budget per link still to draw, so B's total
   // link length tracks A's while its links stay local.
-  const totalEdges = plannedEdgeCount(nB, density);
+  const totalEdges = plannedEdgeCount(nB, density, variant, options.target?.edges);
   const budget = options.target ? linkBudget(options.target, totalEdges) : null;
   let remaining = budget ?? 0;
   let drawn = 0;
@@ -193,9 +204,9 @@ export function buildBaseline(
     record(u, v);
   }
 
-  if (density === 'dense') {
+  const extras = totalEdges - (nB - 1);
+  if (extras > 0) {
     const allIds = dots.map((d) => d.id);
-    const extras = denseExtraCount(nB);
     for (let e = 0; e < extras; e += 1) {
       let added = false;
       for (let draw = 0; draw < C.EXTRA_ARROW_MAX_DRAWS && !added; draw += 1) {
@@ -225,6 +236,7 @@ export function buildBaseline(
   }));
 
   // feature matching, with no spatial structure
+  if (variant === 'rect-shade') nodes.forEach((node) => { node.fill = C.SHADE_NODE; });
   if (cue === 'color') {
     nodes.forEach((node) => {
       node.fill = palette[Math.floor(rng() * palette.length)];
@@ -253,6 +265,7 @@ export function buildBaseline(
     edges,
     clusters: [],
     attempts: 1,
+    ...(variant ? { variant } : {}),
     meta: {
       field,
       spacing,

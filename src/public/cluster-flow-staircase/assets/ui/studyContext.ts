@@ -8,7 +8,7 @@ import { useCurrentStep } from '../../../../routes/utils';
 import { useFlatSequence, useStoreSelector } from '../../../../store/store';
 import { decryptIndex } from '../../../../utils/encryptDecryptIndex';
 import { findFuncBlock } from '../../../../utils/getSequenceFlatMap';
-import type { Cue, Density } from '../generator/types';
+import type { Cue, Density, Variant } from '../generator/types';
 import { BlockInfo, ProgressSummary, progressSummary } from './studyProgress';
 
 export function useStudyProgress(): ProgressSummary | null {
@@ -30,7 +30,7 @@ export function useStudyProgress(): ProgressSummary | null {
  * after the current step, with the practice block's `trials` when it sets one. Null outside the
  * participant flow (reviewer pages, tests).
  */
-export function useUpcomingCell(): { cue: Cue; density: Density; trials?: number } | null {
+export function useUpcomingCell(): { cue: Cue; density: Density; trials?: number; variant?: Variant } | null {
   const config = useStoreSelector((state) => state.config);
   const flat = useFlatSequence();
   const step = useCurrentStep();
@@ -38,9 +38,14 @@ export function useUpcomingCell(): { cue: Cue; density: Density; trials?: number
     if (typeof step !== 'number' || !flat?.length || !config?.sequence) return null;
     for (let i = step; i < flat.length; i += 1) {
       if (/^(practice|cell)-/.test(flat[i]) && flat[i] !== 'practice-intro') {
-        const params = findFuncBlock(flat[i], config.sequence)?.parameters as { cue?: Cue; density?: Density; trials?: number } | undefined;
+        const params = findFuncBlock(flat[i], config.sequence)?.parameters as { cue?: Cue; density?: Density; trials?: number; variant?: Variant } | undefined;
         if (params?.cue && params.density) {
-          return { cue: params.cue, density: params.density, trials: flat[i].startsWith('practice-') ? params.trials : undefined };
+          return {
+            cue: params.cue,
+            density: params.density,
+            trials: flat[i].startsWith('practice-') ? params.trials : undefined,
+            ...(params.variant ? { variant: params.variant } : {}),
+          };
         }
       }
     }

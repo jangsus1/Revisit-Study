@@ -20,11 +20,12 @@ import { GraphCluster, buildGraph } from './graph';
 import { checkInvariants } from './invariants';
 import { buildLayout, drawJitter } from './layout';
 import { measureDisplay } from './metrics';
-import { makePalette } from './palette';
 import { jitterRng, mulberry32 } from './prng';
 import {
   Cue, Density, Display, DisplayCluster, DisplayNode, GenerateOptions, Rect, layoutModeFor,
+  Variant,
 } from './types';
+import { variantPalette } from './variants';
 
 /**
  * A deterministic 32-bit FNV-1a hash of the string form of `parts`, joined by `|`.
@@ -65,7 +66,7 @@ function buildStimulusA(seed: number, opts: GenerateOptions): Display {
     };
   });
 
-  const graph = buildGraph(rng, graphClusters, opts.density);
+  const graph = buildGraph(rng, graphClusters, opts.density, opts.variant);
 
   const nodes: DisplayNode[] = graphClusters.flatMap((cluster) => cluster.nodeIds.map((id, i) => ({
     id,
@@ -98,6 +99,7 @@ function buildStimulusA(seed: number, opts: GenerateOptions): Display {
     edges: graph.edges,
     clusters,
     attempts: 1,
+    ...(opts.variant ? { variant: opts.variant } : {}),
     meta: {
       clusterSizes: sizes,
       jitter: layout.jitter,
@@ -108,7 +110,7 @@ function buildStimulusA(seed: number, opts: GenerateOptions): Display {
     },
   };
 
-  return applyCue(display, opts.cue, rng, makePalette(opts.hueOffset ?? 0));
+  return applyCue(display, opts.cue, rng, variantPalette(opts.variant, opts.hueOffset ?? 0));
 }
 
 /**
@@ -128,9 +130,10 @@ export function generateDisplay(seed: number, opts: GenerateOptions): Display {
       ? buildStimulusA(derived, opts)
       : buildBaseline(derived, nB, opts.cue, opts.density, {
         field: opts.field,
-        palette: makePalette(opts.hueOffset ?? 0),
+        palette: variantPalette(opts.variant, opts.hueOffset ?? 0),
         target: opts.inkTarget,
         shapes: opts.shapes,
+        variant: opts.variant,
       });
     if (display) {
       const violations = checkInvariants(display);
@@ -167,6 +170,8 @@ export interface TrialPairOptions {
   nB: number;
   /** colour-ellipse rotation in degrees of its perimeter; default 0 */
   hueOffset?: number;
+  /** follow-up stimulus variant; default none */
+  variant?: Variant;
 }
 
 /**
@@ -185,11 +190,13 @@ export function generateTrialPair(
   opts: TrialPairOptions,
 ): { displayA: Display; displayB: Display } {
   const hueOffset = opts.hueOffset ?? 0;
+  const { variant } = opts;
   const displayA = generateDisplay(seedA, {
-    kind: 'A', cue: opts.cue, density: opts.density, hueOffset,
+    kind: 'A', cue: opts.cue, density: opts.density, hueOffset, variant,
   });
+  // the reference carries the variant too, so B's link count and clearance follow it
   const reference = generateDisplay(seedA, {
-    kind: 'A', cue: 'proximity', layout: 'even', density: opts.density,
+    kind: 'A', cue: 'proximity', layout: 'even', density: opts.density, variant,
   });
   const metricsRef = measureDisplay(reference);
   const displayB = generateDisplay(seedB, {
@@ -198,6 +205,7 @@ export function generateTrialPair(
     density: opts.density,
     nB: opts.nB,
     hueOffset,
+    variant,
     field: nodeBounds(reference),
     inkTarget: {
       linkLength: metricsRef.linkLength,
@@ -216,6 +224,7 @@ export interface AttentionPairOptions {
   few: number;
   many: number;
   hueOffset?: number;
+  variant?: Variant;
 }
 
 /**
@@ -231,13 +240,14 @@ export function generateAttentionPair(
   opts: AttentionPairOptions,
 ): { displayA: Display; displayB: Display } {
   const hueOffset = opts.hueOffset ?? 0;
+  const { variant } = opts;
   const reference = generateDisplay(seedA, {
-    kind: 'A', cue: 'proximity', layout: 'even', density: opts.density,
+    kind: 'A', cue: 'proximity', layout: 'even', density: opts.density, variant,
   });
   const metricsRef = measureDisplay(reference);
   const shapes = opts.cue === 'shape'
     ? shapeSubset(generateDisplay(seedA, {
-      kind: 'A', cue: 'shape', density: opts.density, hueOffset,
+      kind: 'A', cue: 'shape', density: opts.density, hueOffset, variant,
     }))
     : undefined;
   const common: GenerateOptions = {
@@ -248,6 +258,7 @@ export function generateAttentionPair(
     field: nodeBounds(reference),
     inkTarget: { linkLength: metricsRef.linkLength, edges: reference.edges.length },
     ...(shapes ? { shapes } : {}),
+    variant,
   };
   return {
     displayA: generateDisplay(hashSeed(seedB, 'few'), { ...common, nB: opts.few }),

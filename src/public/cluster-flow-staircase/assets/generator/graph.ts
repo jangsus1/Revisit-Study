@@ -4,10 +4,11 @@
  * consecutive clusters (SPEC 8), and the dense-variant extras.
  */
 import { GENERATOR_CONFIG as C } from './config';
-import { MAX_MARK_REACH, conflictsWithAny, linkIsClear } from './invariants';
+import { conflictsWithAny, linkIsClear } from './invariants';
 import { LayoutPoint } from './layout';
 import { Rng, randperm } from './prng';
-import { Density, DisplayEdge } from './types';
+import { Density, DisplayEdge, Variant } from './types';
+import { allowsCrossings, markReach } from './variants';
 
 export interface GraphCluster {
   index: number;
@@ -77,7 +78,7 @@ function nearest(candidates: number[], idToPos: Map<number, LayoutPoint>, x: num
  * Builds every arrow of stimulus A. Arrows always run from the lower topological rank to the
  * higher one, so the graph is a DAG and no link is ever backward.
  */
-export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density): GraphResult {
+export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density, variant?: Variant): GraphResult {
   const idToPos = new Map<number, LayoutPoint>();
   clusters.forEach((c) => c.nodeIds.forEach((id, i) => idToPos.set(id, c.positions[i])));
 
@@ -93,8 +94,10 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density)
   const dots = clusters.flatMap((c) => c.nodeIds.map((id, i) => ({ id, x: c.positions[i].x, y: c.positions[i].y })));
   const dotById = new Map(dots.map((d) => [d.id, d]));
   const at = (id: number) => dotById.get(id) as { id: number; x: number; y: number };
-  const crossesNothing = (u: number, v: number) => !conflictsWithAny(at(u), at(v), edges, at);
-  const usable = (u: number, v: number) => crossesNothing(u, v) && linkIsClear(at(u), at(v), dots, MAX_MARK_REACH);
+  // the fully connected variants allow links to cross; every variant keeps clear of its own marks
+  const crossesNothing = (u: number, v: number) => allowsCrossings(variant) || !conflictsWithAny(at(u), at(v), edges, at);
+  const reach = markReach(variant);
+  const usable = (u: number, v: number) => crossesNothing(u, v) && linkIsClear(at(u), at(v), dots, reach);
   /** The first candidate that is usable, else the first that crosses nothing, else `fallback`. */
   const pick = <T>(candidates: T[], ends: (c: T) => [number, number], fallback: T | null): T | null => (
     candidates.find((c) => usable(...ends(c)))
@@ -162,7 +165,7 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density)
     // the separable cost puts the nearest pair first; it is moved to the front explicitly for ties
     const ordered = [nearestPair, ...pairs.filter(([s, t]) => s !== nearestPair[0] || t !== nearestPair[1])];
     const chosen = extra
-      ? ordered.find(([s, t]) => usable(s, t)) ?? null
+      ? ordered.find(([s, t]) => !seen.has(key(s, t)) && usable(s, t)) ?? null
       : pick(ordered, (p) => p, nearestPair);
     if (!chosen) return;
     const [source, target] = chosen;
@@ -196,6 +199,19 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density)
     for (let i = 0; i + 2 < order.length; i += 1) {
       if (rng() < C.DENSE_SKIP_P) linkClusters(order[i], order[i + 2], true);
     }
+  }
+
+  if (variant === 'intra-full-plus') {
+    // a second link between every pair of consecutive clusters
+    for (let i = 0; i < order.length - 1; i += 1) linkClusters(order[i], order[i + 1], true);
+  }
+  if (allowsCrossings(variant)) {
+    // every cluster fully connected inside: each pair whose link keeps clear of the other nodes
+    clusters.forEach((c) => {
+      c.nodeIds.forEach((u, i) => c.nodeIds.slice(i + 1).forEach((v) => {
+        if (linkIsClear(at(u), at(v), dots, reach)) addWithin(u, v, true);
+      }));
+    });
   }
 
   return { edges, rank, order };

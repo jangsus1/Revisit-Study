@@ -19,7 +19,7 @@ import {
   deltaE2000, hexToLab, makePalette, palettePositions,
 } from './generator/palette';
 import {
-  CUES, Cue, Density, Display, DisplayMetrics, NodeShape,
+  CUES, Cue, Density, Display, DisplayMetrics, NodeShape, VARIANTS, VARIANT_CUE, Variant,
 } from './generator/types';
 import { NoiseMask } from './render/NoiseMask';
 import { StimulusFrame } from './render/StimulusSVG';
@@ -27,7 +27,10 @@ import { TrialStage } from './render/TrialStage';
 import { DEFAULT_REFRESH_MS, useTrialTimeline } from './useTrialTimeline';
 
 interface Row {
+  /** row key: the cue, or the follow-up variant */
+  key: string;
   cue: Cue;
+  variant?: Variant;
   displayA: Display | null;
   displayB: Display | null;
   metricsA: DisplayMetrics | null;
@@ -38,17 +41,18 @@ interface Row {
 const fmt = (v: number, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '–');
 const ratio = (b: number, a: number) => (a > 0 ? (b / a).toFixed(2) : '–');
 
-function buildRow(cue: Cue, seed: number, density: Density, nB: number, hueOffset: number): Row {
+function buildRow(cue: Cue, seed: number, density: Density, nB: number, hueOffset: number, variant?: Variant): Row {
+  const key = variant ?? cue;
   try {
     const { displayA, displayB } = generateTrialPair(seed, hashSeed(seed, 'B'), {
-      cue, density, nB, hueOffset,
+      cue, density, nB, hueOffset, variant,
     });
     return {
-      cue, displayA, displayB, metricsA: measureDisplay(displayA), metricsB: measureDisplay(displayB), error: null,
+      key, cue, variant, displayA, displayB, metricsA: measureDisplay(displayA), metricsB: measureDisplay(displayB), error: null,
     };
   } catch (e) {
     return {
-      cue, displayA: null, displayB: null, metricsA: null, metricsB: null, error: e instanceof Error ? e.message : String(e),
+      key, cue, variant, displayA: null, displayB: null, metricsA: null, metricsB: null, error: e instanceof Error ? e.message : String(e),
     };
   }
 }
@@ -213,16 +217,20 @@ export default function Gallery() {
   const [hueOffset, setHueOffset] = useState(0);
   const [aFirstByCue, setAFirstByCue] = useState<Record<string, boolean>>({});
   // the frame period is frozen when Play is clicked, so a late refresh estimate cannot restart a run
-  const [playing, setPlaying] = useState<{ cue: Cue; runKey: number; refreshMs: number } | null>(null);
+  const [playing, setPlaying] = useState<{ key: string; runKey: number; refreshMs: number } | null>(null);
   const refreshMs = useRefreshEstimate();
 
   const rows = useMemo(
-    () => CUES.map((cue) => buildRow(cue, seed, density, nB, hueOffset)),
+    () => [
+      ...CUES.map((cue) => buildRow(cue, seed, density, nB, hueOffset)),
+      // the follow-up variants (meeting 2026-10-21); the fully connected ones are always sparse-based
+      ...VARIANTS.map((v) => buildRow(VARIANT_CUE[v], seed, v.startsWith('intra-') ? 'sparse' : density, nB, hueOffset, v)),
+    ],
     [seed, nB, density, hueOffset],
   );
   const { width, height } = GENERATOR_CONFIG.CANVAS;
   const previewScale = 1 / 3;
-  const shapeRow = rows.find((row) => row.cue === 'shape');
+  const shapeRow = rows.find((row) => row.cue === 'shape' && !row.variant);
 
   return (
     <Stack gap="lg" p="md">
@@ -282,21 +290,21 @@ export default function Gallery() {
       </Group>
 
       {rows.map((row) => {
-        const aFirst = aFirstByCue[row.cue] ?? true;
+        const aFirst = aFirstByCue[row.key] ?? true;
         return (
-          <Stack key={row.cue} gap="xs" data-testid={`gallery-row-${row.cue}`}>
+          <Stack key={row.key} gap="xs" data-testid={row.variant ? `gallery-variant-${row.variant}` : `gallery-row-${row.cue}`}>
             <Group gap="md" align="center">
-              <Title order={5}>{`cue: ${row.cue}`}</Title>
+              <Title order={5}>{row.variant ? `follow-up variant: ${row.variant} (${row.cue} cue)` : `cue: ${row.cue}`}</Title>
               <SegmentedControl
                 size="xs"
                 data={[{ label: 'A first', value: 'A' }, { label: 'B first', value: 'B' }]}
                 value={aFirst ? 'A' : 'B'}
-                onChange={(value) => setAFirstByCue((prev) => ({ ...prev, [row.cue]: value === 'A' }))}
+                onChange={(value) => setAFirstByCue((prev) => ({ ...prev, [row.key]: value === 'A' }))}
               />
               <Button
                 size="xs"
                 disabled={!row.displayA || !row.displayB}
-                onClick={() => setPlaying((prev) => ({ cue: row.cue, runKey: (prev?.runKey ?? 0) + 1, refreshMs }))}
+                onClick={() => setPlaying((prev) => ({ key: row.key, runKey: (prev?.runKey ?? 0) + 1, refreshMs }))}
               >
                 Play trial
               </Button>
@@ -316,9 +324,9 @@ export default function Gallery() {
             {row.metricsA && row.metricsB && row.displayB && (
               <Text size="xs" fw={600} data-testid="ratios-line">{ratiosLine(row.metricsA, row.metricsB, row.displayB)}</Text>
             )}
-            {playing?.cue === row.cue && row.displayA && row.displayB && (
+            {playing?.key === row.key && row.displayA && row.displayB && (
               <TrialPreview
-                key={`${row.cue}-${aFirst}`}
+                key={`${row.key}-${aFirst}`}
                 displayA={row.displayA}
                 displayB={row.displayB}
                 aFirst={aFirst}
