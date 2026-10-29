@@ -35,7 +35,7 @@ export function linkStyle(variant?: Variant): { width: number; trim: number; hea
 
 /** The colour-cue palette for a variant: one of the distinct sets, else the participant's ellipse. */
 export function variantPalette(variant: Variant | undefined, hueOffset: number): readonly string[] {
-  if (variant === 'color-distinct') return C.DISTINCT_PALETTE;
+  if (variant === 'color-distinct' || variant === 'color-distinct-2') return C.DISTINCT_COLOURS[variant];
   return makePalette(hueOffset);
 }
 

@@ -11,23 +11,25 @@ export type Density = 'sparse' | 'dense';
  * graph; leaving `variant` unset gives exactly the original displays.
  * - `edge-bold`: edge cue with links twice as thick and between-cluster links as sparse grey dots.
  * - `color-large`: colour cue with nodes 1.5 times the radius, so the colours are easier to see.
- * - `color-distinct`: colour cue with the max-min CIEDE2000 six-colour set (`DISTINCT_PALETTE`)
- *   instead of the CIELAB ellipse, assigned so the nearest clusters get the most different colours.
+ * - `color-distinct`, `color-distinct-2`: colour cue with only three (two) very distinct saturated
+ *   colours (`DISTINCT_COLOURS`) instead of six from the CIELAB ellipse, reused across the clusters
+ *   so that neighbouring clusters never share a colour.
  * - `rect-shade`: rect cue drawn as a faint yellow area under each cluster instead of an outline,
  *   with black nodes; its B has the whole background in the same yellow.
  * - `intra-full`: proximity layout, every cluster fully connected inside (every pair whose link
  *   clears the other nodes), backbone between clusters as in sparse.
  * - `intra-full-plus`: `intra-full` plus a second link between each pair of consecutive clusters.
  */
-export type Variant = 'edge-bold' | 'color-large' | 'color-distinct' | 'rect-shade'
+export type Variant = 'edge-bold' | 'color-large' | 'color-distinct' | 'color-distinct-2' | 'rect-shade'
   | 'intra-full' | 'intra-full-plus';
-export const VARIANTS: Variant[] = ['edge-bold', 'color-large', 'color-distinct', 'rect-shade',
+export const VARIANTS: Variant[] = ['edge-bold', 'color-large', 'color-distinct', 'color-distinct-2', 'rect-shade',
   'intra-full', 'intra-full-plus'];
 /** The cue each variant belongs to (its layout follows `layoutModeFor` of that cue). */
 export const VARIANT_CUE: Record<Variant, Cue> = {
   'edge-bold': 'edge',
   'color-large': 'color',
   'color-distinct': 'color',
+  'color-distinct-2': 'color',
   'rect-shade': 'rect',
   'intra-full': 'proximity',
   'intra-full-plus': 'proximity',

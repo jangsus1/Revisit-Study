@@ -5,7 +5,6 @@
  */
 import { GENERATOR_CONFIG as C } from './config';
 import { DOT_R } from './geometry';
-import { deltaE2000, hexToLab } from './palette';
 import { Rng, randperm } from './prng';
 import {
   Cue, Display, DisplayCluster, NodeShape, Rect,
@@ -30,46 +29,42 @@ function paddedRect(display: Display, cluster: DisplayCluster): Rect {
   };
 }
 
-/** Every ordering of 0..n-1, in lexicographic order. */
-function permutations(n: number): number[][] {
-  if (n <= 1) return [[0].slice(0, n)];
-  return permutations(n - 1).flatMap((p) => Array.from({ length: n }, (_, k) => [...p.slice(0, k), n - 1, ...p.slice(k)]))
-    .sort((a, b) => a.join(',').localeCompare(b.join(',')));
-}
-
 /**
- * `color-distinct`: which palette colour each cluster gets, so that the clusters nearest each other
- * get the most different colours. Over every assignment of the six colours to the six clusters it
- * maximises, first, the smallest CIEDE2000 difference between *neighbouring* clusters (centroids
- * within 1.5 times the closest centroid distance of the display) and then, among ties, the sum over
- * all pairs of CIEDE2000 divided by centroid distance, so nearer pairs weigh more. The first best
- * ordering in lexicographic order wins, so the result is deterministic.
+ * `color-distinct` / `color-distinct-2`: which of the few palette colours each cluster gets, so that
+ * neighbouring clusters never share one. Every colouring of the six clusters with the palette's k
+ * colours (k^6 of them) is scored by the clashes it leaves: each pair of clusters with the same
+ * colour costs (closest centroid distance / their centroid distance)^2, so a clash between the two
+ * nearest clusters costs 1 and one between clusters twice as far apart 0.25. The cheapest colouring
+ * wins; ties go to the one that uses the colours most evenly, then to the first in enumeration
+ * order, so the result is deterministic. On the 2 x 3 cluster grid every side-by-side and
+ * above-below pair gets different colours, with two colours as well as three.
  */
 export function assignDistinctColours(clusters: readonly DisplayCluster[], palette: readonly string[]): string[] {
-  const labs = palette.map(hexToLab);
-  const de = labs.map((p) => labs.map((q) => deltaE2000(p, q)));
   const sorted = [...clusters].sort((a, b) => a.index - b.index);
   const n = sorted.length;
+  const k = palette.length;
   const dist = sorted.map((a) => sorted.map((b) => Math.hypot(a.cx - b.cx, a.cy - b.cy)));
   let nearest = Infinity;
   dist.forEach((row, i) => row.forEach((d, j) => { if (i < j) nearest = Math.min(nearest, d); }));
-  const pairs: [number, number][] = [];
-  for (let i = 0; i < n; i += 1) for (let j = i + 1; j < n; j += 1) pairs.push([i, j]);
-  const neighbours = pairs.filter(([i, j]) => dist[i][j] <= 1.5 * nearest);
   let best: number[] = [];
-  let bestMin = -Infinity;
-  let bestSum = -Infinity;
-  permutations(n).forEach((perm) => {
-    const minNb = Math.min(...neighbours.map(([i, j]) => de[perm[i]][perm[j]]));
-    const sum = pairs.reduce((s, [i, j]) => s + de[perm[i]][perm[j]] / dist[i][j], 0);
-    if (minNb > bestMin + 1e-9 || (Math.abs(minNb - bestMin) <= 1e-9 && sum > bestSum + 1e-9)) {
-      best = perm;
-      bestMin = minNb;
-      bestSum = sum;
+  let bestCost = Infinity;
+  let bestSpread = Infinity;
+  for (let code = 0; code < k ** n; code += 1) {
+    const colours = Array.from({ length: n }, (_, i) => Math.floor(code / k ** i) % k);
+    let cost = 0;
+    for (let i = 0; i < n; i += 1) {
+      for (let j = i + 1; j < n; j += 1) if (colours[i] === colours[j]) cost += (nearest / dist[i][j]) ** 2;
     }
-  });
+    const counts = Array.from({ length: k }, (_, c) => colours.filter((x) => x === c).length);
+    const spread = Math.max(...counts) - Math.min(...counts);
+    if (cost < bestCost - 1e-9 || (Math.abs(cost - bestCost) <= 1e-9 && spread < bestSpread)) {
+      best = colours;
+      bestCost = cost;
+      bestSpread = spread;
+    }
+  }
   const byIndex: string[] = [];
-  sorted.forEach((c, i) => { byIndex[c.index] = palette[best[i] % palette.length]; });
+  sorted.forEach((c, i) => { byIndex[c.index] = palette[best[i]]; });
   return byIndex;
 }
 
@@ -95,7 +90,8 @@ export function applyCue(display: Display, cue: Cue, rng: Rng, palette: readonly
   } else if (cue === 'color') {
     // the seeded permutation is drawn in every case, so the rng stream does not depend on the variant
     const perm = randperm(rng, palette.length);
-    const distinct = display.variant === 'color-distinct' ? assignDistinctColours(display.clusters, palette) : null;
+    const distinct = display.variant === 'color-distinct' || display.variant === 'color-distinct-2'
+      ? assignDistinctColours(display.clusters, palette) : null;
     display.nodes.forEach((node) => {
       node.fill = distinct ? distinct[node.cluster] : palette[perm[node.cluster % palette.length]];
     });

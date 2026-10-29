@@ -76,29 +76,33 @@ describe('follow-up variants', () => {
     expect(b).toContain(`fill="${C.SHADE_FILL}"`);
   });
 
-  test('the distinct palette roughly doubles the closest pair of the ellipse', () => {
-    expect(worstPair(C.DISTINCT_PALETTE, hexToLab)).toBeGreaterThan(50);
+  test('the few-colour palettes are far more distinct than the ellipse and never pale', () => {
+    expect(worstPair(C.DISTINCT_COLOURS['color-distinct'], hexToLab)).toBeGreaterThan(55);
+    expect(worstPair(C.DISTINCT_COLOURS['color-distinct-2'], hexToLab)).toBeGreaterThan(95);
     expect(worstPair(makePalette(0), hexToLab)).toBeLessThan(30);
-    const { displayA } = pair('color-distinct', 9, 24);
-    expect(new Set(displayA.nodes.map((n) => n.fill))).toEqual(new Set(C.DISTINCT_PALETTE));
+    Object.values(C.DISTINCT_COLOURS).flat().forEach((h) => {
+      const lab = hexToLab(h);
+      expect(lab.L).toBeLessThanOrEqual(68);
+      expect(Math.hypot(lab.a, lab.b)).toBeGreaterThanOrEqual(60);
+    });
   });
 
-  test('color-distinct gives neighbouring clusters the most different colours', () => {
-    const labs = C.DISTINCT_PALETTE.map(hexToLab);
-    const allPairs = labs.flatMap((p, i) => labs.slice(i + 1).map((q) => deltaE2000(p, q))).sort((a, b) => a - b);
+  test.each(['color-distinct', 'color-distinct-2'] as const)('%s: neighbouring clusters never share a colour', (variant) => {
     SEEDS.forEach((seed) => {
-      const { displayA } = pair('color-distinct', seed, 24);
+      const { displayA, displayB } = pair(variant, seed, 24);
+      const palette = C.DISTINCT_COLOURS[variant];
       const cs = displayA.clusters;
       const fill = (c: typeof cs[number]) => displayA.nodes.find((n) => n.cluster === c.index)?.fill as string;
+      cs.forEach((c) => expect(new Set(displayA.nodes.filter((n) => n.cluster === c.index).map((n) => n.fill)).size).toBe(1));
       const d = (a: typeof cs[number], b: typeof cs[number]) => Math.hypot(a.cx - b.cx, a.cy - b.cy);
       let nearest = Infinity;
       cs.forEach((a, i) => cs.slice(i + 1).forEach((b) => { nearest = Math.min(nearest, d(a, b)); }));
-      const nb = cs.flatMap((a, i) => cs.slice(i + 1).filter((b) => d(a, b) <= 1.5 * nearest)
-        .map((b) => deltaE2000(hexToLab(fill(a)), hexToLab(fill(b)))));
-      // the closest neighbouring pair never gets the palette's closest colour pair
-      expect(Math.min(...nb)).toBeGreaterThan(allPairs[0] + 1e-6);
-      // and each cluster keeps one colour
-      cs.forEach((c) => expect(new Set(displayA.nodes.filter((n) => n.cluster === c.index).map((n) => n.fill)).size).toBe(1));
+      // side-by-side and above-below neighbours (the diagonals are about 1.4 x further)
+      cs.forEach((a, i) => cs.slice(i + 1).forEach((b) => {
+        if (d(a, b) <= 1.2 * nearest) expect(fill(a)).not.toBe(fill(b));
+      }));
+      expect(new Set(displayA.nodes.map((n) => n.fill))).toEqual(new Set(palette));
+      displayB.nodes.forEach((n) => expect(palette).toContain(n.fill));
     });
   });
 
