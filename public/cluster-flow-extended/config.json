@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/StudyConfigSchema.json",
   "studyMetadata": {
-    "title": "Cluster Flow follow-up: stimulus variants",
-    "version": "followup-1",
+    "title": "Cluster Flow (extended): Perceived Number in Grouped Node-Link Diagrams",
+    "version": "extended-1",
     "authors": [
       "Minsuk Chang",
       "Cindy Xiong Bearfield",
@@ -10,7 +10,7 @@
       "Markus Wallinger"
     ],
     "date": "2026-09-04",
-    "description": "Follow-up to the cluster-flow staircase study (meeting 2026-10-21): one stimulus variant per participant, same task and staircase.",
+    "description": "Extended version of the cluster-flow staircase study (the control): the same task, staircase, screening, attention checks and Prolific codes, between subjects with one cell per participant, over six follow-up stimulus variants (meeting 2026-10-21): edge-bold, color-large, color-distinct, rect-shade, intra-full, intra-full-plus.",
     "organizations": [
       "Georgia Institute of Technology"
     ]

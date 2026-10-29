@@ -15,21 +15,6 @@ const pair = (variant: Variant, seed: number, nB: number) => generateTrialPair(s
 });
 const between = (d: { edges: { kind: string }[] }) => d.edges.filter((e) => e.kind === 'between').length;
 
-/** Machado et al. (2009) severity-1 simulation on linear sRGB, as used for the palette search. */
-const CVD = {
-  protan: [[0.152286, 1.052583, -0.204868], [0.114503, 0.786281, 0.099216], [-0.003882, -0.048116, 1.051998]],
-  deutan: [[0.367322, 0.860646, -0.227968], [0.280085, 0.672501, 0.047413], [-0.011820, 0.042940, 0.968881]],
-};
-function simulate(hex: string, m: number[][]) {
-  const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
-  const enc = (v: number) => {
-    const c = Math.min(1, Math.max(0, v));
-    return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055;
-  };
-  const c = [1, 3, 5].map((i) => lin(parseInt(hex.slice(i, i + 2), 16) / 255));
-  const o = m.map((row) => enc(row[0] * c[0] + row[1] * c[1] + row[2] * c[2]));
-  return hexToLab(`#${o.map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join('')}`);
-}
 function worstPair(palette: readonly string[], lab: (h: string) => ReturnType<typeof hexToLab>) {
   let worst = Infinity;
   palette.forEach((p, i) => palette.slice(i + 1).forEach((q) => { worst = Math.min(worst, deltaE2000(lab(p), lab(q))); }));
@@ -91,17 +76,29 @@ describe('follow-up variants', () => {
     expect(b).toContain(`fill="${C.SHADE_FILL}"`);
   });
 
-  test('the distinct palettes beat the ellipse, most of all under colour-blindness simulation', () => {
-    const ellipse = makePalette(0);
-    const cvd = (p: readonly string[]) => Math.min(worstPair(p, (h) => simulate(h, CVD.protan)), worstPair(p, (h) => simulate(h, CVD.deutan)));
-    C.DISTINCT_PALETTES.forEach((p) => {
-      expect(worstPair(p, hexToLab)).toBeGreaterThan(30);
-      expect(cvd(p)).toBeGreaterThan(20);
-      expect(cvd(p)).toBeGreaterThan(2.5 * cvd(ellipse));
-    });
-    ['color-distinct', 'color-distinct-b'].forEach((v, i) => {
-      const { displayA } = pair(v as Variant, 9, 24);
-      expect(new Set(displayA.nodes.map((n) => n.fill))).toEqual(new Set(C.DISTINCT_PALETTES[i]));
+  test('the distinct palette roughly doubles the closest pair of the ellipse', () => {
+    expect(worstPair(C.DISTINCT_PALETTE, hexToLab)).toBeGreaterThan(50);
+    expect(worstPair(makePalette(0), hexToLab)).toBeLessThan(30);
+    const { displayA } = pair('color-distinct', 9, 24);
+    expect(new Set(displayA.nodes.map((n) => n.fill))).toEqual(new Set(C.DISTINCT_PALETTE));
+  });
+
+  test('color-distinct gives neighbouring clusters the most different colours', () => {
+    const labs = C.DISTINCT_PALETTE.map(hexToLab);
+    const allPairs = labs.flatMap((p, i) => labs.slice(i + 1).map((q) => deltaE2000(p, q))).sort((a, b) => a - b);
+    SEEDS.forEach((seed) => {
+      const { displayA } = pair('color-distinct', seed, 24);
+      const cs = displayA.clusters;
+      const fill = (c: typeof cs[number]) => displayA.nodes.find((n) => n.cluster === c.index)?.fill as string;
+      const d = (a: typeof cs[number], b: typeof cs[number]) => Math.hypot(a.cx - b.cx, a.cy - b.cy);
+      let nearest = Infinity;
+      cs.forEach((a, i) => cs.slice(i + 1).forEach((b) => { nearest = Math.min(nearest, d(a, b)); }));
+      const nb = cs.flatMap((a, i) => cs.slice(i + 1).filter((b) => d(a, b) <= 1.5 * nearest)
+        .map((b) => deltaE2000(hexToLab(fill(a)), hexToLab(fill(b)))));
+      // the closest neighbouring pair never gets the palette's closest colour pair
+      expect(Math.min(...nb)).toBeGreaterThan(allPairs[0] + 1e-6);
+      // and each cluster keeps one colour
+      cs.forEach((c) => expect(new Set(displayA.nodes.filter((n) => n.cluster === c.index).map((n) => n.fill)).size).toBe(1));
     });
   });
 

@@ -165,21 +165,20 @@ export const GENERATOR_CONFIG = {
    * `VARIANT_LINK_SCALE` and `VARIANT_DOTS`: `edge-bold` draws every link this many times thicker and
    * its between-cluster links as round dots (`dash` ~0 with round caps) `gap` px apart in `stroke`.
    * `SHADE_FILL`: the faint yellow of `rect-shade` (cluster areas in A, the whole ground in B);
-   * `SHADE_NODE`: its node colour. `DISTINCT_PALETTES`: the two best six-colour sets of a search over
-   * a 16-level sRGB grid (L* 35 to 75, chroma at least 35), greedy farthest-point by
-   * min(CIEDE2000, 1.4 x CIEDE2000 under Machado 2009 protan and deutan simulation); the CIELAB
-   * ellipse palette scores about 29 normal and 7 under colour-blindness simulation, these about 31
-   * and 22 (`variants.spec.ts`).
+   * `SHADE_NODE`: its node colour. `DISTINCT_PALETTE` (`color-distinct`): the six colours whose
+   * closest pair is as far apart as possible (max-min CIEDE2000, normal vision): a search over an
+   * sRGB grid in steps of 15, keeping colours with L* 30 to 82 that stay at least 22 CIEDE2000 from
+   * the white ground and the black links (greedy farthest-point from every 7th start, then member
+   * swaps), refined in 1-unit sRGB steps. Its closest pair is about 51 CIEDE2000 apart, against
+   * about 29 for the ellipse palette (`variants.spec.ts`). Each display then gives the most
+   * different colours to the nearest clusters (`assignDistinctColours` in `cues.ts`).
    */
   VARIANT_NODE_SCALE: 1.5,
   VARIANT_LINK_SCALE: 2,
   VARIANT_DOTS: { dash: 0.01, gap: 16, stroke: '#8C8C8C' },
   SHADE_FILL: '#FFF1B8',
   SHADE_NODE: '#111111',
-  DISTINCT_PALETTES: [
-    ['#0055DD', '#55BBFF', '#992255', '#BB4400', '#EE8899', '#EEAA00'],
-    ['#0044EE', '#33AA99', '#44AAFF', '#992255', '#AA5500', '#BBBB00'],
-  ],
+  DISTINCT_PALETTE: ['#0000FF', '#D2D200', '#A53A00', '#005929', '#00C7F0', '#FFB4F1'],
   /** Retries allowed when drawing a random node pair for an extra (dense) arrow. */
   EXTRA_ARROW_MAX_DRAWS: 20,
 } as const;
