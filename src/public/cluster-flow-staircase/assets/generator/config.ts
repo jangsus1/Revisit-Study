@@ -167,12 +167,13 @@ export const GENERATOR_CONFIG = {
    * `SHADE_FILL`: the faint yellow of `rect-shade` (cluster areas in A, the whole ground in B);
    * `SHADE_NODE`: its node colour. `DISTINCT_COLOURS`: the few colours of `color-distinct` (three)
    * and `color-distinct-2` (two), reused across the six clusters so that neighbouring clusters never
-   * share one (`assignDistinctColours` in `cues.ts`). Each set is the max-min CIEDE2000 set of a
-   * search over an sRGB grid in steps of 15 restricted to saturated mid-lightness colours (L* 35 to
-   * 68, chroma at least 60, at least 30 from the white ground and 25 from the black links), so no
-   * colour is pale: three colours about 61 CIEDE2000 apart at their closest, two about 103, against
-   * about 29 for the six-colour ellipse (an earlier six-colour max-min set reached 51 but its pale
-   * pink and yellow looked alike at node size).
+   * share one (`assignDistinctColours` in `cues.ts`). A vivid red, green and blue that also differ
+   * in brightness (L* 47, 71 and 29; chroma 95, 89, 98): every pair at least 50 CIEDE2000 apart
+   * (red-green 78, green-blue 75, red-blue 50), against about 29 for the closest pair of the
+   * six-colour ellipse, and all at least 35 from the black links. A max-min search over red, green
+   * and blue hue windows reached 59 but only with a near-black navy (L* 18); an earlier six-colour
+   * max-min set reached 51 but its pale pink and yellow looked alike at node size. The two-colour
+   * version is the red and the green (78 apart).
    */
   VARIANT_NODE_SCALE: 1.5,
   VARIANT_LINK_SCALE: 2,
@@ -180,8 +181,8 @@ export const GENERATOR_CONFIG = {
   SHADE_FILL: '#FFF1B8',
   SHADE_NODE: '#111111',
   DISTINCT_COLOURS: {
-    'color-distinct': ['#FF6900', '#00B400', '#3C0FFF'],
-    'color-distinct-2': ['#00B400', '#B400FF'],
+    'color-distinct': ['#E00000', '#32C832', '#1428C8'],
+    'color-distinct-2': ['#E00000', '#32C832'],
   },
   /** Retries allowed when drawing a random node pair for an extra (dense) arrow. */
   EXTRA_ARROW_MAX_DRAWS: 20,

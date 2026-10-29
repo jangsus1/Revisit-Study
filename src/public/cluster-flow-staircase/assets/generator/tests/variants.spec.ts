@@ -76,15 +76,15 @@ describe('follow-up variants', () => {
     expect(b).toContain(`fill="${C.SHADE_FILL}"`);
   });
 
-  test('the few-colour palettes are far more distinct than the ellipse and never pale', () => {
-    expect(worstPair(C.DISTINCT_COLOURS['color-distinct'], hexToLab)).toBeGreaterThan(55);
-    expect(worstPair(C.DISTINCT_COLOURS['color-distinct-2'], hexToLab)).toBeGreaterThan(95);
+  test('the few-colour palettes are vivid, differ in brightness and are far more distinct than the ellipse', () => {
+    expect(worstPair(C.DISTINCT_COLOURS['color-distinct'], hexToLab)).toBeGreaterThan(48);
+    expect(worstPair(C.DISTINCT_COLOURS['color-distinct-2'], hexToLab)).toBeGreaterThan(70);
     expect(worstPair(makePalette(0), hexToLab)).toBeLessThan(30);
-    Object.values(C.DISTINCT_COLOURS).flat().forEach((h) => {
-      const lab = hexToLab(h);
-      expect(lab.L).toBeLessThanOrEqual(68);
-      expect(Math.hypot(lab.a, lab.b)).toBeGreaterThanOrEqual(60);
-    });
+    const labs = C.DISTINCT_COLOURS['color-distinct'].map(hexToLab);
+    labs.forEach((lab) => expect(Math.hypot(lab.a, lab.b)).toBeGreaterThanOrEqual(85));
+    const lightness = labs.map((lab) => lab.L).sort((a, b) => a - b);
+    expect(lightness[1] - lightness[0]).toBeGreaterThan(15);
+    expect(lightness[2] - lightness[1]).toBeGreaterThan(15);
   });
 
   test.each(['color-distinct', 'color-distinct-2'] as const)('%s: neighbouring clusters never share a colour', (variant) => {
