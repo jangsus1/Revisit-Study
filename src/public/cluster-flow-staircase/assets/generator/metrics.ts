@@ -7,7 +7,9 @@ import { polygonArea, polygonHull } from 'd3';
 import {
   DASH_DUTY, HEAD_AREA, LINK_W, NODE_INK, OUTLINE_W, visibleLinkLength,
 } from './geometry';
+import { GENERATOR_CONFIG as C } from './config';
 import { Display, DisplayMetrics } from './types';
+import { isFlow } from './variants';
 
 /** Nearest-neighbour distance of every node (Infinity for a lone node). */
 function nearestNeighbours(nodes: Display['nodes']): number[] {
@@ -25,7 +27,9 @@ export function measureDisplay(display: Display): DisplayMetrics {
   const { nodes } = display;
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
-  const nodeInk = nodes.reduce((sum, n) => sum + NODE_INK[n.shape], 0);
+  // flowchart boxes are outlines; their link figures below still use the dot trim, so they run a little long
+  const boxInk = 2 * (C.FLOW_BOX.width + C.FLOW_BOX.height) * C.FLOW_BOX.strokeWidth;
+  const nodeInk = isFlow(display.variant) ? nodes.length * boxInk : nodes.reduce((sum, n) => sum + NODE_INK[n.shape], 0);
 
   let linkLength = 0;
   let linkInk = 0;

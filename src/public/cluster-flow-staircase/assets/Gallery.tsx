@@ -21,6 +21,7 @@ import {
 import {
   CUES, Cue, Density, Display, DisplayMetrics, NodeShape, VARIANTS, VARIANT_CUE, Variant,
 } from './generator/types';
+import { isFlow } from './generator/variants';
 import { NoiseMask } from './render/NoiseMask';
 import { StimulusFrame } from './render/StimulusSVG';
 import { TrialStage } from './render/TrialStage';
@@ -61,6 +62,10 @@ function buildRow(cue: Cue, seed: number, density: Density, nB: number, hueOffse
 function diagnostics(display: Display): string {
   const base = `seed ${display.seed} · attempts ${display.attempts} · n ${display.n} · edges ${display.edges.length}`;
   const { meta } = display;
+  if (display.kind === 'B' && isFlow(display.variant)) {
+    // the flowchart B is not fitted to A's field or link length (`flow.ts`)
+    return `${base} · boxes on the ${GENERATOR_CONFIG.FLOW_GRID.cols}×${GENERATOR_CONFIG.FLOW_GRID.rows} lattice`;
+  }
   if (display.kind === 'B') {
     const field = meta.field ? `${fmt(meta.field.w)}×${fmt(meta.field.h)}` : '–';
     return `${base} · field ${field} · spacing ${fmt(meta.spacing ?? NaN, 1)} · link target ${fmt(meta.linkTarget ?? NaN)}`;
@@ -223,7 +228,8 @@ export default function Gallery() {
   const rows = useMemo(
     () => [
       ...CUES.map((cue) => buildRow(cue, seed, density, nB, hueOffset)),
-      // the follow-up variants (meeting 2026-10-21); the fully connected ones are always sparse-based
+      // the follow-up variants (meeting 2026-10-21) and the flowchart prototypes (meeting 2026-11-04);
+      // the fully connected ones are always sparse-based
       ...VARIANTS.map((v) => buildRow(VARIANT_CUE[v], seed, v.startsWith('intra-') ? 'sparse' : density, nB, hueOffset, v)),
     ],
     [seed, nB, density, hueOffset],
@@ -294,7 +300,7 @@ export default function Gallery() {
         return (
           <Stack key={row.key} gap="xs" data-testid={row.variant ? `gallery-variant-${row.variant}` : `gallery-row-${row.cue}`}>
             <Group gap="md" align="center">
-              <Title order={5}>{row.variant ? `follow-up variant: ${row.variant} (${row.cue} cue)` : `cue: ${row.cue}`}</Title>
+              <Title order={5}>{row.variant ? `${row.variant.startsWith('flow') ? 'flowchart prototype' : 'follow-up variant'}: ${row.variant} (${row.cue} cue)` : `cue: ${row.cue}`}</Title>
               <SegmentedControl
                 size="xs"
                 data={[{ label: 'A first', value: 'A' }, { label: 'B first', value: 'B' }]}

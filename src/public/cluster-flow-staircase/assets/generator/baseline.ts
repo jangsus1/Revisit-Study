@@ -15,7 +15,10 @@ import { Rng, mulberry32, randperm } from './prng';
 import {
   Cue, Density, Display, DisplayEdge, DisplayNode, InkTarget, NodeShape, Rect, Variant,
 } from './types';
-import { allowsCrossings, markReach, nodeScale } from './variants';
+import { buildFlowBaseline } from './flow';
+import {
+  allowsCrossings, isFlow, markReach, nodeScale,
+} from './variants';
 
 export interface BaselineOptions {
   /** where the dot centres may go, canvas px; default the whole canvas minus the margin */
@@ -106,9 +109,11 @@ export function buildBaseline(
   density: Density,
   options: BaselineOptions = {},
 ): Display | null {
+  const { variant } = options;
+  // the flowchart prototypes build B on the lattice (`flow.ts`); field and link budget do not apply
+  if (isFlow(variant)) return buildFlowBaseline(seed, nB, cue, density, variant as Variant);
   const rng = mulberry32(seed);
   const field = clipField(options.field);
-  const { variant } = options;
   // larger nodes (color-large) keep the same white gap between them
   const spacing = Math.max(baselineSpacing(nB, field), MIN_CENTRE_DISTANCE * nodeScale(variant));
   const pts = placeNodes(rng, nB, field, spacing);

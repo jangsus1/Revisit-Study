@@ -6,7 +6,9 @@ import { ReactNode } from 'react';
 import { GENERATOR_CONFIG as C } from '../generator/config';
 import { DASH_ARRAY, DOT_R, MARK_POINTS } from '../generator/geometry';
 import { Display, DisplayNode, NodeShape } from '../generator/types';
-import { groundOf, linkStyle, nodeScale } from '../generator/variants';
+import {
+  groundOf, isFlow, isShade, linkStyle, nodeScale,
+} from '../generator/variants';
 
 /** SVG `points` of a polygon mark centred at (x, y). */
 export function markPoints(shape: Exclude<NodeShape, 'circle'>, x: number, y: number, scale = 1): string {
@@ -17,10 +19,27 @@ export function markPoints(shape: Exclude<NodeShape, 'circle'>, x: number, y: nu
  * One node mark, always filled. The outlines come from `MARK_POINTS`, the same polygons the
  * invariants and the ink metrics use.
  */
-function nodeMark(node: DisplayNode, scale: number) {
+function nodeMark(node: DisplayNode, scale: number, flow: boolean) {
   const {
     id, x, y, fill, shape,
   } = node;
+  if (flow) {
+    // flowchart prototypes: every node is a box, whatever `shape` the record carries
+    const box = C.FLOW_BOX;
+    return (
+      <rect
+        key={id}
+        x={x - box.width / 2}
+        y={y - box.height / 2}
+        width={box.width}
+        height={box.height}
+        rx={box.radius}
+        fill={box.fill}
+        stroke={box.stroke}
+        strokeWidth={box.strokeWidth}
+      />
+    );
+  }
   if (shape === 'circle') return <circle key={id} cx={x} cy={y} r={DOT_R * scale} fill={fill} />;
   return <polygon key={id} points={markPoints(shape, x, y, scale)} fill={fill} strokeLinejoin="miter" />;
 }
@@ -30,7 +49,8 @@ export function StimulusSVG({ display }: { display: Display }) {
   const byId = new Map(display.nodes.map((n) => [n.id, n]));
   const scale = nodeScale(display.variant);
   const link = linkStyle(display.variant);
-  const shade = display.variant === 'rect-shade';
+  const shade = isShade(display.variant);
+  const flow = isFlow(display.variant);
   const bold = display.variant === 'edge-bold';
 
   return (
@@ -65,7 +85,9 @@ export function StimulusSVG({ display }: { display: Display }) {
         if (len === 0) return null;
         const ux = (t.x - s.x) / len;
         const uy = (t.y - s.y) / len;
-        const trim = Math.min(link.trim, len / 2);
+        // flowchart connectors end just outside the box edge they meet
+        const flowTrim = (Math.abs(ux) > Math.abs(uy) ? C.FLOW_BOX.width : C.FLOW_BOX.height) / 2 + C.FLOW_LINK_GAP;
+        const trim = Math.min(flow ? flowTrim : link.trim, len / 2);
         const x1 = s.x + ux * trim;
         const y1 = s.y + uy * trim;
         const x2 = t.x - ux * trim;
@@ -95,7 +117,7 @@ export function StimulusSVG({ display }: { display: Display }) {
         );
       })}
 
-      {display.nodes.map((node) => nodeMark(node, scale))}
+      {display.nodes.map((node) => nodeMark(node, scale, flow))}
     </svg>
   );
 }

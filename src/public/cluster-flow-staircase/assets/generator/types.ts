@@ -19,11 +19,17 @@ export type Density = 'sparse' | 'dense';
  * - `intra-full`: proximity layout, every cluster fully connected inside (every pair whose link
  *   clears the other nodes), backbone between clusters as in sparse.
  * - `intra-full-plus`: `intra-full` plus a second link between each pair of consecutive clusters.
+ *
+ * Flowchart prototypes (meeting 2026-11-04; `flow.ts`): nodes are drawn as boxes snapped to the
+ * lattice (no jitter) and every link is a straight horizontal or vertical connector.
+ * - `flow`: proximity cue, the gapped layout (one empty lattice line between clusters).
+ * - `flow-shade`: rect cue on the even layout, a shaded region under each cluster (as `rect-shade`).
+ * Their B puts N_B boxes on cells of the whole `FLOW_GRID` lattice, wired the same way.
  */
 export type Variant = 'edge-bold' | 'color-large' | 'color-distinct' | 'color-distinct-2' | 'rect-shade'
-  | 'intra-full' | 'intra-full-plus';
+  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade';
 export const VARIANTS: Variant[] = ['edge-bold', 'color-large', 'color-distinct', 'color-distinct-2', 'rect-shade',
-  'intra-full', 'intra-full-plus'];
+  'intra-full', 'intra-full-plus', 'flow', 'flow-shade'];
 /** The cue each variant belongs to (its layout follows `layoutModeFor` of that cue). */
 export const VARIANT_CUE: Record<Variant, Cue> = {
   'edge-bold': 'edge',
@@ -33,6 +39,8 @@ export const VARIANT_CUE: Record<Variant, Cue> = {
   'rect-shade': 'rect',
   'intra-full': 'proximity',
   'intra-full-plus': 'proximity',
+  flow: 'proximity',
+  'flow-shade': 'rect',
 };
 export type StimulusKind = 'A' | 'B';
 /** The seven filled marks of the shape cue's pool (`GENERATOR_CONFIG.SHAPES`). */

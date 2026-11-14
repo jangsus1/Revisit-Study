@@ -25,7 +25,7 @@ import {
   Cue, Density, Display, DisplayCluster, DisplayNode, GenerateOptions, Rect, layoutModeFor,
   Variant,
 } from './types';
-import { variantPalette } from './variants';
+import { isFlow, variantPalette } from './variants';
 
 /**
  * A deterministic 32-bit FNV-1a hash of the string form of `parts`, joined by `|`.
@@ -46,9 +46,28 @@ export function hashSeed(...parts: (number | string)[]): number {
 /** Builds stimulus A (24 dots in 6 clusters) for one concrete seed. */
 function buildStimulusA(seed: number, opts: GenerateOptions): Display {
   const rng = mulberry32(seed);
-  const jitter = drawJitter(jitterRng(seed));
+  // the flowchart prototypes snap every node to the lattice
+  const jitter = isFlow(opts.variant) ? 0 : drawJitter(jitterRng(seed));
   const sizes = numDistributer(rng, C.NCLUST, C.NTOTAL);
   const layout = buildLayout(rng, sizes, jitter, opts.layout ?? layoutModeFor(opts.cue));
+
+  if (isFlow(opts.variant)) {
+    // each row of clusters is centred on its own centroids, which leaves the two rows off each
+    // other's columns; shift the bottom row onto the top row's columns (both rows are equally wide)
+    const left = (from: number) => Math.min(...layout.clusters.slice(from, from + 3).flatMap((c) => c.points.map((p) => p.x)));
+    const dx = left(0) - left(3);
+    layout.clusters.slice(3).forEach((cluster) => {
+      cluster.points.forEach((p) => { p.x += dx; });
+      cluster.cx += dx;
+    });
+    // the layout centred the chart before that shift, so centre its bounding box again
+    const xs = layout.clusters.flatMap((c) => c.points.map((p) => p.x));
+    const recentre = (C.CANVAS.width - Math.max(...xs) - Math.min(...xs)) / 2;
+    layout.clusters.forEach((cluster) => {
+      cluster.points.forEach((p) => { p.x += recentre; });
+      cluster.cx += recentre;
+    });
+  }
 
   let nextId = 0;
   const graphClusters: GraphCluster[] = layout.clusters.map((cluster) => {

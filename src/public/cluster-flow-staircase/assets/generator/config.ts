@@ -184,6 +184,18 @@ export const GENERATOR_CONFIG = {
     'color-distinct': ['#E00000', '#32C832', '#1428C8'],
     'color-distinct-2': ['#E00000', '#32C832'],
   },
+  /**
+   * Flowchart prototypes (`flow`, `flow-shade`; meeting 2026-11-04), all in canvas px. `FLOW_BOX`:
+   * the node box (white, dark outline, rounded corners). `FLOW_LINK_GAP`: the gap between a box edge
+   * and the end of a connector. `FLOW_GRID`: the lattice B draws its cells from, at the lattice pitch
+   * (`INTER * SCALE`) and centred in the canvas: 8 x 7 is the largest extent of the gapped layout
+   * and holds the staircase's largest N_B (48).
+   */
+  FLOW_BOX: {
+    width: 46, height: 28, radius: 5, fill: '#FFFFFF', stroke: '#111111', strokeWidth: 1.5,
+  },
+  FLOW_LINK_GAP: 2,
+  FLOW_GRID: { cols: 8, rows: 7 },
   /** Retries allowed when drawing a random node pair for an extra (dense) arrow. */
   EXTRA_ARROW_MAX_DRAWS: 20,
 } as const;

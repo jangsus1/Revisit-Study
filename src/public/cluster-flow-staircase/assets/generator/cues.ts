@@ -5,6 +5,7 @@
  */
 import { GENERATOR_CONFIG as C } from './config';
 import { DOT_R } from './geometry';
+import { isFlow } from './variants';
 import { Rng, randperm } from './prng';
 import {
   Cue, Display, DisplayCluster, NodeShape, Rect,
@@ -19,13 +20,17 @@ function paddedRect(display: Display, cluster: DisplayCluster): Rect {
   const pts = display.nodes.filter((n) => ids.has(n.id));
   const xs = pts.map((p) => p.x);
   const ys = pts.map((p) => p.y);
-  const x = Math.min(...xs) - CUE_PADDING;
-  const y = Math.min(...ys) - CUE_PADDING;
+  // flowchart boxes are wider than tall, so the padding starts at the box edge on each axis
+  const flow = isFlow(display.variant);
+  const padX = flow ? C.FLOW_BOX.width / 2 + C.HULL_PADDING : CUE_PADDING;
+  const padY = flow ? C.FLOW_BOX.height / 2 + C.HULL_PADDING : CUE_PADDING;
+  const x = Math.min(...xs) - padX;
+  const y = Math.min(...ys) - padY;
   return {
     x,
     y,
-    w: Math.max(...xs) + CUE_PADDING - x,
-    h: Math.max(...ys) + CUE_PADDING - y,
+    w: Math.max(...xs) + padX - x,
+    h: Math.max(...ys) + padY - y,
   };
 }
 

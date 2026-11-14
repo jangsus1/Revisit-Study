@@ -8,7 +8,8 @@ import { conflictsWithAny, linkIsClear } from './invariants';
 import { LayoutPoint } from './layout';
 import { Rng, randperm } from './prng';
 import { Density, DisplayEdge, Variant } from './types';
-import { allowsCrossings, markReach } from './variants';
+import { FLOW_PITCH, aligned } from './flow';
+import { allowsCrossings, isFlow, markReach } from './variants';
 
 export interface GraphCluster {
   index: number;
@@ -57,6 +58,28 @@ export function greedyOrder(clusters: GraphCluster[]): number[] {
     order.push(best);
   }
   return order;
+}
+
+/**
+ * A random Hamiltonian path over the 2 x 3 cluster grid (cluster i sits in row floor(i / 3), column
+ * i % 3) whose consecutive clusters are side by side or one above the other.
+ */
+export function gridPath(rng: Rng, n: number): number[] {
+  const cols = n / 2;
+  const neighbours = (a: number, b: number) => (Math.floor(a / cols) === Math.floor(b / cols) && Math.abs(a - b) === 1)
+    || Math.abs(a - b) === cols;
+  const paths: number[][] = [];
+  const walk = (path: number[]) => {
+    if (path.length === n) {
+      paths.push(path);
+      return;
+    }
+    for (let next = 0; next < n; next += 1) {
+      if (!path.includes(next) && neighbours(path[path.length - 1], next)) walk([...path, next]);
+    }
+  };
+  for (let start = 0; start < n; start += 1) walk([start]);
+  return paths[Math.floor(rng() * paths.length)];
 }
 
 /** The node of `candidates` (global ids) closest to (x, y). */
@@ -120,13 +143,32 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density,
   // 7. one random spanning tree per cluster, oriented by a random topological order
   const sources: number[][] = [];
   const sinks: number[][] = [];
+  const flow = isFlow(variant);
+  /** Lattice neighbours: on one row or column, one pitch apart. */
+  const adjacent = (u: number, v: number) => aligned(at(u), at(v))
+    && Math.hypot(at(u).x - at(v).x, at(u).y - at(v).y) < FLOW_PITCH * 1.01;
   clusters.forEach((c) => {
     const n = c.nodeIds.length;
     const attach = randperm(rng, n);
     const topo = randperm(rng, n);
     topo.forEach((local, q) => { rank[c.nodeIds[local]] = q; });
     const treeEdges: [number, number][] = [];
-    for (let k = 1; k < n; k += 1) {
+    if (flow) {
+      // flowchart: a random spanning tree over the lattice neighbours (randomised Prim), so every
+      // within-cluster link is a straight connector between adjacent boxes
+      const inTree = [c.nodeIds[attach[0]]];
+      while (inTree.length < n) {
+        const options = c.nodeIds.filter((u) => !inTree.includes(u))
+          .flatMap((u) => inTree.filter((v) => adjacent(u, v)).map((v) => [u, v] as [number, number]));
+        if (options.length === 0) break;
+        const [u, v] = options[Math.floor(rng() * options.length)];
+        addWithin(u, v, false);
+        const s = rank[u] < rank[v] ? u : v;
+        treeEdges.push([s, s === u ? v : u]);
+        inTree.push(u);
+      }
+    }
+    for (let k = 1; k < n && !flow; k += 1) {
       // the drawn earlier node first, then the others in turn
       const first = Math.floor(rng() * k);
       const u = c.nodeIds[attach[k]];
@@ -142,7 +184,9 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density,
     sinks[c.index] = c.nodeIds.filter((id) => !hasOut.has(id));
   });
 
-  const order = greedyOrder(clusters);
+  // flowchart: the greedy chain often jumps over a cluster, which no straight connector can do, so
+  // the order is a random path through the 2 x 3 cluster grid that only steps between neighbours
+  const order = flow ? gridPath(rng, clusters.length) : greedyOrder(clusters);
 
   /**
    * The nearest-sink -> nearest-source link between two clusters (SPEC 8). When that pair would
@@ -164,9 +208,22 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density,
       .map(({ pair }) => pair);
     // the separable cost puts the nearest pair first; it is moved to the front explicitly for ties
     const ordered = [nearestPair, ...pairs.filter(([s, t]) => s !== nearestPair[0] || t !== nearestPair[1])];
-    const chosen = extra
-      ? ordered.find(([s, t]) => !seen.has(key(s, t)) && usable(s, t)) ?? null
-      : pick(ordered, (p) => p, nearestPair);
+    let chosen: [number, number] | null;
+    if (flow) {
+      // flowchart: any two boxes of the two clusters that face each other on one row or column;
+      // the shortest such connector wins (ties at random). Without one, a backbone link falls back
+      // to the nearest pair and the invariants reject the display.
+      const straight = ca.nodeIds.flatMap((s) => cb.nodeIds.map((t) => [s, t] as [number, number]))
+        .filter(([s, t]) => aligned(at(s), at(t)) && !seen.has(key(s, t)) && usable(s, t))
+        .map((pair) => ({ pair, len: Math.sqrt(dist2(at(pair[0]).x, at(pair[0]).y, at(pair[1]).x, at(pair[1]).y)) }));
+      const shortest = Math.min(...straight.map((p) => p.len));
+      const best = straight.filter((p) => p.len < shortest + 0.5);
+      chosen = best.length > 0 ? best[Math.floor(rng() * best.length)].pair : (extra ? null : nearestPair);
+    } else {
+      chosen = extra
+        ? ordered.find(([s, t]) => !seen.has(key(s, t)) && usable(s, t)) ?? null
+        : pick(ordered, (p) => p, nearestPair);
+    }
     if (!chosen) return;
     const [source, target] = chosen;
     if (source === target || seen.has(key(source, target))) return;
@@ -191,7 +248,7 @@ export function buildGraph(rng: Rng, clusters: GraphCluster[], density: Density,
           const u = c.nodeIds[Math.floor(rng() * n)];
           const v = c.nodeIds[Math.floor(rng() * n)];
           // a draw whose link would cross a link or graze a mark counts as a failed draw
-          added = u !== v && usable(u, v) && addWithin(u, v, true);
+          added = u !== v && (!flow || adjacent(u, v)) && usable(u, v) && addWithin(u, v, true);
         }
       }
     });

@@ -10,6 +10,16 @@ import {
 import { makePalette } from './palette';
 import { Display, Variant } from './types';
 
+/** True for the flowchart prototypes: boxes on the lattice, straight horizontal or vertical links. */
+export function isFlow(variant?: Variant): boolean {
+  return variant === 'flow' || variant === 'flow-shade';
+}
+
+/** True for the variants that fill each cluster's region instead of outlining it. */
+export function isShade(variant?: Variant): boolean {
+  return variant === 'rect-shade' || variant === 'flow-shade';
+}
+
 /** Node radius multiplier: `color-large` only. */
 export function nodeScale(variant?: Variant): number {
   return variant === 'color-large' ? C.VARIANT_NODE_SCALE : 1;
@@ -44,7 +54,7 @@ export function allowsCrossings(variant?: Variant): boolean {
   return variant === 'intra-full' || variant === 'intra-full-plus';
 }
 
-/** `rect-shade`: the ground of a display (B gets the yellow everywhere). */
+/** The shaded variants: the ground of a display (B gets the yellow everywhere). */
 export function groundOf(display: Pick<Display, 'kind' | 'variant' | 'background'>): string {
-  return display.variant === 'rect-shade' && display.kind === 'B' ? C.SHADE_FILL : display.background;
+  return isShade(display.variant) && display.kind === 'B' ? C.SHADE_FILL : display.background;
 }

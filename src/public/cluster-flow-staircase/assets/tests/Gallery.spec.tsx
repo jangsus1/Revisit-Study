@@ -79,7 +79,9 @@ describe('Gallery', () => {
     render(<MantineProvider><Gallery /></MantineProvider>);
     expect(screen.getAllByText(/sizes \[/).length).toBe(ROWS);
     expect(screen.getAllByText(/attempts \d/).length).toBe(2 * ROWS);
-    expect(screen.getAllByText(/link target \d/).length).toBe(ROWS);
+    // the two flowchart prototypes build B on the lattice, without a link target
+    expect(screen.getAllByText(/link target \d/).length).toBe(ROWS - 2);
+    expect(screen.getAllByText(/boxes on the 8×7 lattice/).length).toBe(2);
     const footers = screen.getAllByTestId('metrics-footer');
     expect(footers).toHaveLength(2 * ROWS);
     footers.forEach((footer) => {

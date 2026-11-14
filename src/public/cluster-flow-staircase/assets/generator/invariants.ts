@@ -8,7 +8,7 @@ import {
   DOT_R, LINK_W, MARK_POINTS, MARK_REACH, TRIM,
 } from './geometry';
 import { Display, NodeShape } from './types';
-import { allowsCrossings, nodeScale } from './variants';
+import { allowsCrossings, isFlow, nodeScale } from './variants';
 
 /** Minimum allowed distance between two dot centres, in canvas px. */
 export const MIN_CENTRE_DISTANCE = C.MIN_CENTRE_DISTANCE_FACTOR * C.RDOT * C.SCALE;
@@ -243,6 +243,24 @@ export function checkInvariants(display: Display): string[] {
         const d = pointSegmentDistance(n.x, n.y, ax, ay, bx, by) - r;
         if (d < MARK_MARGIN - EPS) violations.push(`edge ${edge.source}->${edge.target} passes ${d.toFixed(2)}px from the scaled node ${n.id}`);
       });
+    });
+  }
+
+  // flowchart prototypes: every link is horizontal or vertical, and every box keeps the canvas margin
+  if (isFlow(display.variant)) {
+    valid.forEach((edge) => {
+      const s = at(edge.source);
+      const t = at(edge.target);
+      if (Math.abs(s.x - t.x) > 0.5 && Math.abs(s.y - t.y) > 0.5) {
+        violations.push(`flow link ${edge.source}->${edge.target} is neither horizontal nor vertical`);
+      }
+    });
+    const mx = C.CANVAS_MARGIN + C.FLOW_BOX.width / 2;
+    const my = C.CANVAS_MARGIN + C.FLOW_BOX.height / 2;
+    nodes.forEach((n) => {
+      if (n.x < mx - EPS || n.y < my - EPS || n.x > display.width - mx + EPS || n.y > display.height - my + EPS) {
+        violations.push(`box ${n.id} at (${n.x.toFixed(1)}, ${n.y.toFixed(1)}) leaves the ${C.CANVAS_MARGIN}px canvas margin`);
+      }
     });
   }
 
