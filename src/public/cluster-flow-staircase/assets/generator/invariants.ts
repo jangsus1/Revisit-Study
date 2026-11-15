@@ -8,7 +8,9 @@ import {
   DOT_R, LINK_W, MARK_POINTS, MARK_REACH, TRIM,
 } from './geometry';
 import { Display, NodeShape } from './types';
-import { allowsCrossings, isFlow, nodeScale } from './variants';
+import {
+  allowsCrossings, isDagre, isFlow, nodeScale,
+} from './variants';
 
 /** Minimum allowed distance between two dot centres, in canvas px. */
 export const MIN_CENTRE_DISTANCE = C.MIN_CENTRE_DISTANCE_FACTOR * C.RDOT * C.SCALE;
@@ -178,10 +180,60 @@ export function linkIsClear(
 export const MAX_MARK_REACH = Math.max(...Object.values(MARK_REACH));
 
 /**
+ * The invariants of a dagre-laid flowchart (`flowDagre.ts`). Its links follow dagre's routes, so the
+ * straight-line rules above do not apply: every box keeps the canvas margin, no two boxes come
+ * closer than dagre's own gap, and no link's route touches a box that is not one of its ends. Links
+ * may cross, as they do in real charts.
+ */
+function checkDagre(display: Display): string[] {
+  const violations: string[] = [];
+  const { nodes } = display;
+  const hw = C.FLOW_DAGRE.box.width / 2;
+  const hh = C.FLOW_DAGRE.box.height / 2;
+  // dagre keeps boxes `nodeSep` apart side by side; allow for rounding
+  const gap = C.FLOW_DAGRE.nodeSep - 1;
+  const mx = C.CANVAS_MARGIN + hw;
+  const my = C.CANVAS_MARGIN + hh;
+  nodes.forEach((n) => {
+    if (n.x < mx - EPS || n.y < my - EPS || n.x > display.width - mx + EPS || n.y > display.height - my + EPS) {
+      violations.push(`box ${n.id} at (${n.x.toFixed(1)}, ${n.y.toFixed(1)}) leaves the ${C.CANVAS_MARGIN}px canvas margin`);
+    }
+  });
+  for (let i = 0; i < nodes.length; i += 1) {
+    for (let j = i + 1; j < nodes.length; j += 1) {
+      const dx = Math.abs(nodes[i].x - nodes[j].x) - 2 * hw;
+      const dy = Math.abs(nodes[i].y - nodes[j].y) - 2 * hh;
+      if (Math.max(dx, dy) < gap - EPS) violations.push(`boxes ${nodes[i].id} and ${nodes[j].id} are closer than ${gap}px`);
+    }
+  }
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  display.edges.forEach((edge) => {
+    const s = byId.get(edge.source);
+    const t = byId.get(edge.target);
+    if (!s || !t) {
+      violations.push(`edge ${edge.source}->${edge.target} references a missing dot`);
+      return;
+    }
+    const route: Pt[] = edge.points ? edge.points.map((p): Pt => [p.x, p.y]) : [[s.x, s.y], [t.x, t.y]];
+    nodes.forEach((n) => {
+      if (n.id === edge.source || n.id === edge.target) return;
+      const box: Pt[] = [[n.x - hw, n.y - hh], [n.x + hw, n.y - hh], [n.x + hw, n.y + hh], [n.x - hw, n.y + hh]];
+      const hit = route.some((p, k) => k > 0 && (
+        insidePolygon(box, p[0], p[1])
+        || box.some((v, i) => segmentSegmentDistance(route[k - 1], p, v, box[(i + 1) % 4]) < 1)
+      ));
+      if (hit) violations.push(`flow link ${edge.source}->${edge.target} touches box ${n.id}`);
+    });
+  });
+  return violations;
+}
+
+/**
  * Returns one human-readable string per violated invariant; an empty array means the display
  * is usable.
  */
 export function checkInvariants(display: Display): string[] {
+  if (isDagre(display.variant)) return checkDagre(display);
   const violations: string[] = [];
   const { nodes } = display;
 
@@ -248,6 +300,32 @@ export function checkInvariants(display: Display): string[] {
 
   // flowchart prototypes: every link is horizontal or vertical, and every box keeps the canvas margin
   if (isFlow(display.variant)) {
+    // no connector passes through or grazes a box that is not one of its ends, and no boxes touch
+    const hw = C.FLOW_BOX.width / 2;
+    const hh = C.FLOW_BOX.height / 2;
+    const corners = (n: { x: number; y: number }): Pt[] => [
+      [n.x - hw, n.y - hh], [n.x + hw, n.y - hh], [n.x + hw, n.y + hh], [n.x - hw, n.y + hh],
+    ];
+    valid.forEach((edge) => {
+      const s = at(edge.source);
+      const t = at(edge.target);
+      nodes.forEach((n) => {
+        if (n.id === edge.source || n.id === edge.target) return;
+        const box = corners(n);
+        const d = insidePolygon(box, s.x, s.y) || insidePolygon(box, t.x, t.y) ? 0
+          : Math.min(...box.map((v, i) => segmentSegmentDistance([s.x, s.y], [t.x, t.y], v, box[(i + 1) % 4])));
+        if (d < C.FLOW_LINK_GAP + MARK_MARGIN - EPS) {
+          violations.push(`flow link ${edge.source}->${edge.target} passes ${d.toFixed(2)}px from box ${n.id}`);
+        }
+      });
+    });
+    for (let i = 0; i < nodes.length; i += 1) {
+      for (let j = i + 1; j < nodes.length; j += 1) {
+        const dx = Math.abs(nodes[i].x - nodes[j].x) - 2 * hw;
+        const dy = Math.abs(nodes[i].y - nodes[j].y) - 2 * hh;
+        if (Math.max(dx, dy) < C.FLOW_BOX_GAP - EPS) violations.push(`boxes ${nodes[i].id} and ${nodes[j].id} are closer than ${C.FLOW_BOX_GAP}px`);
+      }
+    }
     valid.forEach((edge) => {
       const s = at(edge.source);
       const t = at(edge.target);

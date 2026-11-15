@@ -82,7 +82,7 @@ describe('Gallery', () => {
     // the flowchart prototypes build B on the lattice, without a link target
     const flowRows = VARIANTS.filter((v) => v.startsWith('flow')).length;
     expect(screen.getAllByText(/link target \d/).length).toBe(ROWS - flowRows);
-    expect(screen.getAllByText(/boxes on a \d×\d block of the lattice/).length).toBe(flowRows);
+    expect(screen.getAllByText(/boxes on a \d×\d block of the lattice|dagre layout, no clusters/).length).toBe(flowRows);
     const footers = screen.getAllByTestId('metrics-footer');
     expect(footers).toHaveLength(2 * ROWS);
     footers.forEach((footer) => {

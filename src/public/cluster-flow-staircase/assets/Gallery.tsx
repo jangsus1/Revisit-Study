@@ -21,7 +21,7 @@ import {
 import {
   CUES, Cue, Density, Display, DisplayMetrics, NodeShape, VARIANTS, VARIANT_CUE, Variant,
 } from './generator/types';
-import { isFlow } from './generator/variants';
+import { isDagre, isFlow } from './generator/variants';
 import { NoiseMask } from './render/NoiseMask';
 import { StimulusFrame } from './render/StimulusSVG';
 import { TrialStage } from './render/TrialStage';
@@ -64,7 +64,9 @@ function diagnostics(display: Display): string {
   const { meta } = display;
   if (display.kind === 'B' && isFlow(display.variant)) {
     // the flowchart B is not fitted to A's field or link length (`flow.ts`)
-    return `${base} · boxes on a ${display.meta.grid?.cols}×${display.meta.grid?.rows} block of the lattice`;
+    return isDagre(display.variant)
+      ? `${base} · dagre layout, no clusters, stretched ${fmt(display.meta.spacing ?? 1, 2)}× to A's area`
+      : `${base} · boxes on a ${display.meta.grid?.cols}×${display.meta.grid?.rows} block of the lattice`;
   }
   if (display.kind === 'B') {
     const field = meta.field ? `${fmt(meta.field.w)}×${fmt(meta.field.h)}` : '–';
@@ -300,7 +302,7 @@ export default function Gallery() {
         return (
           <Stack key={row.key} gap="xs" data-testid={row.variant ? `gallery-variant-${row.variant}` : `gallery-row-${row.cue}`}>
             <Group gap="md" align="center">
-              <Title order={5}>{row.variant ? `${row.variant.startsWith('flow') ? 'flowchart prototype' : 'follow-up variant'}: ${row.variant} (${row.cue} cue)` : `cue: ${row.cue}`}</Title>
+              <Title order={5}>{row.variant ? `${row.variant.startsWith('flow-dagre') ? 'flowchart, dagre layout' : row.variant.startsWith('flow') ? 'flowchart, lattice templates' : 'follow-up variant'}: ${row.variant} (${row.cue} cue)` : `cue: ${row.cue}`}</Title>
               <SegmentedControl
                 size="xs"
                 data={[{ label: 'A first', value: 'A' }, { label: 'B first', value: 'B' }]}

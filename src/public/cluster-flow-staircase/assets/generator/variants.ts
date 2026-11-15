@@ -10,14 +10,24 @@ import {
 import { makePalette } from './palette';
 import { Display, Variant } from './types';
 
-/** True for the flowchart prototypes: boxes on the lattice, straight horizontal or vertical links. */
+/** True for the flowcharts laid out by dagre (`flowDagre.ts`): boxes off the lattice, links at any angle. */
+export function isDagre(variant?: Variant): boolean {
+  return variant === 'flow-dagre' || variant === 'flow-dagre-shade';
+}
+
+/** The node box of a flowchart variant, canvas px: `FLOW_DAGRE.box` for the dagre charts, else `FLOW_BOX`. */
+export function flowBox(variant?: Variant): { width: number; height: number } {
+  return isDagre(variant) ? C.FLOW_DAGRE.box : C.FLOW_BOX;
+}
+
+/** True for every flowchart variant: nodes drawn as boxes, connectors ending at the box edge. */
 export function isFlow(variant?: Variant): boolean {
-  return variant === 'flow' || variant === 'flow-shade' || variant === 'flow-shade-fit' || variant === 'flow-both';
+  return variant === 'flow' || variant === 'flow-shade' || variant === 'flow-shade-fit' || isDagre(variant);
 }
 
 /** True for the variants that fill each cluster's region instead of outlining it. */
 export function isShade(variant?: Variant): boolean {
-  return variant === 'rect-shade' || variant === 'flow-shade' || variant === 'flow-shade-fit' || variant === 'flow-both';
+  return variant === 'rect-shade' || variant === 'flow-shade' || variant === 'flow-shade-fit' || variant === 'flow-dagre-shade';
 }
 
 /** Node radius multiplier: `color-large` only. */

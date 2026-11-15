@@ -9,7 +9,7 @@ import {
 } from './geometry';
 import { GENERATOR_CONFIG as C } from './config';
 import { Display, DisplayMetrics } from './types';
-import { isFlow } from './variants';
+import { flowBox, isFlow } from './variants';
 
 /** Nearest-neighbour distance of every node (Infinity for a lone node). */
 function nearestNeighbours(nodes: Display['nodes']): number[] {
@@ -28,7 +28,8 @@ export function measureDisplay(display: Display): DisplayMetrics {
   const byId = new Map(nodes.map((n) => [n.id, n]));
 
   // flowchart boxes are outlines; their link figures below still use the dot trim, so they run a little long
-  const boxInk = 2 * (C.FLOW_BOX.width + C.FLOW_BOX.height) * C.FLOW_BOX.strokeWidth;
+  const box = flowBox(display.variant);
+  const boxInk = 2 * (box.width + box.height) * C.FLOW_BOX.strokeWidth;
   const nodeInk = isFlow(display.variant) ? nodes.length * boxInk : nodes.reduce((sum, n) => sum + NODE_INK[n.shape], 0);
 
   let linkLength = 0;

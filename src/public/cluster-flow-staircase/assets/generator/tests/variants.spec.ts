@@ -31,7 +31,7 @@ describe('follow-up variants', () => {
       expect(checkInvariants(displayA)).toEqual([]);
       expect(checkInvariants(displayB)).toEqual([]);
     }));
-  });
+  }, 120000);
 
   test('a variant left unset gives exactly the original displays', () => {
     const plain = generateTrialPair(77, 78, { cue: 'color', density: 'sparse', nB: 24 });

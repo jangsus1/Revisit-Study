@@ -7,7 +7,7 @@ import { GENERATOR_CONFIG as C } from '../generator/config';
 import { DASH_ARRAY, DOT_R, MARK_POINTS } from '../generator/geometry';
 import { Display, DisplayNode, NodeShape } from '../generator/types';
 import {
-  groundOf, isFlow, isShade, linkStyle, nodeScale,
+  flowBox, groundOf, isFlow, isShade, linkStyle, nodeScale,
 } from '../generator/variants';
 
 /** SVG `points` of a polygon mark centred at (x, y). */
@@ -19,7 +19,7 @@ export function markPoints(shape: Exclude<NodeShape, 'circle'>, x: number, y: nu
  * One node mark, always filled. The outlines come from `MARK_POINTS`, the same polygons the
  * invariants and the ink metrics use.
  */
-function nodeMark(node: DisplayNode, scale: number, flow: boolean) {
+function nodeMark(node: DisplayNode, scale: number, flow: { width: number; height: number } | null) {
   const {
     id, x, y, fill, shape,
   } = node;
@@ -29,10 +29,10 @@ function nodeMark(node: DisplayNode, scale: number, flow: boolean) {
     return (
       <rect
         key={id}
-        x={x - box.width / 2}
-        y={y - box.height / 2}
-        width={box.width}
-        height={box.height}
+        x={x - flow.width / 2}
+        y={y - flow.height / 2}
+        width={flow.width}
+        height={flow.height}
         rx={box.radius}
         fill={box.fill}
         stroke={box.stroke}
@@ -51,6 +51,7 @@ export function StimulusSVG({ display }: { display: Display }) {
   const link = linkStyle(display.variant);
   const shade = isShade(display.variant);
   const flow = isFlow(display.variant);
+  const box = flowBox(display.variant);
   const bold = display.variant === 'edge-bold';
 
   return (
@@ -81,15 +82,51 @@ export function StimulusSVG({ display }: { display: Display }) {
         const s = byId.get(edge.source);
         const t = byId.get(edge.target);
         if (!s || !t) return null;
-        const len = Math.hypot(t.x - s.x, t.y - s.y);
-        if (len === 0) return null;
-        const ux = (t.x - s.x) / len;
-        const uy = (t.y - s.y) / len;
+        if (edge.points && edge.points.length >= 2) {
+          // dagre flowcharts: the stored route is drawn as it is, with the arrowhead at its last point
+          const pts = edge.points;
+          const tip = pts[pts.length - 1];
+          const prev = pts[pts.length - 2];
+          const d = Math.hypot(tip.x - prev.x, tip.y - prev.y) || 1;
+          const dx = (tip.x - prev.x) / d;
+          const dy = (tip.y - prev.y) / d;
+          const baseX = tip.x - dx * link.headLen;
+          const baseY = tip.y - dy * link.headLen;
+          const arrow = [
+            [tip.x, tip.y],
+            [baseX - (dy * link.headW) / 2, baseY + (dx * link.headW) / 2],
+            [baseX + (dy * link.headW) / 2, baseY - (dx * link.headW) / 2],
+          ].map(([x, y]) => `${x},${y}`).join(' ');
+          return (
+            <g key={`${edge.source}-${edge.target}`}>
+              <polyline
+                points={[...pts.slice(0, -1).map((q) => [q.x, q.y]), [baseX, baseY]].map(([x, y]) => `${x},${y}`).join(' ')}
+                fill="none"
+                stroke={C.LINK_STROKE}
+                strokeWidth={link.width}
+                strokeLinejoin="round"
+              />
+              <polygon points={arrow} fill={C.LINK_STROKE} />
+            </g>
+          );
+        }
+        const route = [s, t];
+        const last = route[route.length - 2];
+        const len = Math.hypot(t.x - last.x, t.y - last.y);
+        const len0 = Math.hypot(route[1].x - s.x, route[1].y - s.y);
+        if (len === 0 || len0 === 0) return null;
+        const ux = (t.x - last.x) / len;
+        const uy = (t.y - last.y) / len;
+        const ux0 = (route[1].x - s.x) / len0;
+        const uy0 = (route[1].y - s.y) / len0;
         // flowchart connectors end just outside the box edge they meet
-        const flowTrim = (Math.abs(ux) > Math.abs(uy) ? C.FLOW_BOX.width : C.FLOW_BOX.height) / 2 + C.FLOW_LINK_GAP;
-        const trim = Math.min(flow ? flowTrim : link.trim, len / 2);
-        const x1 = s.x + ux * trim;
-        const y1 = s.y + uy * trim;
+        // (where the centre line leaves the box, plus the gap)
+        const boxTrim = (dx: number, dy: number) => Math.min(box.width / 2 / Math.abs(dx || 1e-9), box.height / 2 / Math.abs(dy || 1e-9)) + C.FLOW_LINK_GAP;
+        const single = route.length === 2;
+        const trim0 = Math.min(flow ? boxTrim(ux0, uy0) : link.trim, single ? len0 / 2 : len0);
+        const trim = Math.min(flow ? boxTrim(ux, uy) : link.trim, single ? len / 2 : len);
+        const x1 = s.x + ux0 * trim0;
+        const y1 = s.y + uy0 * trim0;
         const x2 = t.x - ux * trim;
         const y2 = t.y - uy * trim;
         // arrowhead: a filled triangle computed from the segment direction, so no <marker>
@@ -100,24 +137,36 @@ export function StimulusSVG({ display }: { display: Display }) {
           [bx - (uy * link.headW) / 2, by + (ux * link.headW) / 2],
           [bx + (uy * link.headW) / 2, by - (ux * link.headW) / 2],
         ].map(([x, y]) => `${x},${y}`).join(' ');
+        const stroke = bold && edge.dashed ? C.VARIANT_DOTS.stroke : C.LINK_STROKE;
+        const dash = edge.dashed ? (bold ? `${C.VARIANT_DOTS.dash} ${C.VARIANT_DOTS.gap}` : DASH_ARRAY) : undefined;
         return (
           <g key={`${edge.source}-${edge.target}`}>
-            <line
-              x1={x1}
-              y1={y1}
-              x2={bx}
-              y2={by}
-              stroke={bold && edge.dashed ? C.VARIANT_DOTS.stroke : C.LINK_STROKE}
-              strokeWidth={link.width}
-              strokeDasharray={edge.dashed ? (bold ? `${C.VARIANT_DOTS.dash} ${C.VARIANT_DOTS.gap}` : DASH_ARRAY) : undefined}
-              strokeLinecap={edge.dashed ? 'round' : 'butt'}
-            />
-            <polygon points={head} fill={bold && edge.dashed ? C.VARIANT_DOTS.stroke : C.LINK_STROKE} />
+            {single ? (
+              <line
+                x1={x1}
+                y1={y1}
+                x2={bx}
+                y2={by}
+                stroke={stroke}
+                strokeWidth={link.width}
+                strokeDasharray={dash}
+                strokeLinecap={edge.dashed ? 'round' : 'butt'}
+              />
+            ) : (
+              <polyline
+                points={[[x1, y1], ...route.slice(1, -1).map((p) => [p.x, p.y]), [bx, by]].map(([x, y]) => `${x},${y}`).join(' ')}
+                fill="none"
+                stroke={stroke}
+                strokeWidth={link.width}
+                strokeLinejoin="round"
+              />
+            )}
+            <polygon points={head} fill={stroke} />
           </g>
         );
       })}
 
-      {display.nodes.map((node) => nodeMark(node, scale, flow))}
+      {display.nodes.map((node) => nodeMark(node, scale, flow ? box : null))}
     </svg>
   );
 }

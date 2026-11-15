@@ -172,6 +172,18 @@
   resolved "https://registry.npmjs.org/@csstools/css-tokenizer/-/css-tokenizer-4.0.0.tgz"
   integrity sha512-QxULHAm7cNu72w97JUNCBFODFaXpbDg+dP8b/oWFAZ2MTRppA3U00Y2L1HqaS4J6yBqxwa/Y3nMBaxVKbB/NsA==
 
+"@dagrejs/dagre@^3.1.3":
+  version "3.1.3"
+  resolved "https://registry.npmjs.org/@dagrejs/dagre/-/dagre-3.1.3.tgz"
+  integrity sha512-X4aUTwOReZvthaZWOVHqlJ52/ZdhZFEM4+Lh/uR4XooUSLE6p71bcy7MPGzYnNUcNh+nj+i/qJQpCMIdQnSmrg==
+  dependencies:
+    "@dagrejs/graphlib" "4.0.6"
+
+"@dagrejs/graphlib@4.0.6":
+  version "4.0.6"
+  resolved "https://registry.npmjs.org/@dagrejs/graphlib/-/graphlib-4.0.6.tgz"
+  integrity sha512-Hjv7hbfmSBMP4nVXMFt4gusqWWHghQF0qNT4V5KHo4Jatvd+2L5VHKFnnIjXVuDnaHIRz7ZuHSnlf0RuZkOwWA==
+
 "@dnd-kit/accessibility@^3.1.1":
   version "3.1.1"
   resolved "https://registry.npmjs.org/@dnd-kit/accessibility/-/accessibility-3.1.1.tgz"

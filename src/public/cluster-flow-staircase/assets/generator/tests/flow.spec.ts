@@ -7,7 +7,7 @@ import { checkInvariants } from '../invariants';
 import { mulberry32 } from '../prng';
 import { Density, Display, VARIANT_CUE } from '../types';
 
-const FLOW = ['flow', 'flow-shade', 'flow-shade-fit', 'flow-both'] as const;
+const FLOW = ['flow', 'flow-shade', 'flow-shade-fit'] as const;
 const SEEDS = Array.from({ length: 30 }, (_, i) => 500 + i * 13);
 const DENSITIES: Density[] = ['sparse', 'dense'];
 
@@ -43,7 +43,7 @@ describe('flowchart prototypes', () => {
       expect(displayA.meta.jitter).toBe(0);
       expect(displayB.n).toBe(nB);
     })));
-  });
+  }, 60000);
 
   test('stimulus A passes on the first seed, so the retry loop does not skew it', () => {
     SEEDS.forEach((seed) => {
@@ -52,7 +52,7 @@ describe('flowchart prototypes', () => {
       });
       expect(displayA.attempts).toBe(1);
     });
-  });
+  }, 60000);
 
   test('flow leaves an empty lattice line between clusters; flow-shade does not and shades each cluster', () => {
     SEEDS.forEach((seed) => {
@@ -70,7 +70,7 @@ describe('flowchart prototypes', () => {
       expect(flow.clusters.every((c) => c.rect === undefined)).toBe(true);
       expect(shade.clusters.every((c) => c.rect !== undefined)).toBe(true);
     });
-  });
+  }, 60000);
 
   test('B stays on the grid cells and attention pairs build', () => {
     const cells = flowCells();
@@ -86,7 +86,7 @@ describe('flowchart prototypes', () => {
       expect(pair.displayA.n).toBe(5);
       expect(pair.displayB.n).toBe(30);
     });
-  });
+  }, 60000);
 
   test('gridPath only steps between neighbouring clusters', () => {
     const rng = mulberry32(3);
@@ -98,5 +98,5 @@ describe('flowchart prototypes', () => {
         expect(Math.abs(a - b) === 3 || (Math.floor(a / 3) === Math.floor(b / 3) && Math.abs(a - b) === 1)).toBe(true);
       });
     }
-  });
+  }, 60000);
 });

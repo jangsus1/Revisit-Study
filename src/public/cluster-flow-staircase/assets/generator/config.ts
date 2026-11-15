@@ -195,6 +195,8 @@ export const GENERATOR_CONFIG = {
     width: 46, height: 28, radius: 5, fill: '#FFFFFF', stroke: '#111111', strokeWidth: 1.5,
   },
   FLOW_LINK_GAP: 2,
+  /** Smallest gap between the edges of two boxes, canvas px. */
+  FLOW_BOX_GAP: 12,
   FLOW_GRID: { cols: 8, rows: 7 },
   /**
    * `flow-shade-fit`: B's block of cells, centred in the canvas, starts as the block the paired A
@@ -202,6 +204,21 @@ export const GENERATOR_CONFIG = {
    * while N_B exceeds `FLOW_FIT_FILL` of the cells the block grows: rows up to 6, then columns up to
    * `FLOW_GRID`'s, then the last row.
    */
+  /**
+   * Dagre-laid flowcharts (`flow-dagre`, `flow-dagre-shade`; `flowDagre.ts`), canvas px. `rankdir`:
+   * the flow runs top to bottom. `box`: the node box, smaller than `FLOW_BOX` (whose style it keeps)
+   * so that a clustered 24-box chart and an unclustered 48-box chart fit the canvas. `nodeSep` /
+   * `rankSep`: dagre's gap between boxes side by side and between ranks. `shadePad`: how far a
+   * shaded region reaches past its boxes. `groupSize`: the groups of B's flow. `maxChildren`: links
+   * out of a box before another parent is preferred. `attachBack`: how many groups back a group's
+   * incoming link may start. `extraWithin`: share of the dense extras that stay inside one group.
+   * `maxDepth`: deepest box of the flow (0 = the first), so the chart fits the canvas height;
+   * `groupRoom`: levels kept free below the box a group hangs from. `bendTolerance`: a route point
+   * closer than this to the line between its neighbours is dropped.
+   */
+  FLOW_DAGRE: {
+    rankdir: 'TB' as 'TB' | 'LR', box: { width: 36, height: 22 }, nodeSep: 10, rankSep: 20, shadePad: 6, groupSize: { min: 3, max: 6 }, maxChildren: 3, attachBack: 3, extraWithin: 0.8, maxDepth: 9, groupRoom: 2, bendTolerance: 0.5,
+  },
   FLOW_FIT_COLS: 6,
   FLOW_FIT_ROWS: 6,
   FLOW_FIT_FILL: 0.9,

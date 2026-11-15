@@ -24,17 +24,23 @@ export type Density = 'sparse' | 'dense';
  * lattice (no jitter) and every link is a straight horizontal or vertical connector.
  * - `flow`: proximity cue, the gapped layout (one empty lattice line between clusters).
  * - `flow-shade`: rect cue on the even layout, a shaded region under each cluster (as `rect-shade`).
- * - `flow-both`: the gapped layout and the shaded regions together.
  * - `flow-shade-fit`: `flow-shade` whose B is confined to the block of cells A's packed layout
  *   can occupy (`FLOW_FIT_BLOCKS`), so A and B cover the same area on the same lattice.
  * B puts N_B boxes on lattice cells, wired the same way: on the whole `FLOW_GRID` (the footprint of
- * the gapped layout) except for `flow-shade-fit`. So `flow` and `flow-both` have A and B on one
- * footprint, `flow-shade-fit` too, and `flow-shade` leaves the area free (packed A, spread B).
+ * the gapped layout) except for `flow-shade-fit`. So `flow` and `flow-shade-fit` have A and B on one
+ * footprint, and `flow-shade` leaves the area free (packed A, spread B).
+ *
+ * Flowcharts laid out by dagre, the layered layout Mermaid uses (2026-11-15; `flowDagre.ts`): boxes
+ * and straight connectors as above, but the positions come from the layout algorithm, not from the
+ * lattice templates. One graph and one layout per seed; only the gap between groups and the shading
+ * differ.
+ * - `flow-dagre`: proximity cue, groups `FLOW_DAGRE.groupGap` times further apart than their boxes.
+ * - `flow-dagre-shade`: rect cue, groups no further apart than their boxes, each on a shaded region.
  */
 export type Variant = 'edge-bold' | 'color-large' | 'color-distinct' | 'color-distinct-2' | 'rect-shade'
-  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade' | 'flow-shade-fit' | 'flow-both';
+  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade' | 'flow-shade-fit' | 'flow-dagre' | 'flow-dagre-shade';
 export const VARIANTS: Variant[] = ['edge-bold', 'color-large', 'color-distinct', 'color-distinct-2', 'rect-shade',
-  'intra-full', 'intra-full-plus', 'flow', 'flow-shade', 'flow-shade-fit', 'flow-both'];
+  'intra-full', 'intra-full-plus', 'flow', 'flow-shade', 'flow-shade-fit', 'flow-dagre', 'flow-dagre-shade'];
 /** The cue each variant belongs to (its layout follows `layoutModeFor` of that cue). */
 export const VARIANT_CUE: Record<Variant, Cue> = {
   'edge-bold': 'edge',
@@ -47,7 +53,8 @@ export const VARIANT_CUE: Record<Variant, Cue> = {
   flow: 'proximity',
   'flow-shade': 'rect',
   'flow-shade-fit': 'rect',
-  'flow-both': 'rect',
+  'flow-dagre': 'proximity',
+  'flow-dagre-shade': 'rect',
 };
 export type StimulusKind = 'A' | 'B';
 /** The seven filled marks of the shape cue's pool (`GENERATOR_CONFIG.SHAPES`). */
@@ -104,6 +111,11 @@ export interface DisplayEdge {
   dashed: boolean;
   /** true for dense-only extra arrows or skip links */
   extra: boolean;
+  /**
+   * dagre flowcharts only: the whole drawn route of the link, canvas px, from where it leaves the
+   * source box to the arrow tip at the target box
+   */
+  points?: { x: number; y: number }[];
 }
 
 export interface DisplayCluster {
@@ -147,6 +159,8 @@ export interface Display {
     order?: number[];
     /** A only: which layout placed the clusters */
     layout?: LayoutMode;
+    /** dagre flowchart A only: how far its B is stretched so both cover the same area at equal counts */
+    stretch?: number;
     /** flowchart B only: the block of lattice cells its boxes were placed on */
     grid?: { cols: number; rows: number };
     /** B only: the field the dots were sampled in, in canvas px */
@@ -204,6 +218,8 @@ export interface GenerateOptions {
   shapes?: readonly NodeShape[];
   /** follow-up stimulus variant (see `Variant`); default none */
   variant?: Variant;
+  /** dagre flowchart B only: the stretch about the centre, from the paired A's `meta.stretch` */
+  stretch?: number;
 }
 
 export interface TrialParams {

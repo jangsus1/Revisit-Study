@@ -25,7 +25,8 @@ import {
   Cue, Density, Display, DisplayCluster, DisplayNode, GenerateOptions, Rect, layoutModeFor,
   Variant,
 } from './types';
-import { isFlow, variantPalette } from './variants';
+import { buildDagreA, buildDagreB } from './flowDagre';
+import { isDagre, isFlow, variantPalette } from './variants';
 
 /**
  * A deterministic 32-bit FNV-1a hash of the string form of `parts`, joined by `|`.
@@ -49,7 +50,7 @@ function buildStimulusA(seed: number, opts: GenerateOptions): Display {
   // the flowchart prototypes snap every node to the lattice
   const jitter = isFlow(opts.variant) ? 0 : drawJitter(jitterRng(seed));
   const sizes = numDistributer(rng, C.NCLUST, C.NTOTAL);
-  const layout = buildLayout(rng, sizes, jitter, opts.layout ?? (opts.variant === 'flow-both' ? 'grouped' : layoutModeFor(opts.cue)));
+  const layout = buildLayout(rng, sizes, jitter, opts.layout ?? layoutModeFor(opts.cue));
 
   if (isFlow(opts.variant)) {
     // each row of clusters is centred on its own centroids, which leaves the two rows off each
@@ -145,15 +146,28 @@ export function generateDisplay(seed: number, opts: GenerateOptions): Display {
   for (let attempt = 0; attempt < C.MAX_SEED_ATTEMPTS; attempt += 1) {
     // eslint-disable-next-line no-bitwise -- normalise the requested seed to a 32-bit integer
     const derived = attempt === 0 ? seed >>> 0 : hashSeed(seed, attempt);
-    const display = opts.kind === 'A'
-      ? buildStimulusA(derived, opts)
-      : buildBaseline(derived, nB, opts.cue, opts.density, {
+    let display: Display | null;
+    if (isDagre(opts.variant)) {
+      // flowcharts laid out by dagre have their own builders (`flowDagre.ts`)
+      const variant = opts.variant as Variant;
+      if (opts.kind === 'A') {
+        const built = buildDagreA(derived, opts.cue, opts.density, variant);
+        built.display.meta.stretch = built.stretch;
+        ({ display } = built);
+      } else {
+        display = buildDagreB(derived, nB, opts.cue, opts.density, variant, opts.stretch);
+      }
+    } else if (opts.kind === 'A') {
+      display = buildStimulusA(derived, opts);
+    } else {
+      display = buildBaseline(derived, nB, opts.cue, opts.density, {
         field: opts.field,
         palette: variantPalette(opts.variant, opts.hueOffset ?? 0),
         target: opts.inkTarget,
         shapes: opts.shapes,
         variant: opts.variant,
       });
+    }
     if (display) {
       const violations = checkInvariants(display);
       if (violations.length === 0) {
@@ -213,6 +227,13 @@ export function generateTrialPair(
   const displayA = generateDisplay(seedA, {
     kind: 'A', cue: opts.cue, density: opts.density, hueOffset, variant,
   });
+  if (isDagre(variant)) {
+    // B is the same kind of flow without clusters, stretched to A's area (`flowDagre.ts`)
+    const displayB = generateDisplay(seedB, {
+      kind: 'B', cue: opts.cue, density: opts.density, nB: opts.nB, variant, stretch: displayA.meta.stretch,
+    });
+    return { displayA, displayB };
+  }
   // the reference carries the variant too, so B's link count and clearance follow it
   const reference = generateDisplay(seedA, {
     kind: 'A', cue: 'proximity', layout: 'even', density: opts.density, variant,
@@ -260,6 +281,18 @@ export function generateAttentionPair(
 ): { displayA: Display; displayB: Display } {
   const hueOffset = opts.hueOffset ?? 0;
   const { variant } = opts;
+  if (isDagre(variant)) {
+    const { stretch } = generateDisplay(seedA, {
+      kind: 'A', cue: opts.cue, density: opts.density, variant,
+    }).meta;
+    const flat: GenerateOptions = {
+      kind: 'B', cue: opts.cue, density: opts.density, variant, stretch,
+    };
+    return {
+      displayA: generateDisplay(hashSeed(seedB, 'few'), { ...flat, nB: opts.few }),
+      displayB: generateDisplay(seedB, { ...flat, nB: opts.many }),
+    };
+  }
   const reference = generateDisplay(seedA, {
     kind: 'A', cue: 'proximity', layout: 'even', density: opts.density, variant,
   });
