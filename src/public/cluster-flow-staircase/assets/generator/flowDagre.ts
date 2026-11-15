@@ -8,14 +8,17 @@
  * the flow capped so the chart fits the canvas. With `clustered`, every group is a dagre cluster (a
  * Mermaid subgraph): a compact block, set apart from the other groups by dagre's cluster spacing.
  *
- * Stimulus A (24 boxes, six groups) is clustered in both variants, from the same graph and the same
- * dagre run for a seed; the variants differ only in how the groups are shown:
+ * The graph of stimulus A (24 boxes, six groups) is the same in every variant for a seed. Two
+ * variants lay it out with clusters, from the same dagre run, and differ only in the shading:
  * - `flow-dagre` (proximity): nothing is drawn for the clusters (Mermaid's invisible subgraphs), so
  *   the groups are marked by their spacing alone.
  * - `flow-dagre-shade`: each cluster also lies on a shaded region (Mermaid's visible subgraphs). A
  *   layout algorithm cannot shade a group without also setting it apart, so this is proximity plus
  *   shading, and the pair of variants isolates what the shading adds.
- * Stimulus B (N_B boxes) is the same kind of flow laid out without clusters, in both variants. It
+ * - `flow-dagre-highlight` (highlight only): A is laid out without clusters, exactly as B is, so
+ *   position does not group; each group's boxes and the links between them lie on a shaded region
+ *   that follows the group (`highlightOf`). Its B needs no stretch.
+ * Stimulus B (N_B boxes) is the same kind of flow laid out without clusters, in every variant. It
  * is stretched about its centre so that it covers the area its A covers at equal counts: by the
  * square root of (A's bounding area / the bounding area of A's own graph laid out without
  * clusters).
@@ -223,6 +226,39 @@ function place(layout: FlowLayout, k = 1): FlowLayout {
   return { pts: scaled.map(move), bends: layout.bends.map((route) => route.map(scale).map(move)) };
 }
 
+/**
+ * The shaded region of group `k` in a chart laid out without clusters: a padded rectangle around
+ * each of its boxes, and for each link inside the group either the strip between the facing edges
+ * of its two boxes (boxes in neighbouring rows: the strip lies in the free channel between them) or
+ * a thick line along its route (a link that passes a row). The pad is under half of dagre's gap
+ * between boxes, so the regions of two groups never touch.
+ */
+export function highlightOf(k: number, graph: FlowGraph, pts: Pt[], edges: DisplayEdge[]): NonNullable<DisplayCluster['shade']> {
+  const hw = D.box.width / 2 + D.highlightPad;
+  const hh = D.box.height / 2 + D.highlightPad;
+  const polygons: Pt[][] = [];
+  const lines: { points: Pt[]; width: number }[] = [];
+  pts.forEach((p, id) => {
+    if (graph.group[id] !== k) return;
+    polygons.push([
+      { x: p.x - hw, y: p.y - hh }, { x: p.x + hw, y: p.y - hh }, { x: p.x + hw, y: p.y + hh }, { x: p.x - hw, y: p.y + hh },
+    ]);
+  });
+  edges.forEach((edge) => {
+    if (graph.group[edge.source] !== k || graph.group[edge.target] !== k) return;
+    const s = pts[edge.source];
+    const t = pts[edge.target];
+    if ((edge.points ?? []).length <= 2) {
+      polygons.push([
+        { x: s.x - hw, y: s.y + hh }, { x: s.x + hw, y: s.y + hh }, { x: t.x + hw, y: t.y - hh }, { x: t.x - hw, y: t.y - hh },
+      ]);
+    } else {
+      lines.push({ points: [s, ...(edge.points ?? []).slice(1, -1), t], width: D.highlightLine });
+    }
+  });
+  return { polygons, lines };
+}
+
 function toDisplay(
   kind: 'A' | 'B',
   seed: number,
@@ -232,7 +268,7 @@ function toDisplay(
   graph: FlowGraph,
   layout: FlowLayout,
   rng: Rng,
-  shade: boolean,
+  shade: 'none' | 'rect' | 'highlight',
 ): Display {
   const { pts } = layout;
   const rows = [...new Set(pts.map((p) => Math.round(p.y * 100) / 100))];
@@ -258,11 +294,12 @@ function toDisplay(
       cx: mine.reduce((s, p) => s + p.x, 0) / mine.length,
       cy: mine.reduce((s, p) => s + p.y, 0) / mine.length,
       orderPos,
-      ...(shade ? {
+      ...(shade === 'rect' ? {
         rect: {
           x: b.x - D.shadePad, y: b.y - D.shadePad, w: b.w + 2 * D.shadePad, h: b.h + 2 * D.shadePad,
         },
       } : {}),
+      ...(shade === 'highlight' ? { shade: highlightOf(k, graph, pts, edges) } : {}),
     };
   }) : [];
   return {
@@ -283,21 +320,24 @@ function toDisplay(
   };
 }
 
-/** Stimulus A for one concrete seed: 24 boxes in six clusters, with the stretch for a flat B. */
+/** Stimulus A for one concrete seed: 24 boxes in six groups, with the stretch for its B. */
 export function buildDagreA(seed: number, cue: Cue, density: Density, variant: Variant): { display: Display; stretch: number } {
   const rng = mulberry32(seed);
   const graph = drawFlowGraph(rng, drawGroupSizes(rng, C.NTOTAL), density);
-  const layout = place(layoutFlow(graph, true));
+  // highlight only: no clusters, so A is laid out exactly as B is and B needs no stretch
+  const clustered = variant !== 'flow-dagre-highlight';
+  const layout = place(layoutFlow(graph, clustered));
   const flat = boxBounds(layoutFlow(graph, false).pts);
   const mine = boxBounds(layout.pts);
-  const display = toDisplay('A', seed, cue, density, variant, graph, layout, rng, variant === 'flow-dagre-shade');
+  const shade = { 'flow-dagre-shade': 'rect', 'flow-dagre-highlight': 'highlight' }[variant as string] ?? 'none';
+  const display = toDisplay('A', seed, cue, density, variant, graph, layout, rng, shade as 'none' | 'rect' | 'highlight');
   display.meta = {
     clusterSizes: display.clusters.map((c) => c.nodeIds.length),
     jitter: 0,
     order: display.clusters.map((c) => c.index),
-    layout: 'grouped',
+    layout: clustered ? 'grouped' : 'even',
   };
-  return { display, stretch: Math.sqrt((mine.w * mine.h) / (flat.w * flat.h)) };
+  return { display, stretch: clustered ? Math.sqrt((mine.w * mine.h) / (flat.w * flat.h)) : 1 };
 }
 
 /**
@@ -312,7 +352,7 @@ export function buildDagreB(seed: number, nB: number, cue: Cue, density: Density
   const room = (span: number, box: number, canvas: number) => (span > box ? (canvas - 2 * C.CANVAS_MARGIN - box) / (span - box) : Infinity);
   const fit = Math.min(room(b.w, D.box.width, C.CANVAS.width), room(b.h, D.box.height, C.CANVAS.height));
   const k = Math.max(1, Math.min(stretch, fit));
-  const display = toDisplay('B', seed, cue, density, variant, graph, place(raw, k), rng, false);
+  const display = toDisplay('B', seed, cue, density, variant, graph, place(raw, k), rng, 'none');
   display.meta = { spacing: k, layout: 'even' };
   return display;
 }

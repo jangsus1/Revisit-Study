@@ -209,7 +209,9 @@ export const GENERATOR_CONFIG = {
    * the flow runs top to bottom. `box`: the node box, smaller than `FLOW_BOX` (whose style it keeps)
    * so that a clustered 24-box chart and an unclustered 48-box chart fit the canvas. `nodeSep` /
    * `rankSep`: dagre's gap between boxes side by side and between ranks. `shadePad`: how far a
-   * shaded region reaches past its boxes. `groupSize`: the groups of B's flow. `maxChildren`: links
+   * shaded region reaches past its boxes. `highlightPad` / `highlightLine`: the same for
+   * `flow-dagre-highlight` (under half of `nodeSep`, so two groups' regions never touch), and the
+   * width of its shading along a link that passes a row. `groupSize`: the groups of B's flow. `maxChildren`: links
    * out of a box before another parent is preferred. `attachBack`: how many groups back a group's
    * incoming link may start. `extraWithin`: share of the dense extras that stay inside one group.
    * `maxDepth`: deepest box of the flow (0 = the first), so the chart fits the canvas height;
@@ -217,7 +219,7 @@ export const GENERATOR_CONFIG = {
    * closer than this to the line between its neighbours is dropped.
    */
   FLOW_DAGRE: {
-    rankdir: 'TB' as 'TB' | 'LR', box: { width: 36, height: 22 }, nodeSep: 10, rankSep: 20, shadePad: 6, groupSize: { min: 3, max: 6 }, maxChildren: 3, attachBack: 3, extraWithin: 0.8, maxDepth: 9, groupRoom: 2, bendTolerance: 0.5,
+    rankdir: 'TB' as 'TB' | 'LR', box: { width: 36, height: 22 }, nodeSep: 10, rankSep: 20, shadePad: 6, highlightPad: 4, highlightLine: 12, groupSize: { min: 3, max: 6 }, maxChildren: 3, attachBack: 3, extraWithin: 0.8, maxDepth: 9, groupRoom: 2, bendTolerance: 0.5,
   },
   FLOW_FIT_COLS: 6,
   FLOW_FIT_ROWS: 6,

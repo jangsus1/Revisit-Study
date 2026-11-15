@@ -12,7 +12,7 @@ import { Display, Variant } from './types';
 
 /** True for the flowcharts laid out by dagre (`flowDagre.ts`): boxes off the lattice, links at any angle. */
 export function isDagre(variant?: Variant): boolean {
-  return variant === 'flow-dagre' || variant === 'flow-dagre-shade';
+  return variant === 'flow-dagre' || variant === 'flow-dagre-shade' || variant === 'flow-dagre-highlight';
 }
 
 /** The node box of a flowchart variant, canvas px: `FLOW_DAGRE.box` for the dagre charts, else `FLOW_BOX`. */
@@ -27,7 +27,8 @@ export function isFlow(variant?: Variant): boolean {
 
 /** True for the variants that fill each cluster's region instead of outlining it. */
 export function isShade(variant?: Variant): boolean {
-  return variant === 'rect-shade' || variant === 'flow-shade' || variant === 'flow-shade-fit' || variant === 'flow-dagre-shade';
+  return variant === 'rect-shade' || variant === 'flow-shade' || variant === 'flow-shade-fit' || variant === 'flow-dagre-shade'
+    || variant === 'flow-dagre-highlight';
 }
 
 /** Node radius multiplier: `color-large` only. */

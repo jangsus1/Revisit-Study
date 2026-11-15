@@ -35,12 +35,14 @@ export type Density = 'sparse' | 'dense';
  * lattice templates. One graph and one layout per seed; only the gap between groups and the shading
  * differ.
  * - `flow-dagre`: proximity cue, groups `FLOW_DAGRE.groupGap` times further apart than their boxes.
- * - `flow-dagre-shade`: rect cue, groups no further apart than their boxes, each on a shaded region.
+ * - `flow-dagre-shade`: rect cue, the same clustered layout with each cluster on a shaded region.
+ * - `flow-dagre-highlight`: rect cue, highlight only: A is laid out without clusters, exactly like
+ *   B, and each group's boxes and the links between them lie on a shaded region (`DisplayCluster.shade`).
  */
 export type Variant = 'edge-bold' | 'color-large' | 'color-distinct' | 'color-distinct-2' | 'rect-shade'
-  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade' | 'flow-shade-fit' | 'flow-dagre' | 'flow-dagre-shade';
+  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade' | 'flow-shade-fit' | 'flow-dagre' | 'flow-dagre-shade' | 'flow-dagre-highlight';
 export const VARIANTS: Variant[] = ['edge-bold', 'color-large', 'color-distinct', 'color-distinct-2', 'rect-shade',
-  'intra-full', 'intra-full-plus', 'flow', 'flow-shade', 'flow-shade-fit', 'flow-dagre', 'flow-dagre-shade'];
+  'intra-full', 'intra-full-plus', 'flow', 'flow-shade', 'flow-shade-fit', 'flow-dagre', 'flow-dagre-shade', 'flow-dagre-highlight'];
 /** The cue each variant belongs to (its layout follows `layoutModeFor` of that cue). */
 export const VARIANT_CUE: Record<Variant, Cue> = {
   'edge-bold': 'edge',
@@ -55,6 +57,7 @@ export const VARIANT_CUE: Record<Variant, Cue> = {
   'flow-shade-fit': 'rect',
   'flow-dagre': 'proximity',
   'flow-dagre-shade': 'rect',
+  'flow-dagre-highlight': 'rect',
 };
 export type StimulusKind = 'A' | 'B';
 /** The seven filled marks of the shape cue's pool (`GENERATOR_CONFIG.SHAPES`). */
@@ -128,6 +131,12 @@ export interface DisplayCluster {
   orderPos: number;
   /** padded bounding rectangle in canvas px, present only for the rect cue */
   rect?: Rect;
+  /**
+   * `flow-dagre-highlight` only: the shaded region of the group, as filled polygons (one around
+   * each box, one between each pair of linked boxes in neighbouring rows) and thick lines along the
+   * longer links inside the group; canvas px
+   */
+  shade?: { polygons: { x: number; y: number }[][]; lines: { points: { x: number; y: number }[]; width: number }[] };
 }
 
 export interface Display {

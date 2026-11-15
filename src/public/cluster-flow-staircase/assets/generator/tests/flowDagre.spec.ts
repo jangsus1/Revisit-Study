@@ -13,7 +13,7 @@ const D = C.FLOW_DAGRE;
 const SEEDS = Array.from({ length: 8 }, (_, i) => 300 + i * 17);
 const SLOW = 120000;
 const DENSITIES: Density[] = ['sparse', 'dense'];
-const pair = (variant: 'flow-dagre' | 'flow-dagre-shade', seed: number, nB: number, density: Density = 'sparse') => generateTrialPair(seed, seed + 1, {
+const pair = (variant: 'flow-dagre' | 'flow-dagre-shade' | 'flow-dagre-highlight', seed: number, nB: number, density: Density = 'sparse') => generateTrialPair(seed, seed + 1, {
   cue: variant === 'flow-dagre' ? 'proximity' : 'rect', density, nB, variant,
 });
 const area = (d: Display) => {
@@ -74,7 +74,7 @@ describe('dagre flowcharts', () => {
     ]);
   }, SLOW);
 
-  test.each(['flow-dagre', 'flow-dagre-shade'] as const)('%s builds valid pairs across the staircase range', (variant) => {
+  test.each(['flow-dagre', 'flow-dagre-shade', 'flow-dagre-highlight'] as const)('%s builds valid pairs across the staircase range', (variant) => {
     SEEDS.forEach((seed) => DENSITIES.forEach((density) => [8, 17, 24, 31, 40].forEach((nB) => {
       const { displayA, displayB } = pair(variant, seed, nB, density);
       expect(checkInvariants(displayA)).toEqual([]);
@@ -96,6 +96,37 @@ describe('dagre flowcharts', () => {
       expect(shade.displayB.nodes.map((n) => [n.x, n.y])).toEqual(plain.displayB.nodes.map((n) => [n.x, n.y]));
       expect(plain.displayA.clusters.every((c) => c.rect === undefined)).toBe(true);
       expect(shade.displayA.clusters.every((c) => c.rect !== undefined)).toBe(true);
+    });
+  }, SLOW);
+
+  test('highlight only: A is laid out without clusters like B, and every group has its own region', () => {
+    const inside = (poly: { x: number; y: number }[], x: number, y: number) => {
+      const xs = poly.map((q) => q.x);
+      const ys = poly.map((q) => q.y);
+      return x > Math.min(...xs) && x < Math.max(...xs) && y > Math.min(...ys) && y < Math.max(...ys);
+    };
+    SEEDS.forEach((seed) => {
+      const { displayA, displayB } = pair('flow-dagre-highlight', seed, 24);
+      expect(displayA.meta.layout).toBe('even');
+      expect(displayA.meta.stretch).toBe(1);
+      expect(displayB.meta.spacing).toBe(1);
+      // the same graph as the clustered variants, but not their positions
+      const clustered = pair('flow-dagre', seed, 24).displayA;
+      expect(displayA.edges.map((e) => [e.source, e.target])).toEqual(clustered.edges.map((e) => [e.source, e.target]));
+      expect(displayA.nodes.map((n) => [n.x, n.y])).not.toEqual(clustered.nodes.map((n) => [n.x, n.y]));
+      displayA.clusters.forEach((cluster) => {
+        expect(cluster.rect).toBeUndefined();
+        const shade = cluster.shade!;
+        // one rectangle per box, and one strip or line per link inside the group
+        const links = displayA.edges.filter((e) => cluster.nodeIds.includes(e.source) && cluster.nodeIds.includes(e.target)).length;
+        expect(shade.polygons.length + shade.lines.length).toBe(cluster.nodeIds.length + links);
+        // the box rectangles (listed first) hold their own box and no box of another group
+        shade.polygons.slice(0, cluster.nodeIds.length).forEach((poly) => {
+          const held = displayA.nodes.filter((n) => inside(poly, n.x, n.y));
+          expect(held).toHaveLength(1);
+          expect(held[0].cluster).toBe(cluster.index);
+        });
+      });
     });
   }, SLOW);
 

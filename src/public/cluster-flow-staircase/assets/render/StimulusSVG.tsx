@@ -78,6 +78,27 @@ export function StimulusSVG({ display }: { display: Display }) {
         />
       ) : null))}
 
+      {/* flow-dagre-highlight: each group's region follows its boxes and the links between them */}
+      {display.clusters.map((cluster) => (cluster.shade ? (
+        <g key={`shade-${cluster.index}`} data-testid="group-highlight">
+          {cluster.shade.polygons.map((poly, i) => (
+
+            <polygon key={`p${i}`} points={poly.map((q) => `${q.x},${q.y}`).join(' ')} fill={C.SHADE_FILL} stroke={C.SHADE_FILL} strokeWidth={0.5} />
+          ))}
+          {cluster.shade.lines.map((line, i) => (
+
+            <polyline
+              key={`l${i}`}
+              points={line.points.map((q) => `${q.x},${q.y}`).join(' ')}
+              fill="none"
+              stroke={C.SHADE_FILL}
+              strokeWidth={line.width}
+              strokeLinejoin="round"
+            />
+          ))}
+        </g>
+      ) : null))}
+
       {display.edges.map((edge) => {
         const s = byId.get(edge.source);
         const t = byId.get(edge.target);
