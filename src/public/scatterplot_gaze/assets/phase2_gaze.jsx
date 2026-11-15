@@ -330,7 +330,7 @@ function Phase2Gaze({ parameters, setAnswer, advance }) {
                   textAlign: 'center'
                 }}
               >
-                You have 5 to 11 seconds to view the scatterplot. <br />  Click to start!
+                You have {parameters.view_text ?? "5 to 11 seconds"} to view the scatterplot. <br />  Click to start!
               </div>
             )}
           </div>

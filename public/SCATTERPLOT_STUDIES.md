@@ -312,3 +312,23 @@ Not changed (would risk new bugs or need a decision): pausing/repeating dots and
 logged instead), a frame-timing stall watchdog (the fit blocks the main thread ~1 s), a hard camera-start timeout,
 an early camera check, self-hosting the RealEye bundle, screening out failed calibrations, Prolific codes / consent
 text, Firefox.
+
+## Basic eye-tracking study (`scatterplot_gaze_basic`, 2026-11-13)
+
+Same stimulus code, calibration and data format as `scatterplot_gaze`, without the timing design:
+beliefs (phase3_*) -> comprehension -> camera + calibration -> 12 unlabeled training plots (phase1_*, tracked) ->
+recalibration -> 2 examples + **12 labeled plots, labels visible for the whole 5 s, never blurred** (phase2_*) ->
+final check -> demographics. Only `config.py`, `config.json` and `assets/phase2.png` live in the folder; every other
+asset path points at `scatterplot_gaze/`. 8 scheme blocks (4 corr rotations x 2 plot variants, latinSquare), trial
+order random. Components `phase2_{label}_{corr}_{exp}_0_0_5` (timing condition (0,0,5), same coordinates).
+`INCLUDE_BASELINE = True` in config.py adds the matched never-labeled twins (24 trials, halfway recalibration).
+`view_text` parameter sets the start text of `phase2_gaze.jsx` ("You have 5 seconds ..."; default "5 to 11 seconds").
+`gazeFinalCheck` with `parameters.taskDots` adds 7 dots at the AOIs (plot centre, y label, 4 quadrants, x label)
+after the 9-dot grid, logged as `finalCheck.aoiCheck` (`points`, `targets`, `meanErrorPx`, `meanErrorDeg`).
+Page indices: camera 17, calibration 18, Task 2 19-30, Task 3 intro 31, recalibration 32, examples 34-35,
+main trials 36-47, final check 48. Prolific codes are still the timing study's placeholders.
+**2026-11-15: twins on (`INCLUDE_BASELINE = True`), view time stays 5 s.** Task 3 = 2 examples + 24 trials (12 labeled + their
+never-labeled twins with the same coordinates, `..._base`), one fixed pre-shuffled order per scheme with twins >= 4 positions apart,
+halfway recalibration after trial 12. Bias = estimate - twin estimate, as in the timing / gaze studies. The Task 3 intro says some plots
+keep their labels blurred. Coordinates are byte-identical to the 12-trial version (regenerating with numpy 2.5 changed the last digit of a
+few floats, so the original values were kept).

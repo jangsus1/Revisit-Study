@@ -2,6 +2,9 @@
  * End-of-session accuracy check (pilot diagnostics): after the last trial, the participant looks at
  * 9 dots at the full-calibration positions. Nothing is recalibrated, so the result measures how far
  * the tracker drifted over the session across the whole screen, with the head pose at every dot.
+ * With `parameters.taskDots` (scatterplot_gaze_basic) 7 more dots follow at the trial's areas of interest
+ * (plot centre, y label, 4 plot quadrants, x label), logged as `aoiCheck`: end-of-session accuracy where the
+ * analysis needs it, measured on dots that were never used for fitting at that moment.
  */
 import { Button } from '@mantine/core';
 import { useCallback, useEffect, useState } from 'react';
@@ -14,10 +17,14 @@ import type { ValidationResult } from './CalibrationOverlay';
 import {
   FullscreenGate, HeadStillNotice, Panel, fullscreenStats,
 } from './FullScreen';
+import { taskCalibPoints, taskPoint } from './taskLayout';
 
 type Phase = 'intro' | 'running' | 'done';
+const AOI_TARGETS = ['plot', 'yLabel', 'q1', 'q2', 'q3', 'q4', 'xLabel'];
 
-function GazeFinalCheck({ setAnswer, advance }: StimulusParams<undefined>) {
+function GazeFinalCheck({ parameters, setAnswer, advance }: StimulusParams<{ taskDots?: boolean } | undefined>) {
+  const taskDots = !!parameters?.taskDots;
+  const [aoi, setAoi] = useState<ValidationResult | null>(null);
   const [phase, setPhase] = useState<Phase>('intro');
   const [result, setResult] = useState<ValidationResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,6 +39,7 @@ function GazeFinalCheck({ setAnswer, advance }: StimulusParams<undefined>) {
       answers: {
         finalCheck: JSON.stringify({
           ...(result ?? {}),
+          aoiCheck: aoi ? { ...aoi, targets: aoi.points.map((_, i) => AOI_TARGETS[i]), meanErrorDeg: gazeTracker.pxToDeg(aoi.meanErrorPx) } : null,
           headShiftMm: poses.map((p) => headShiftMm(p, gazeTracker.calibHead)),
           calibHead: gazeTracker.calibHead,
           fullCalib: gazeTracker.fullCalib ?? null,
@@ -48,7 +56,7 @@ function GazeFinalCheck({ setAnswer, advance }: StimulusParams<undefined>) {
         }),
       },
     });
-  }, [phase, result, error, setAnswer]);
+  }, [phase, result, aoi, error, setAnswer]);
 
   const run = useCallback(async () => {
     if (gazeTracker.state !== 'ready') {
@@ -59,11 +67,12 @@ function GazeFinalCheck({ setAnswer, advance }: StimulusParams<undefined>) {
     setPhase('running');
     try {
       setResult(await runValidation(FULL_GRID, 1500, 800, 'Look at the dot. Keep your head still.'));
+      if (taskDots) setAoi(await runValidation([taskPoint('plot'), ...taskCalibPoints()], 1500, 800, 'Look at the dot. Keep your head still.'));
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
     setPhase('done');
-  }, [runValidation]);
+  }, [runValidation, taskDots]);
 
   // Done: the answer is complete, move on by itself
   useEffect(() => { if (phase === 'done') advance?.(); }, [phase, advance]);
