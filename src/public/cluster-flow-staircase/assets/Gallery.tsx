@@ -65,7 +65,7 @@ function diagnostics(display: Display): string {
   if (display.kind === 'B' && isFlow(display.variant)) {
     // the flowchart B is not fitted to A's field or link length (`flow.ts`)
     return isDagre(display.variant)
-      ? `${base} · dagre layout, no clusters, stretched ${fmt(display.meta.spacing ?? 1, 2)}× to A's area`
+      ? `${base} · baseline: plain dagre layout`
       : `${base} · boxes on a ${display.meta.grid?.cols}×${display.meta.grid?.rows} block of the lattice`;
   }
   if (display.kind === 'B') {

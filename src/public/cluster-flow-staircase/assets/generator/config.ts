@@ -205,21 +205,23 @@ export const GENERATOR_CONFIG = {
    * `FLOW_GRID`'s, then the last row.
    */
   /**
-   * Dagre-laid flowcharts (`flow-dagre`, `flow-dagre-shade`; `flowDagre.ts`), canvas px. `rankdir`:
-   * the flow runs top to bottom. `box`: the node box, smaller than `FLOW_BOX` (whose style it keeps)
-   * so that a clustered 24-box chart and an unclustered 48-box chart fit the canvas. `nodeSep` /
-   * `rankSep`: dagre's gap between boxes side by side and between ranks. `shadePad`: how far a
-   * shaded region reaches past its boxes. `highlightPad` / `highlightLine`: the same for
-   * `flow-dagre-highlight` (under half of `nodeSep`, so two groups' regions never touch), and the
-   * width of its shading along a link that passes a row. `groupSize`: the groups of B's flow. `maxChildren`: links
-   * out of a box before another parent is preferred. `attachBack`: how many groups back a group's
-   * incoming link may start. `extraWithin`: share of the dense extras that stay inside one group.
-   * `maxDepth`: deepest box of the flow (0 = the first), so the chart fits the canvas height;
-   * `groupRoom`: levels kept free below the box a group hangs from. `bendTolerance`: a route point
-   * closer than this to the line between its neighbours is dropped.
+   * Dagre-laid flowcharts (`flow-dagre-highlight`, `flow-dagre-apart`, `flow-dagre-both`;
+   * `flowDagre.ts`), canvas px. `rankdir`: the flow runs top to bottom. `box`: the node box, smaller
+   * than `FLOW_BOX` (whose style it keeps) so that the charts fit the canvas. `nodeSep` / `rankSep`:
+   * dagre's gap between boxes side by side and between ranks. `groupSize`: the groups of the flow.
+   * `maxChildren`: links out of a box before another parent is preferred. `attachBack`: how many
+   * groups back a group's incoming link may start. `extraWithin`: share of the dense extras that
+   * stay inside one group. `maxDepth`: deepest box of the flow (0 = the first), so the chart fits
+   * the canvas height; `groupRoom`: levels kept free below the box a group hangs from.
+   * `bendTolerance`: a route point closer than this to the line between its neighbours is dropped.
+   * `apart`: moving the groups apart puts every group's centroid this many times as far from the
+   * chart's centre, per axis; `minDrop`: the least height a link between two moved groups must
+   * still fall. `highlightPad`: how far a group's shaded region reaches past its boxes (under half
+   * of `nodeSep`, so two groups' regions never touch); `highlightLine`: the width of the shading
+   * along a link that passes a row.
    */
   FLOW_DAGRE: {
-    rankdir: 'TB' as 'TB' | 'LR', box: { width: 36, height: 22 }, nodeSep: 10, rankSep: 20, shadePad: 6, highlightPad: 4, highlightLine: 12, groupSize: { min: 3, max: 6 }, maxChildren: 3, attachBack: 3, extraWithin: 0.8, maxDepth: 9, groupRoom: 2, bendTolerance: 0.5,
+    rankdir: 'TB' as 'TB' | 'LR', box: { width: 36, height: 22 }, nodeSep: 10, rankSep: 20, groupSize: { min: 3, max: 6 }, maxChildren: 3, attachBack: 3, extraWithin: 0.8, maxDepth: 9, groupRoom: 2, bendTolerance: 0.5, apart: { x: 1.5, y: 1.25 }, minDrop: 8, highlightPad: 3, highlightLine: 10,
   },
   FLOW_FIT_COLS: 6,
   FLOW_FIT_ROWS: 6,

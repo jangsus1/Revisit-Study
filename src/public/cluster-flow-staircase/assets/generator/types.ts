@@ -30,19 +30,17 @@ export type Density = 'sparse' | 'dense';
  * the gapped layout) except for `flow-shade-fit`. So `flow` and `flow-shade-fit` have A and B on one
  * footprint, and `flow-shade` leaves the area free (packed A, spread B).
  *
- * Flowcharts laid out by dagre, the layered layout Mermaid uses (2026-11-15; `flowDagre.ts`): boxes
- * and straight connectors as above, but the positions come from the layout algorithm, not from the
- * lattice templates. One graph and one layout per seed; only the gap between groups and the shading
- * differ.
- * - `flow-dagre`: proximity cue, groups `FLOW_DAGRE.groupGap` times further apart than their boxes.
- * - `flow-dagre-shade`: rect cue, the same clustered layout with each cluster on a shaded region.
- * - `flow-dagre-highlight`: rect cue, highlight only: A is laid out without clusters, exactly like
- *   B, and each group's boxes and the links between them lie on a shaded region (`DisplayCluster.shade`).
+ * Flowcharts laid out by dagre, the layered layout Mermaid uses (2026-11-15; `flowDagre.ts`). B is
+ * always the baseline, the plain dagre layout of a flow of N_B boxes. A is the baseline layout of
+ * its own 24-box flow with one change:
+ * - `flow-dagre-highlight` (rect cue): each group lies on a shaded region; no box moves.
+ * - `flow-dagre-apart` (proximity cue): the groups are moved apart; nothing is shaded.
+ * - `flow-dagre-both` (rect cue): moved apart and shaded.
  */
 export type Variant = 'edge-bold' | 'color-large' | 'color-distinct' | 'color-distinct-2' | 'rect-shade'
-  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade' | 'flow-shade-fit' | 'flow-dagre' | 'flow-dagre-shade' | 'flow-dagre-highlight';
+  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade' | 'flow-shade-fit' | 'flow-dagre-highlight' | 'flow-dagre-apart' | 'flow-dagre-both';
 export const VARIANTS: Variant[] = ['edge-bold', 'color-large', 'color-distinct', 'color-distinct-2', 'rect-shade',
-  'intra-full', 'intra-full-plus', 'flow', 'flow-shade', 'flow-shade-fit', 'flow-dagre', 'flow-dagre-shade', 'flow-dagre-highlight'];
+  'intra-full', 'intra-full-plus', 'flow', 'flow-shade', 'flow-shade-fit', 'flow-dagre-highlight', 'flow-dagre-apart', 'flow-dagre-both'];
 /** The cue each variant belongs to (its layout follows `layoutModeFor` of that cue). */
 export const VARIANT_CUE: Record<Variant, Cue> = {
   'edge-bold': 'edge',
@@ -55,9 +53,9 @@ export const VARIANT_CUE: Record<Variant, Cue> = {
   flow: 'proximity',
   'flow-shade': 'rect',
   'flow-shade-fit': 'rect',
-  'flow-dagre': 'proximity',
-  'flow-dagre-shade': 'rect',
   'flow-dagre-highlight': 'rect',
+  'flow-dagre-apart': 'proximity',
+  'flow-dagre-both': 'rect',
 };
 export type StimulusKind = 'A' | 'B';
 /** The seven filled marks of the shape cue's pool (`GENERATOR_CONFIG.SHAPES`). */
@@ -132,7 +130,7 @@ export interface DisplayCluster {
   /** padded bounding rectangle in canvas px, present only for the rect cue */
   rect?: Rect;
   /**
-   * `flow-dagre-highlight` only: the shaded region of the group, as filled polygons (one around
+   * dagre flowcharts with highlighting only: the shaded region of the group, as filled polygons (one around
    * each box, one between each pair of linked boxes in neighbouring rows) and thick lines along the
    * longer links inside the group; canvas px
    */
@@ -168,8 +166,6 @@ export interface Display {
     order?: number[];
     /** A only: which layout placed the clusters */
     layout?: LayoutMode;
-    /** dagre flowchart A only: how far its B is stretched so both cover the same area at equal counts */
-    stretch?: number;
     /** flowchart B only: the block of lattice cells its boxes were placed on */
     grid?: { cols: number; rows: number };
     /** B only: the field the dots were sampled in, in canvas px */
@@ -227,8 +223,6 @@ export interface GenerateOptions {
   shapes?: readonly NodeShape[];
   /** follow-up stimulus variant (see `Variant`); default none */
   variant?: Variant;
-  /** dagre flowchart B only: the stretch about the centre, from the paired A's `meta.stretch` */
-  stretch?: number;
 }
 
 export interface TrialParams {

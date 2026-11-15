@@ -1,34 +1,29 @@
 /**
- * Flowchart stimuli laid out by a real layout algorithm (`flow-dagre`, `flow-dagre-shade`; decided
- * 2026-11-15): dagre, the layered layout Mermaid uses, on a top-to-bottom flow of boxes. Positions
- * and link routes are dagre's own; nothing is moved afterwards.
+ * Flowchart stimuli laid out by a real layout algorithm (decided 2026-11-15): dagre, the layered
+ * layout Mermaid uses, on a top-to-bottom flow of boxes.
  *
  * One random directed flow is drawn per seed: groups of 3 to 6 boxes, a tree inside each group, one
  * link from an earlier group into each later one (plus matched extras when dense), with the depth of
- * the flow capped so the chart fits the canvas. With `clustered`, every group is a dagre cluster (a
- * Mermaid subgraph): a compact block, set apart from the other groups by dagre's cluster spacing.
+ * the flow capped so the chart fits the canvas. Dagre lays it out as it is, with no knowledge of the
+ * groups. That plain layout is the **baseline**.
  *
- * The graph of stimulus A (24 boxes, six groups) is the same in every variant for a seed. Two
- * variants lay it out with clusters, from the same dagre run, and differ only in the shading:
- * - `flow-dagre` (proximity): nothing is drawn for the clusters (Mermaid's invisible subgraphs), so
- *   the groups are marked by their spacing alone.
- * - `flow-dagre-shade`: each cluster also lies on a shaded region (Mermaid's visible subgraphs). A
- *   layout algorithm cannot shade a group without also setting it apart, so this is proximity plus
- *   shading, and the pair of variants isolates what the shading adds.
- * - `flow-dagre-highlight` (highlight only): A is laid out without clusters, exactly as B is, so
- *   position does not group; each group's boxes and the links between them lie on a shaded region
- *   that follows the group (`highlightOf`). Its B needs no stretch.
- * Stimulus B (N_B boxes) is the same kind of flow laid out without clusters, in every variant. It
- * is stretched about its centre so that it covers the area its A covers at equal counts: by the
- * square root of (A's bounding area / the bounding area of A's own graph laid out without
- * clusters).
+ * Stimulus B (N_B boxes) is always the baseline: plain dagre, nothing added. Stimulus A (24 boxes,
+ * six groups) starts from the same baseline layout of its own graph and differs from it in exactly
+ * one of three ways:
+ * - `flow-dagre-highlight`: each group's boxes and the links inside it lie on a shaded region.
+ *   No box moves.
+ * - `flow-dagre-apart`: the groups are moved apart (`moveApart`): each group keeps its own shape
+ *   and its place relative to the others, only the distances between groups grow. Nothing is shaded.
+ * - `flow-dagre-both`: moved apart exactly as in `flow-dagre-apart`, and shaded.
+ * For one seed the three variants share the graph, the baseline layout and B.
  *
  * As in `flow.ts`, nodes store `shape: 'circle'`; the box is read from `display.variant`. A link's
- * whole drawn route (`routeOf`) is stored in `DisplayEdge.points`.
+ * whole drawn route is stored in `DisplayEdge.points`.
  */
 import * as dagre from '@dagrejs/dagre';
 import { GENERATOR_CONFIG as C } from './config';
 import { drawClusterSizes } from './clusterSizes';
+import { checkInvariants } from './invariants';
 import { Rng, mulberry32, randperm } from './prng';
 import {
   Cue, Density, Display, DisplayCluster, DisplayEdge, DisplayNode, Rect, Variant,
@@ -134,8 +129,8 @@ export function drawFlowGraph(rng: Rng, sizes: number[], density: Density, depth
 interface FlowLayout {
   /** box centres */
   pts: Pt[];
-  /** per link (parallel to `graph.links`): where dagre's route passes the ranks between its two boxes */
-  bends: Pt[][];
+  /** per link (parallel to `graph.links`): its drawn route (`routeOf`) */
+  routes: Pt[][];
 }
 
 /** Drops the route points that lie on the straight line between their neighbours. */
@@ -150,55 +145,51 @@ function simplify(route: Pt[]): Pt[] {
   return out;
 }
 
+/** How far a link's ends sit from the centres of its boxes: on the box edge, plus the gap. */
+const PORT = D.box.height / 2 + C.FLOW_LINK_GAP;
+
 /**
  * The drawn route of a link, top to bottom: out of the bottom edge of its source box (centre), into
  * the top edge of its target box (centre). Where it passes a row of boxes on the way (`rows`: the y
  * of every row), it runs straight down through that row's band at the x dagre reserved for it
  * there. So a link only runs at an angle in the free channels between rows and never touches a box
- * of a row it passes. Dagre's other route points (with clusters it also has ranks that hold no
- * boxes) all lie in those channels and are not needed.
+ * of a row it passes.
  */
 export function routeOf(source: Pt, target: Pt, passes: Pt[], rows: number[]): Pt[] {
-  const half = D.box.height / 2 + C.FLOW_LINK_GAP;
-  const between = rows.filter((y) => y > source.y + half && y < target.y - half);
+  const between = rows.filter((y) => y > source.y + PORT && y < target.y - PORT);
   return simplify([
-    { x: source.x, y: source.y + half },
+    { x: source.x, y: source.y + PORT },
     ...passes.flatMap((p) => {
-      const row = between.find((y) => Math.abs(y - p.y) < half);
-      return row === undefined ? [] : [{ x: p.x, y: row - half }, { x: p.x, y: row + half }];
+      const row = between.find((y) => Math.abs(y - p.y) < PORT);
+      return row === undefined ? [] : [{ x: p.x, y: row - PORT }, { x: p.x, y: row + PORT }];
     }),
-    { x: target.x, y: target.y - half },
+    { x: target.x, y: target.y - PORT },
   ]);
 }
 
-/** Dagre's layout of the flow; with `clustered`, every group is a dagre cluster. */
-export interface FlowLayoutOptions { rankdir: 'TB' | 'LR'; nodeSep: number; rankSep: number; width: number; height: number }
-const LAYOUT_DEFAULTS: FlowLayoutOptions = {
-  rankdir: D.rankdir, nodeSep: D.nodeSep, rankSep: D.rankSep, width: D.box.width, height: D.box.height,
-};
-
-export function layoutFlow(graph: FlowGraph, clustered: boolean, o: FlowLayoutOptions = LAYOUT_DEFAULTS): FlowLayout {
-  const g = new dagre.graphlib.Graph({ compound: clustered, multigraph: false });
+/** The baseline: dagre's layout of the flow, which knows nothing of the groups. */
+export function layoutFlow(graph: FlowGraph): FlowLayout {
+  const g = new dagre.graphlib.Graph({ multigraph: false });
   g.setGraph({
-    rankdir: o.rankdir, nodesep: o.nodeSep, ranksep: o.rankSep, marginx: 0, marginy: 0,
+    rankdir: D.rankdir, nodesep: D.nodeSep, ranksep: D.rankSep, marginx: 0, marginy: 0,
   });
   g.setDefaultEdgeLabel(() => ({}));
-  if (clustered) new Set(graph.group).forEach((k) => g.setNode(`g${k}`, {}));
-  graph.group.forEach((k, id) => {
-    g.setNode(`${id}`, { width: o.width, height: o.height });
-    if (clustered) g.setParent(`${id}`, `g${k}`);
-  });
+  graph.group.forEach((_, id) => g.setNode(`${id}`, { width: D.box.width, height: D.box.height }));
   graph.links.forEach(([s, t]) => g.setEdge(`${s}`, `${t}`));
   dagre.layout(g);
   const pts = graph.group.map((_, id) => {
     const node = g.node(`${id}`);
     return { x: node.x, y: node.y };
   });
-  // dagre's route starts and ends on the box borders; what is kept is where it passes each rank in
-  // between (`routeOf` turns that into the drawn link)
-  const bends = graph.links.map(([s, t]) => ((g.edge(`${s}`, `${t}`).points ?? []) as Pt[])
-    .slice(1, -1).map((p) => ({ x: p.x, y: p.y })));
-  return { pts, bends };
+  const rows = [...new Set(pts.map((p) => Math.round(p.y * 100) / 100))];
+  // dagre's route starts and ends on the box borders; what is used is where it passes each rank
+  const routes = graph.links.map(([s, t]) => routeOf(
+    pts[s],
+    pts[t],
+    ((g.edge(`${s}`, `${t}`).points ?? []) as Pt[]).slice(1, -1).map((p) => ({ x: p.x, y: p.y })),
+    rows,
+  ));
+  return { pts, routes };
 }
 
 /** Bounding rectangle of the boxes centred on `pts`. */
@@ -212,26 +203,51 @@ export function boxBounds(pts: Pt[]): Rect {
   };
 }
 
-/** Scales a layout by `k` about its centre and centres its bounding rectangle in the canvas. */
-function place(layout: FlowLayout, k = 1): FlowLayout {
-  const b = boxBounds(layout.pts);
+/**
+ * Moves the groups of a baseline layout apart. Every group moves as a rigid block, away from the
+ * centre of the chart: its centroid goes `apart.x` (`apart.y`) times as far from the centre as it
+ * was, so the groups keep their arrangement and only the distances between them grow. A link
+ * inside a group moves with it; a link between two groups is redrawn as a straight line from the
+ * bottom of its source box to the top of its target box. Returns `null` when such a link would no
+ * longer run downwards (the caller then tries the next seed).
+ */
+export function moveApart(graph: FlowGraph, base: FlowLayout): FlowLayout | null {
+  const b = boxBounds(base.pts);
   const cx = b.x + b.w / 2;
   const cy = b.y + b.h / 2;
-  const scale = (p: Pt) => ({ x: cx + (p.x - cx) * k, y: cy + (p.y - cy) * k });
-  const scaled = layout.pts.map(scale);
-  const after = boxBounds(scaled);
-  const dx = (C.CANVAS.width - after.w) / 2 - after.x;
-  const dy = (C.CANVAS.height - after.h) / 2 - after.y;
+  const shift = new Map<number, Pt>();
+  new Set(graph.group).forEach((k) => {
+    const mine = base.pts.filter((_, id) => graph.group[id] === k);
+    const gx = mine.reduce((sum, p) => sum + p.x, 0) / mine.length;
+    const gy = mine.reduce((sum, p) => sum + p.y, 0) / mine.length;
+    shift.set(k, { x: (D.apart.x - 1) * (gx - cx), y: (D.apart.y - 1) * (gy - cy) });
+  });
+  const moved = (p: Pt, k: number) => ({ x: p.x + (shift.get(k) as Pt).x, y: p.y + (shift.get(k) as Pt).y });
+  const pts = base.pts.map((p, id) => moved(p, graph.group[id]));
+  let ok = true;
+  const routes = graph.links.map(([s, t], i) => {
+    if (graph.group[s] === graph.group[t]) return base.routes[i].map((p) => moved(p, graph.group[s]));
+    if (pts[t].y - pts[s].y < 2 * PORT + D.minDrop) ok = false;
+    return [{ x: pts[s].x, y: pts[s].y + PORT }, { x: pts[t].x, y: pts[t].y - PORT }];
+  });
+  return ok ? { pts, routes } : null;
+}
+
+/** Translates a layout so the bounding rectangle of its boxes is centred in the canvas. */
+function centred(layout: FlowLayout): FlowLayout {
+  const b = boxBounds(layout.pts);
+  const dx = (C.CANVAS.width - b.w) / 2 - b.x;
+  const dy = (C.CANVAS.height - b.h) / 2 - b.y;
   const move = (p: Pt) => ({ x: p.x + dx, y: p.y + dy });
-  return { pts: scaled.map(move), bends: layout.bends.map((route) => route.map(scale).map(move)) };
+  return { pts: layout.pts.map(move), routes: layout.routes.map((route) => route.map(move)) };
 }
 
 /**
- * The shaded region of group `k` in a chart laid out without clusters: a padded rectangle around
- * each of its boxes, and for each link inside the group either the strip between the facing edges
- * of its two boxes (boxes in neighbouring rows: the strip lies in the free channel between them) or
- * a thick line along its route (a link that passes a row). The pad is under half of dagre's gap
- * between boxes, so the regions of two groups never touch.
+ * The shaded region of group `k`: a padded rectangle around each of its boxes, and for each link
+ * inside the group either the strip between the facing edges of its two boxes (boxes in
+ * neighbouring rows: the strip lies in the free channel between them) or a thick line along its
+ * route (a link that passes a row). The pad is under half of dagre's gap between boxes, so the
+ * regions of two groups never touch.
  */
 export function highlightOf(k: number, graph: FlowGraph, pts: Pt[], edges: DisplayEdge[]): NonNullable<DisplayCluster['shade']> {
   const hw = D.box.width / 2 + D.highlightPad;
@@ -268,10 +284,9 @@ function toDisplay(
   graph: FlowGraph,
   layout: FlowLayout,
   rng: Rng,
-  shade: 'none' | 'rect' | 'highlight',
+  highlight: boolean,
 ): Display {
   const { pts } = layout;
-  const rows = [...new Set(pts.map((p) => Math.round(p.y * 100) / 100))];
   // the links follow the flow; the rank is only kept for the record
   const rank = randperm(rng, pts.length);
   const nodes: DisplayNode[] = pts.map((p, id) => ({
@@ -283,23 +298,17 @@ function toDisplay(
     kind: kind === 'A' && graph.group[source] !== graph.group[target] ? 'between' : 'within',
     dashed: false,
     extra,
-    points: routeOf(pts[source], pts[target], layout.bends[i], rows),
+    points: layout.routes[i],
   }));
   const clusters: DisplayCluster[] = kind === 'A' ? [...new Set(graph.group)].map((k, orderPos) => {
     const mine = pts.filter((_, id) => graph.group[id] === k);
-    const b = boxBounds(mine);
     return {
       index: k,
       nodeIds: graph.group.map((g, id) => (g === k ? id : -1)).filter((id) => id >= 0),
-      cx: mine.reduce((s, p) => s + p.x, 0) / mine.length,
-      cy: mine.reduce((s, p) => s + p.y, 0) / mine.length,
+      cx: mine.reduce((sum, p) => sum + p.x, 0) / mine.length,
+      cy: mine.reduce((sum, p) => sum + p.y, 0) / mine.length,
       orderPos,
-      ...(shade === 'rect' ? {
-        rect: {
-          x: b.x - D.shadePad, y: b.y - D.shadePad, w: b.w + 2 * D.shadePad, h: b.h + 2 * D.shadePad,
-        },
-      } : {}),
-      ...(shade === 'highlight' ? { shade: highlightOf(k, graph, pts, edges) } : {}),
+      ...(highlight ? { shade: highlightOf(k, graph, pts, edges) } : {}),
     };
   }) : [];
   return {
@@ -320,39 +329,36 @@ function toDisplay(
   };
 }
 
-/** Stimulus A for one concrete seed: 24 boxes in six groups, with the stretch for its B. */
-export function buildDagreA(seed: number, cue: Cue, density: Density, variant: Variant): { display: Display; stretch: number } {
+/**
+ * Stimulus A for one concrete seed: 24 boxes in six groups, the baseline layout with the variant's
+ * one change. `null` when the groups could not be moved apart (the caller tries the next seed).
+ */
+export function buildDagreA(seed: number, cue: Cue, density: Density, variant: Variant): Display | null {
   const rng = mulberry32(seed);
   const graph = drawFlowGraph(rng, drawGroupSizes(rng, C.NTOTAL), density);
-  // highlight only: no clusters, so A is laid out exactly as B is and B needs no stretch
-  const clustered = variant !== 'flow-dagre-highlight';
-  const layout = place(layoutFlow(graph, clustered));
-  const flat = boxBounds(layoutFlow(graph, false).pts);
-  const mine = boxBounds(layout.pts);
-  const shade = { 'flow-dagre-shade': 'rect', 'flow-dagre-highlight': 'highlight' }[variant as string] ?? 'none';
-  const display = toDisplay('A', seed, cue, density, variant, graph, layout, rng, shade as 'none' | 'rect' | 'highlight');
+  const base = layoutFlow(graph);
+  // A seed is used only when its groups can be moved apart into a valid chart, whichever variant is
+  // asked for, so the three variants always show the same graph for a seed.
+  const moved = moveApart(graph, base);
+  if (!moved) return null;
+  const build = (layout: FlowLayout, highlight: boolean) => toDisplay('A', seed, cue, density, variant, graph, centred(layout), mulberry32(seed + 1), highlight);
+  if (checkInvariants(build(moved, false)).length > 0) return null;
+  const apart = variant !== 'flow-dagre-highlight';
+  const display = build(apart ? moved : base, variant !== 'flow-dagre-apart');
   display.meta = {
     clusterSizes: display.clusters.map((c) => c.nodeIds.length),
     jitter: 0,
     order: display.clusters.map((c) => c.index),
-    layout: clustered ? 'grouped' : 'even',
+    layout: apart ? 'grouped' : 'even',
   };
-  return { display, stretch: clustered ? Math.sqrt((mine.w * mine.h) / (flat.w * flat.h)) : 1 };
+  return display;
 }
 
-/**
- * Stimulus B for one concrete seed: `nB` boxes, no clusters, stretched about the centre by
- * `stretch` (at least 1, at most what the canvas margin allows).
- */
-export function buildDagreB(seed: number, nB: number, cue: Cue, density: Density, variant: Variant, stretch = 1): Display {
+/** Stimulus B for one concrete seed: `nB` boxes in the baseline layout, nothing added. */
+export function buildDagreB(seed: number, nB: number, cue: Cue, density: Density, variant: Variant): Display {
   const rng = mulberry32(seed);
   const graph = drawFlowGraph(rng, drawGroupSizes(rng, nB), density);
-  const raw = layoutFlow(graph, false);
-  const b = boxBounds(raw.pts);
-  const room = (span: number, box: number, canvas: number) => (span > box ? (canvas - 2 * C.CANVAS_MARGIN - box) / (span - box) : Infinity);
-  const fit = Math.min(room(b.w, D.box.width, C.CANVAS.width), room(b.h, D.box.height, C.CANVAS.height));
-  const k = Math.max(1, Math.min(stretch, fit));
-  const display = toDisplay('B', seed, cue, density, variant, graph, place(raw, k), rng, 'none');
-  display.meta = { spacing: k, layout: 'even' };
+  const display = toDisplay('B', seed, cue, density, variant, graph, centred(layoutFlow(graph)), rng, false);
+  display.meta = { layout: 'even' };
   return display;
 }

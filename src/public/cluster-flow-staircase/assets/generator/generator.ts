@@ -150,13 +150,9 @@ export function generateDisplay(seed: number, opts: GenerateOptions): Display {
     if (isDagre(opts.variant)) {
       // flowcharts laid out by dagre have their own builders (`flowDagre.ts`)
       const variant = opts.variant as Variant;
-      if (opts.kind === 'A') {
-        const built = buildDagreA(derived, opts.cue, opts.density, variant);
-        built.display.meta.stretch = built.stretch;
-        ({ display } = built);
-      } else {
-        display = buildDagreB(derived, nB, opts.cue, opts.density, variant, opts.stretch);
-      }
+      display = opts.kind === 'A'
+        ? buildDagreA(derived, opts.cue, opts.density, variant)
+        : buildDagreB(derived, nB, opts.cue, opts.density, variant);
     } else if (opts.kind === 'A') {
       display = buildStimulusA(derived, opts);
     } else {
@@ -177,7 +173,7 @@ export function generateDisplay(seed: number, opts: GenerateOptions): Display {
       }
       lastViolations = violations;
     } else {
-      lastViolations = [`could not place ${nB} dots within ${C.B_PLACEMENT_MAX_TRIES} tries`];
+      lastViolations = [`could not place the ${opts.kind === 'A' ? C.NTOTAL : nB} items of this seed`];
     }
   }
   throw new Error(
@@ -228,9 +224,9 @@ export function generateTrialPair(
     kind: 'A', cue: opts.cue, density: opts.density, hueOffset, variant,
   });
   if (isDagre(variant)) {
-    // B is the same kind of flow without clusters, stretched to A's area (`flowDagre.ts`)
+    // B is the baseline: the same kind of flow in the plain dagre layout (`flowDagre.ts`)
     const displayB = generateDisplay(seedB, {
-      kind: 'B', cue: opts.cue, density: opts.density, nB: opts.nB, variant, stretch: displayA.meta.stretch,
+      kind: 'B', cue: opts.cue, density: opts.density, nB: opts.nB, variant,
     });
     return { displayA, displayB };
   }
@@ -282,11 +278,8 @@ export function generateAttentionPair(
   const hueOffset = opts.hueOffset ?? 0;
   const { variant } = opts;
   if (isDagre(variant)) {
-    const { stretch } = generateDisplay(seedA, {
-      kind: 'A', cue: opts.cue, density: opts.density, variant,
-    }).meta;
     const flat: GenerateOptions = {
-      kind: 'B', cue: opts.cue, density: opts.density, variant, stretch,
+      kind: 'B', cue: opts.cue, density: opts.density, variant,
     };
     return {
       displayA: generateDisplay(hashSeed(seedB, 'few'), { ...flat, nB: opts.few }),
