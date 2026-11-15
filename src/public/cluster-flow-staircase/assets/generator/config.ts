@@ -196,6 +196,15 @@ export const GENERATOR_CONFIG = {
   },
   FLOW_LINK_GAP: 2,
   FLOW_GRID: { cols: 8, rows: 7 },
+  /**
+   * `flow-shade-fit`: B's block of cells, centred in the canvas, starts as the block the paired A
+   * occupies (6 columns, 4 to 6 rows). The tree needs some free cells to grow without crossing, so
+   * while N_B exceeds `FLOW_FIT_FILL` of the cells the block grows: rows up to 6, then columns up to
+   * `FLOW_GRID`'s, then the last row.
+   */
+  FLOW_FIT_COLS: 6,
+  FLOW_FIT_ROWS: 6,
+  FLOW_FIT_FILL: 0.9,
   /** Retries allowed when drawing a random node pair for an extra (dense) arrow. */
   EXTRA_ARROW_MAX_DRAWS: 20,
 } as const;

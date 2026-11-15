@@ -24,12 +24,17 @@ export type Density = 'sparse' | 'dense';
  * lattice (no jitter) and every link is a straight horizontal or vertical connector.
  * - `flow`: proximity cue, the gapped layout (one empty lattice line between clusters).
  * - `flow-shade`: rect cue on the even layout, a shaded region under each cluster (as `rect-shade`).
- * Their B puts N_B boxes on cells of the whole `FLOW_GRID` lattice, wired the same way.
+ * - `flow-both`: the gapped layout and the shaded regions together.
+ * - `flow-shade-fit`: `flow-shade` whose B is confined to the block of cells A's packed layout
+ *   can occupy (`FLOW_FIT_BLOCKS`), so A and B cover the same area on the same lattice.
+ * B puts N_B boxes on lattice cells, wired the same way: on the whole `FLOW_GRID` (the footprint of
+ * the gapped layout) except for `flow-shade-fit`. So `flow` and `flow-both` have A and B on one
+ * footprint, `flow-shade-fit` too, and `flow-shade` leaves the area free (packed A, spread B).
  */
 export type Variant = 'edge-bold' | 'color-large' | 'color-distinct' | 'color-distinct-2' | 'rect-shade'
-  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade';
+  | 'intra-full' | 'intra-full-plus' | 'flow' | 'flow-shade' | 'flow-shade-fit' | 'flow-both';
 export const VARIANTS: Variant[] = ['edge-bold', 'color-large', 'color-distinct', 'color-distinct-2', 'rect-shade',
-  'intra-full', 'intra-full-plus', 'flow', 'flow-shade'];
+  'intra-full', 'intra-full-plus', 'flow', 'flow-shade', 'flow-shade-fit', 'flow-both'];
 /** The cue each variant belongs to (its layout follows `layoutModeFor` of that cue). */
 export const VARIANT_CUE: Record<Variant, Cue> = {
   'edge-bold': 'edge',
@@ -41,6 +46,8 @@ export const VARIANT_CUE: Record<Variant, Cue> = {
   'intra-full-plus': 'proximity',
   flow: 'proximity',
   'flow-shade': 'rect',
+  'flow-shade-fit': 'rect',
+  'flow-both': 'rect',
 };
 export type StimulusKind = 'A' | 'B';
 /** The seven filled marks of the shape cue's pool (`GENERATOR_CONFIG.SHAPES`). */
@@ -140,6 +147,8 @@ export interface Display {
     order?: number[];
     /** A only: which layout placed the clusters */
     layout?: LayoutMode;
+    /** flowchart B only: the block of lattice cells its boxes were placed on */
+    grid?: { cols: number; rows: number };
     /** B only: the field the dots were sampled in, in canvas px */
     field?: Rect;
     /** B only: the minimum centre spacing used for this N_B, in canvas px */

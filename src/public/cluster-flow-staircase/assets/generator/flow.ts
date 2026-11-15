@@ -14,7 +14,7 @@ import { GENERATOR_CONFIG as C } from './config';
 import { conflictsWithAny, linkIsClear, pointSegmentDistance } from './invariants';
 import { mulberry32, randperm } from './prng';
 import {
-  Cue, Density, Display, DisplayEdge, DisplayNode, Variant,
+  Cue, Density, Display, DisplayEdge, DisplayNode, Rect, Variant,
 } from './types';
 import { markReach } from './variants';
 
@@ -29,9 +29,22 @@ export function aligned(a: Pt, b: Pt): boolean {
   return Math.abs(a.x - b.x) < 0.5 || Math.abs(a.y - b.y) < 0.5;
 }
 
-/** Centres of the `FLOW_GRID` cells, the lattice centred in the canvas. */
-export function flowCells(): Pt[] {
-  const { cols, rows } = C.FLOW_GRID;
+/** The block of cells B of a flow variant uses for `nB` boxes (see `FLOW_FIT_BLOCKS`). */
+export function flowBlock(variant: Variant, nB: number, field?: Rect): { cols: number; rows: number } {
+  if (variant !== 'flow-shade-fit') return C.FLOW_GRID;
+  // the rows of the paired A's packed layout (its dot-centre bounding box), 6 without one
+  const rowsA = field ? Math.round(field.h / FLOW_PITCH) + 1 : C.FLOW_FIT_ROWS;
+  let cols: number = C.FLOW_FIT_COLS;
+  let rows = Math.min(C.FLOW_FIT_ROWS, Math.max(1, rowsA));
+  const full = () => nB > cols * rows * C.FLOW_FIT_FILL;
+  while (full() && rows < C.FLOW_FIT_ROWS) rows += 1;
+  while (full() && cols < C.FLOW_GRID.cols) cols += 1;
+  while (full() && rows < C.FLOW_GRID.rows) rows += 1;
+  return { cols, rows };
+}
+
+/** Centres of the cells of a `cols` x `rows` block of the lattice, centred in the canvas. */
+export function flowCells({ cols, rows }: { cols: number; rows: number } = C.FLOW_GRID): Pt[] {
   const x0 = (C.CANVAS.width - (cols - 1) * FLOW_PITCH) / 2;
   const y0 = (C.CANVAS.height - (rows - 1) * FLOW_PITCH) / 2;
   return Array.from({ length: cols * rows }, (_, i) => ({
@@ -41,8 +54,16 @@ export function flowCells(): Pt[] {
 }
 
 /** Builds the flowchart B for one seed, or `null` when the tree could not reach `nB` boxes. */
-export function buildFlowBaseline(seed: number, nB: number, cue: Cue, density: Density, variant: Variant): Display | null {
-  const cells = flowCells();
+export function buildFlowBaseline(
+  seed: number,
+  nB: number,
+  cue: Cue,
+  density: Density,
+  variant: Variant,
+  field?: Rect,
+): Display | null {
+  const grid = flowBlock(variant, nB, field);
+  const cells = flowCells(grid);
   if (nB > cells.length) return null;
   const rng = mulberry32(seed);
   const reach = markReach(variant);
@@ -141,6 +162,6 @@ export function buildFlowBaseline(seed: number, nB: number, cue: Cue, density: D
     clusters: [],
     attempts: 1,
     variant,
-    meta: {},
+    meta: { grid: { cols: grid.cols, rows: grid.rows } },
   };
 }

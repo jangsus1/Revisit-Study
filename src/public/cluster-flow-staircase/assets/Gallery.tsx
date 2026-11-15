@@ -64,7 +64,7 @@ function diagnostics(display: Display): string {
   const { meta } = display;
   if (display.kind === 'B' && isFlow(display.variant)) {
     // the flowchart B is not fitted to A's field or link length (`flow.ts`)
-    return `${base} · boxes on the ${GENERATOR_CONFIG.FLOW_GRID.cols}×${GENERATOR_CONFIG.FLOW_GRID.rows} lattice`;
+    return `${base} · boxes on a ${display.meta.grid?.cols}×${display.meta.grid?.rows} block of the lattice`;
   }
   if (display.kind === 'B') {
     const field = meta.field ? `${fmt(meta.field.w)}×${fmt(meta.field.h)}` : '–';

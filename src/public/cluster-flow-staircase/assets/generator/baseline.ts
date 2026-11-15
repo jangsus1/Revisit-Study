@@ -110,8 +110,9 @@ export function buildBaseline(
   options: BaselineOptions = {},
 ): Display | null {
   const { variant } = options;
-  // the flowchart prototypes build B on the lattice (`flow.ts`); field and link budget do not apply
-  if (isFlow(variant)) return buildFlowBaseline(seed, nB, cue, density, variant as Variant);
+  // the flowchart prototypes build B on the lattice (`flow.ts`); the link budget does not apply and
+  // only `flow-shade-fit` reads the field
+  if (isFlow(variant)) return buildFlowBaseline(seed, nB, cue, density, variant as Variant, options.field);
   const rng = mulberry32(seed);
   const field = clipField(options.field);
   // larger nodes (color-large) keep the same white gap between them

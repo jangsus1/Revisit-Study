@@ -49,7 +49,7 @@ function buildStimulusA(seed: number, opts: GenerateOptions): Display {
   // the flowchart prototypes snap every node to the lattice
   const jitter = isFlow(opts.variant) ? 0 : drawJitter(jitterRng(seed));
   const sizes = numDistributer(rng, C.NCLUST, C.NTOTAL);
-  const layout = buildLayout(rng, sizes, jitter, opts.layout ?? layoutModeFor(opts.cue));
+  const layout = buildLayout(rng, sizes, jitter, opts.layout ?? (opts.variant === 'flow-both' ? 'grouped' : layoutModeFor(opts.cue)));
 
   if (isFlow(opts.variant)) {
     // each row of clusters is centred on its own centroids, which leaves the two rows off each

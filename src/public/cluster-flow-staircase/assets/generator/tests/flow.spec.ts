@@ -7,7 +7,7 @@ import { checkInvariants } from '../invariants';
 import { mulberry32 } from '../prng';
 import { Density, Display, VARIANT_CUE } from '../types';
 
-const FLOW = ['flow', 'flow-shade'] as const;
+const FLOW = ['flow', 'flow-shade', 'flow-shade-fit', 'flow-both'] as const;
 const SEEDS = Array.from({ length: 30 }, (_, i) => 500 + i * 13);
 const DENSITIES: Density[] = ['sparse', 'dense'];
 

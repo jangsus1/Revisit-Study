@@ -12,12 +12,12 @@ import { Display, Variant } from './types';
 
 /** True for the flowchart prototypes: boxes on the lattice, straight horizontal or vertical links. */
 export function isFlow(variant?: Variant): boolean {
-  return variant === 'flow' || variant === 'flow-shade';
+  return variant === 'flow' || variant === 'flow-shade' || variant === 'flow-shade-fit' || variant === 'flow-both';
 }
 
 /** True for the variants that fill each cluster's region instead of outlining it. */
 export function isShade(variant?: Variant): boolean {
-  return variant === 'rect-shade' || variant === 'flow-shade';
+  return variant === 'rect-shade' || variant === 'flow-shade' || variant === 'flow-shade-fit' || variant === 'flow-both';
 }
 
 /** Node radius multiplier: `color-large` only. */
