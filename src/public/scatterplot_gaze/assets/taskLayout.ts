@@ -52,3 +52,13 @@ export const taskCalibPoints = () => (['yLabel', 'q1', 'q2', 'q3', 'q4', 'xLabel
 
 /** The 3 per-trial drift / fine-tuning dots: plot centre, x label, y label. */
 export const trialCheckPoints = () => (['plot', 'xLabel', 'yLabel'] as TaskTarget[]).map(taskPoint);
+
+/**
+ * gaze_aoi_validation: 6 control calibration dots, as many as the task-region dots but away from them: the
+ * middle of the empty side margins left and right of the task frame, at 25 / 50 / 75 % of the window height.
+ */
+export function controlCalibPoints(): NormPoint[] {
+  const halfFrame = (TASK_SIZE.width * taskScale()) / 2 / window.innerWidth;   // normalized half width of the frame
+  const mx = (halfFrame + 0.5) / 2;                                              // middle of the side margin
+  return [-0.25, 0, 0.25].flatMap((ny) => [{ nx: -mx, ny }, { nx: mx, ny }]);
+}

@@ -64,7 +64,10 @@ type Features = {
 
 type Frame = { rows: Float32Array[]; t: number };
 // One calibration entry = one dot or one pursuit chunk; frames keep their augmented rows and target
-type Entry = { frames: { rows: Float32Array[]; target: [number, number] }[]; key: [number, number]; ptType: 'calib' | 'click'; ts: number };
+// `tag` (optional) names the calibration set a dot belongs to (e.g. 'grid', 'aoi', 'ctrl'), for fitVariants().
+type Entry = { frames: { rows: Float32Array[]; target: [number, number] }[]; key: [number, number]; ptType: 'calib' | 'click'; ts: number; tag?: string };
+/** A model fitted on a subset of the entries (fitVariants), applied to every frame next to the main model. */
+type Variant = { name: string; W: Float64Array[] };
 
 export default class RealEyeBackend {
   onGazeResults: (r: SlimGazeResult) => void = () => {};
@@ -89,7 +92,9 @@ export default class RealEyeBackend {
 
   private kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
 
-  private snap?: { entries: Entry[]; W: Float64Array[] | null; offset: [number, number] };
+  private snap?: { entries: Entry[]; W: Float64Array[] | null; offset: [number, number]; variants: Variant[] };
+
+  private variants: Variant[] = [];
 
   constructor(private cam: WebcamClient, private opts: { maxPoints?: number; clickTTL?: number } = {}) {}
 
@@ -157,10 +162,16 @@ export default class RealEyeBackend {
     let raw: number[] = [0, 0];
     let norm: number[] = [0, 0];
     const fitted = this.W !== null;
+    let alt: Record<string, number[]> | undefined;
     if (fitted) {
       const f = fx.extractCombinedFeatures(img, ...args, true, det.allLandmarks, img.width, img.height, ew, eh, det.blendshapes, hp);
       raw = [dot(this.W![0], f) + this.offset[0], dot(this.W![1], f) + this.offset[1]];
       norm = open ? this.kalman.step(raw) : raw;
+      // variant models: raw estimates (no drift offset, no smoothing) from the same feature vector
+      if (this.variants.length) {
+        alt = {};
+        this.variants.forEach((v) => { alt![v.name] = [dot(v.W[0], f), dot(v.W[1], f)]; });
+      }
     }
     // Head position / direction from the raw matrix (column-major: row k of the 4x4 array is column k)
     const m = det.transformationMatrix;
@@ -169,6 +180,7 @@ export default class RealEyeBackend {
     this.onGazeResults({
       normPog: norm,
       rawPog: raw,
+      alt,
       // Uncalibrated frames are reported as 'closed' so nothing treats the placeholder as gaze
       gazeState: open && fitted ? 'open' : 'closed',
       faceDetected: true,
@@ -201,30 +213,60 @@ export default class RealEyeBackend {
   /** Refit on every stored entry (needs >= 3 distinct targets; otherwise keep the previous fit). */
   private fit() {
     this.prune();
-    const { distinctTargets } = this.stats();
+    const r = this.solve(this.entries);
+    this.lastFitRows = r.rows;
+    if (!r.W) return;
+    this.W = r.W;
+    this.lastLambda = r.lambda;
+    this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
+  }
+
+  /** Ridge fit on a set of entries (same thinning and lambda choice as the main model); W null if too few targets. */
+  private solve(entries: Entry[]): { W: Float64Array[] | null; rows: number; lambda: RealEyeBackend['lastLambda'] } {
+    const distinctTargets = new Set(entries.map((e) => `${e.key[0].toFixed(2)},${e.key[1].toFixed(2)}`)).size;
     const X: Float32Array[] = [];
     const xs: number[] = [];
     const ys: number[] = [];
-    const total = this.entries.reduce((a, e) => a + e.frames.length, 0);
+    const total = entries.reduce((a, e) => a + e.frames.length, 0);
     const groups: number[] = [];
-    const perEntry = total > FRAME_BUDGET ? Math.max(1, Math.floor(FRAME_BUDGET / this.entries.length)) : Infinity;
-    this.entries.forEach((e, gi) => {
+    const perEntry = total > FRAME_BUDGET ? Math.max(1, Math.floor(FRAME_BUDGET / entries.length)) : Infinity;
+    entries.forEach((e, gi) => {
       const n = e.frames.length;
       const keep = n <= perEntry ? e.frames : Array.from({ length: perEntry }, (_, i) => e.frames[Math.floor(((i + 0.5) * n) / perEntry)]);
       keep.forEach((f) => f.rows.forEach((r) => { X.push(r); xs.push(f.target[0]); ys.push(f.target[1]); groups.push(gi); }));
     });
-    this.lastFitRows = X.length;
-    if (distinctTargets < 3 || X.length < 5) return;
-    if (this.entries.length >= 4) {
+    if (distinctTargets < 3 || X.length < 5) return { W: null, rows: X.length, lambda: null };
+    if (entries.length >= 4) {
       const scale = X.reduce((a, r) => a + dot(r as unknown as Float64Array, r), 0) / X.length;
       const r = ridgeDualCV(X, [xs, ys], groups, LAMBDA_REL.map((c) => c * scale));
-      this.W = r.W;
-      this.lastLambda = { lambda: r.lambda, rel: r.lambda / scale, cv: r.cv.map((c) => [Math.round((c.lambda / scale) * 1e6) / 1e6, Math.round(c.err * 1e5) / 1e5]) };
-    } else {
-      this.W = ridgeDual(X, [xs, ys], LAMBDA);
-      this.lastLambda = { lambda: LAMBDA, rel: null, cv: [] };
+      return {
+        W: r.W,
+        rows: X.length,
+        lambda: { lambda: r.lambda, rel: r.lambda / scale, cv: r.cv.map((c) => [Math.round((c.lambda / scale) * 1e6) / 1e6, Math.round(c.err * 1e5) / 1e5]) },
+      };
     }
-    this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
+    return { W: ridgeDual(X, [xs, ys], LAMBDA), rows: X.length, lambda: { lambda: LAMBDA, rel: null, cv: [] } };
+  }
+
+  /**
+   * Fit extra models on subsets of the stored entries, selected by tag (gaze_aoi_validation): e.g.
+   * { grid: ['grid'], aoi: ['grid', 'aoi'], ctrl: ['grid', 'ctrl'] }. Every later frame carries their raw
+   * estimates in `alt`, so models are compared on the same frames. The main model is not changed.
+   */
+  async fitVariants(spec: Record<string, string[]>): Promise<{ name: string; entries: number; rows: number; lambdaRel: number | null; fitMs: number; fitted: boolean }[]> {
+    const out: { name: string; entries: number; rows: number; lambdaRel: number | null; fitMs: number; fitted: boolean }[] = [];
+    const variants: Variant[] = [];
+    Object.entries(spec).forEach(([name, tags]) => {
+      const t0 = performance.now();
+      const sel = this.entries.filter((e) => e.tag !== undefined && tags.includes(e.tag));
+      const r = this.solve(sel);
+      if (r.W) variants.push({ name, W: r.W });
+      out.push({
+        name, entries: sel.length, rows: r.rows, lambdaRel: r.lambda?.rel ?? null, fitMs: Math.round(performance.now() - t0), fitted: !!r.W,
+      });
+    });
+    this.variants = variants;
+    return out;
   }
 
   /** Rows used by the last fit (after thinning). */
@@ -234,12 +276,13 @@ export default class RealEyeBackend {
    * ([relative lambda, mean held-out error in normalized screen units]). */
   lastLambda: { lambda: number; rel: number | null; cv: number[][] } | null = null;
 
-  private toEntry(frames: Frame[], targets: [number, number][], ptType: 'calib' | 'click'): Entry {
+  private toEntry(frames: Frame[], targets: [number, number][], ptType: 'calib' | 'click', tag?: string): Entry {
     return {
       frames: frames.map((f, i) => ({ rows: f.rows, target: targets[i] })),
       key: targets[0],
       ptType,
       ts: Date.now(),
+      tag,
     };
   }
 
@@ -251,7 +294,7 @@ export default class RealEyeBackend {
     };
   }
 
-  async calibEnd(ptType: 'calib' | 'click', maxSamples = 8, defer = false): Promise<CalibResult> {
+  async calibEnd(ptType: 'calib' | 'click', maxSamples = 8, defer = false, tag?: string): Promise<CalibResult> {
     const c = this.collecting;
     this.collecting = null;
     if (!c) return { ...this.stats(), n: 0 };
@@ -260,7 +303,7 @@ export default class RealEyeBackend {
     const settled = c.buf.filter((f) => f.t >= c.t0 + SETTLE_MS);
     const frames = (settled.length >= 3 ? settled : c.buf).slice(-maxSamples);
     if (frames.length) {
-      const e = this.toEntry(frames, frames.map(() => [c.x, c.y] as [number, number]), ptType);
+      const e = this.toEntry(frames, frames.map(() => [c.x, c.y] as [number, number]), ptType, tag);
       if (defer) this.pending.push(e);
       else { this.entries.push(e); this.fit(); }
     }
@@ -313,7 +356,9 @@ export default class RealEyeBackend {
   }
 
   async snapshotCalib(): Promise<void> {
-    this.snap = { entries: [...this.entries], W: this.W, offset: [...this.offset] };
+    this.snap = {
+      entries: [...this.entries], W: this.W, offset: [...this.offset], variants: [...this.variants],
+    };
   }
 
   async restoreCalib(): Promise<{ restored: boolean } & CalibResult> {
@@ -323,21 +368,25 @@ export default class RealEyeBackend {
     this.entries = this.snap.entries;
     this.W = this.snap.W;
     this.offset = this.snap.offset;
+    this.variants = this.snap.variants;
     this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
     return { restored: true, ...this.stats() };
   }
 
   /** Whole calibration state (entries, weights, offset), for keeping the best of several attempts. */
-  getState(): { entries: Entry[]; W: Float64Array[] | null; offset: [number, number] } {
-    return { entries: [...this.entries], W: this.W, offset: [...this.offset] as [number, number] };
+  getState(): { entries: Entry[]; W: Float64Array[] | null; offset: [number, number]; variants: Variant[] } {
+    return {
+      entries: [...this.entries], W: this.W, offset: [...this.offset] as [number, number], variants: [...this.variants],
+    };
   }
 
-  setState(st: { entries: Entry[]; W: Float64Array[] | null; offset: [number, number] }): void {
+  setState(st: { entries: Entry[]; W: Float64Array[] | null; offset: [number, number]; variants?: Variant[] }): void {
     this.collecting = null;
     this.pending = [];
     this.entries = [...st.entries];
     this.W = st.W;
     this.offset = [...st.offset] as [number, number];
+    this.variants = [...(st.variants ?? [])];
     this.snap = undefined;
     this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
   }
@@ -357,6 +406,7 @@ export default class RealEyeBackend {
     this.entries = [];
     this.W = null;
     this.offset = [0, 0];
+    this.variants = [];
     this.snap = undefined;
     this.kalman = new KalmanFilter2D(1.0, 2e-3, 1e-2);
   }

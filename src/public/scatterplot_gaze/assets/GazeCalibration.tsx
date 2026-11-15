@@ -8,7 +8,8 @@ import type { HeadPose } from './gazeTracker';
 import {
   CalibrationOverlay, FULL_GRID, VALIDATION_POINTS, meanPose, useDotSequence,
 } from './CalibrationOverlay';
-import { taskCalibPoints } from './taskLayout';
+import { controlCalibPoints, taskCalibPoints } from './taskLayout';
+import type { VariantFit } from './gazeTracker';
 import type { CalibPointLog, ValidationResult } from './CalibrationOverlay';
 import { PositionGuide } from './PositionGuide';
 import { useHeadTrace } from './headTrace';
@@ -25,17 +26,33 @@ const OVERRIDE_MS = 30000;
 // (y label, 4 plot quadrants, x label; taskLayout.ts), so the fit separates the regions the trials use.
 // No smooth pursuit. mode 'recalibrate' (halfway through the trials): keep the calibration collected so
 // far and add a new set of the same 15 dots to it (pooled), one attempt, logged as gazeTracker.midCalib.
-type Params = { maxAttempts?: number; acceptPctW?: number; mode?: 'full' | 'recalibrate'; title?: string };
+// variants (gaze_aoi_validation): 6 control dots in the side margins are added, the 21 dots run in random order
+// and are tagged grid / aoi / ctrl, and after the main fit (all dots) one extra model per entry of
+// `variants` is fitted on its tags; every later gaze sample then carries their estimates (GazeSample.alt).
+type Params = {
+  maxAttempts?: number; acceptPctW?: number; mode?: 'full' | 'recalibrate'; title?: string; variants?: Record<string, string[]>;
+};
+
+function shuffle<T>(a: T[]): T[] {
+  const b = [...a];
+  for (let i = b.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [b[i], b[j]] = [b[j], b[i]];
+  }
+  return b;
+}
 
 type Phase = 'intro' | 'running' | 'retry' | 'done';
 
 type Position = { distanceCm: number | null; ready: boolean; guideMs: number; overridden: boolean };
-type Attempt = ValidationResult & { calib?: CalibPointLog[]; head?: HeadPose | null; position?: Position };
+type Attempt = ValidationResult & { calib?: CalibPointLog[]; head?: HeadPose | null; position?: Position; variants?: VariantFit[] };
 
 function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Params>) {
   const recal = parameters?.mode === 'recalibrate';
   const maxAttempts = recal ? 1 : parameters?.maxAttempts ?? 3;
   const acceptPctW = parameters?.acceptPctW ?? 0.08;
+  const variantSpec = parameters?.variants;
+  const [variantFitting, setVariantFitting] = useState(false);
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [attempts, setAttempts] = useState<Attempt[]>([]);
@@ -160,10 +177,23 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
       if (recal) await gazeTracker.setOffsetPx(0, 0); else await gazeTracker.resetCalibration();
       setMessage('Look at each dot. Keep your head still.');
       // 9 grid dots + 6 task-region dots; the tracker fits all of it on the "Calibrating…" screen
-      const calib = await runCalibration([...FULL_GRID, ...taskCalibPoints()], 'calib', 1800, 1000);
+      let variants: VariantFit[] | undefined;
+      let calib: CalibPointLog[];
+      if (variantSpec) {
+        const points = shuffle([
+          ...FULL_GRID.map((p) => ({ ...p, tag: 'grid' })),
+          ...taskCalibPoints().map((p) => ({ ...p, tag: 'aoi' })),
+          ...controlCalibPoints().map((p) => ({ ...p, tag: 'ctrl' })),
+        ]);
+        calib = await runCalibration(points, 'calib', 1800, 1000);
+        setVariantFitting(true);
+        try { variants = await gazeTracker.fitVariants(variantSpec); } finally { setVariantFitting(false); }
+      } else {
+        calib = await runCalibration([...FULL_GRID, ...taskCalibPoints()], 'calib', 1800, 1000);
+      }
       const validation = await runValidation(VALIDATION_POINTS, 1500, 800, 'Checking accuracy');
       finish({
-        ...validation, calib, head: meanPose(validation.points), position,
+        ...validation, calib, head: meanPose(validation.points), position, variants,
       });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -171,14 +201,14 @@ function GazeCalibration({ parameters, setAnswer, advance }: StimulusParams<Para
         points: [], meanErrorPx: null, meanErrorPctW: null, meanOffsetPx: null, viewport: [window.innerWidth, window.innerHeight], hz: 0, position,
       });
     }
-  }, [acceptPctW, maxAttempts, runCalibration, runValidation, setMessage, pos, guideSince, recal]);
+  }, [acceptPctW, maxAttempts, runCalibration, runValidation, setMessage, pos, guideSince, recal, variantSpec]);
 
   const startLabel = (label: string) => (pos?.ready || !canOverride ? label : `${label} anyway`);
 
   return (
     <>
       {phase === 'running' && (
-        <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={fitting} />
+        <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={fitting || variantFitting} />
       )}
 
       {phase === 'intro' && (

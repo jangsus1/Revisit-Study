@@ -284,7 +284,8 @@ export function useDotSequence() {
       if (cancelled.current) break;
       setMessage(`Look at the dot (${i + 1} / ${points.length})`);
       // eslint-disable-next-line no-await-in-loop
-      const r = await showDot(points[i], dwellMs, collectMs, () => gazeTracker.calibrate(points[i].nx, points[i].ny, collectMs, ptType, true));
+      const { tag } = points[i] as NormPoint & { tag?: string };   // calibration set (gaze_aoi_validation)
+      const r = await showDot(points[i], dwellMs, collectMs, () => gazeTracker.calibrate(points[i].nx, points[i].ny, collectMs, ptType, true, tag));
       if (r) {
         results.push({
           ...(r.result as CalibResult), ...points[i], dwellMs, collectMs, trace: r.trace, pose: r.pose,

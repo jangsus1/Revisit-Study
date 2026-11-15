@@ -1,0 +1,851 @@
+{
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/StudyConfigSchema.json",
+  "studyMetadata": {
+    "title": "Webcam gaze accuracy at areas of interest (chart-free validation)",
+    "version": "pilot",
+    "authors": [
+      "Minsuk Chang"
+    ],
+    "date": "2026-11-15",
+    "description": "Letter targets on an empty chart frame; models fitted on grid, grid + AOI and grid + control calibration dots compared on the same frames",
+    "organizations": [
+      "Georgia Institute of Technology"
+    ]
+  },
+  "uiConfig": {
+    "contactEmail": "minsuk@gatech.edu",
+    "helpTextPath": "scatterplot_gaze/assets/help.md",
+    "logoPath": "revisitAssets/gt_logo.png",
+    "withProgressBar": true,
+    "autoDownloadStudy": false,
+    "withSidebar": false,
+    "urlParticipantIdParam": "PROLIFIC_PID",
+    "studyEndMsg": "**Thank you for completing the study. You may click this link and return to Prolific**: [https://app.prolific.com/submissions/complete?cc=C1OCRYTV](https://app.prolific.com/submissions/complete?cc=C1OCRYTV)",
+    "showTitle": false,
+    "nextButtonDisabledUntilValid": true
+  },
+  "studyRules": {
+    "devices": {
+      "allowed": [
+        "desktop"
+      ],
+      "blockedMessage": "This study requires a desktop or laptop computer with a webcam."
+    },
+    "inputs": {
+      "allowed": [
+        "mouse"
+      ],
+      "blockedMessage": "This study requires a mouse or trackpad."
+    },
+    "display": {
+      "minWidth": 900,
+      "minHeight": 550,
+      "blockedMessage": "Please make your browser window larger (full screen works best)."
+    },
+    "browsers": {
+      "allowed": [
+        {
+          "name": "chrome",
+          "minVersion": 110
+        },
+        {
+          "name": "edge",
+          "minVersion": 110
+        },
+        {
+          "name": "firefox",
+          "minVersion": 115
+        }
+      ],
+      "blockedMessage": "Please use a recent version of Chrome, Edge or Firefox. Safari is not supported for the eye-tracking task."
+    }
+  },
+  "components": {
+    "fullscreen": {
+      "type": "react-component",
+      "path": "scatterplot_gaze/assets/FullScreen.tsx",
+      "response": [
+        {
+          "id": "fullscreen",
+          "prompt": "Full screen",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "consent": {
+      "type": "markdown",
+      "path": "gaze_aoi_validation/assets/consent.md",
+      "nextButtonText": "I agree",
+      "response": []
+    },
+    "intro": {
+      "type": "react-component",
+      "path": "scatterplot_gaze/assets/IntroPage.tsx",
+      "parameters": {
+        "kicker": "About 10 minutes",
+        "title": "Where are you looking?",
+        "bullets": [
+          "Your **webcam** estimates where you look on the screen. Video never leaves your computer; nothing is recorded.",
+          "You will look at **blue dots** and read a **tiny letter** that flashes where the dot was.",
+          "First a short practice, then the camera setup, then **4 short parts** (about 1 minute each).",
+          "During the eye tracking, **keep your head still** and move only your eyes."
+        ],
+        "button": "Start the practice",
+        "headStill": false
+      },
+      "response": [],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "letters_practice": {
+      "type": "react-component",
+      "path": "gaze_aoi_validation/assets/LetterTargets.tsx",
+      "parameters": {
+        "block": 0,
+        "nBlocks": 4,
+        "practice": true,
+        "targets": [
+          {
+            "id": "plot_p1",
+            "region": "plot",
+            "letter": "H",
+            "u": 0.628,
+            "v": 0.515
+          },
+          {
+            "id": "marginL_p2",
+            "region": "margin",
+            "letter": "H",
+            "u": 0.436,
+            "v": 0.676,
+            "side": "L"
+          },
+          {
+            "id": "check_p",
+            "region": "check",
+            "point": "plot"
+          },
+          {
+            "id": "yLabel_p3",
+            "region": "yLabel",
+            "letter": "E",
+            "u": 0.288,
+            "v": 0.872
+          },
+          {
+            "id": "marginR_p4",
+            "region": "margin",
+            "letter": "N",
+            "u": 0.68,
+            "v": 0.482,
+            "side": "R"
+          },
+          {
+            "id": "xLabel_p5",
+            "region": "xLabel",
+            "letter": "F",
+            "u": 0.756,
+            "v": 0.708
+          }
+        ]
+      },
+      "response": [
+        {
+          "id": "targets",
+          "prompt": "Letter targets",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "webcamPermission": {
+      "type": "react-component",
+      "path": "scatterplot_gaze/assets/WebcamPermission.tsx",
+      "parameters": {
+        "failLink": "https://app.prolific.com/submissions/complete?cc=C1N03H9S"
+      },
+      "response": [
+        {
+          "id": "webcamPermission",
+          "prompt": "Webcam permission",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "gazeCalibration": {
+      "type": "react-component",
+      "path": "scatterplot_gaze/assets/GazeCalibration.tsx",
+      "parameters": {
+        "maxAttempts": 3,
+        "acceptPctW": 0.08,
+        "variants": {
+          "grid": [
+            "grid"
+          ],
+          "aoi": [
+            "grid",
+            "aoi"
+          ],
+          "ctrl": [
+            "grid",
+            "ctrl"
+          ]
+        }
+      },
+      "response": [
+        {
+          "id": "calibration",
+          "prompt": "Calibration result",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "letters_1": {
+      "type": "react-component",
+      "path": "gaze_aoi_validation/assets/LetterTargets.tsx",
+      "parameters": {
+        "block": 1,
+        "nBlocks": 4,
+        "targets": [
+          {
+            "id": "check_plot_1",
+            "region": "check",
+            "point": "plot"
+          },
+          {
+            "id": "check_yLabel_1",
+            "region": "check",
+            "point": "yLabel"
+          },
+          {
+            "id": "check_xLabel_1",
+            "region": "check",
+            "point": "xLabel"
+          },
+          {
+            "id": "xLabel_4",
+            "region": "xLabel",
+            "letter": "T",
+            "u": 0.633,
+            "v": 0.714
+          },
+          {
+            "id": "marginL_9",
+            "region": "margin",
+            "letter": "E",
+            "u": 0.261,
+            "v": 0.3,
+            "side": "L"
+          },
+          {
+            "id": "marginL_2",
+            "region": "margin",
+            "letter": "T",
+            "u": 0.631,
+            "v": 0.792,
+            "side": "L"
+          },
+          {
+            "id": "marginL_0",
+            "region": "margin",
+            "letter": "K",
+            "u": 0.472,
+            "v": 0.231,
+            "side": "L"
+          },
+          {
+            "id": "plot_5",
+            "region": "plot",
+            "letter": "P",
+            "u": 0.214,
+            "v": 0.511
+          },
+          {
+            "id": "marginR_10",
+            "region": "margin",
+            "letter": "H",
+            "u": 0.622,
+            "v": 0.238,
+            "side": "R"
+          },
+          {
+            "id": "plot_4",
+            "region": "plot",
+            "letter": "Z",
+            "u": 0.206,
+            "v": 0.537
+          },
+          {
+            "id": "plot_7",
+            "region": "plot",
+            "letter": "H",
+            "u": 0.387,
+            "v": 0.388
+          },
+          {
+            "id": "marginR_0",
+            "region": "margin",
+            "letter": "K",
+            "u": 0.592,
+            "v": 0.121,
+            "side": "R"
+          },
+          {
+            "id": "yLabel_1",
+            "region": "yLabel",
+            "letter": "P",
+            "u": 0.582,
+            "v": 0.459
+          },
+          {
+            "id": "marginR_7",
+            "region": "margin",
+            "letter": "F",
+            "u": 0.689,
+            "v": 0.246,
+            "side": "R"
+          },
+          {
+            "id": "yLabel_2",
+            "region": "yLabel",
+            "letter": "K",
+            "u": 0.645,
+            "v": 0.787
+          }
+        ]
+      },
+      "response": [
+        {
+          "id": "targets",
+          "prompt": "Letter targets",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "letters_2": {
+      "type": "react-component",
+      "path": "gaze_aoi_validation/assets/LetterTargets.tsx",
+      "parameters": {
+        "block": 2,
+        "nBlocks": 4,
+        "targets": [
+          {
+            "id": "check_plot_2",
+            "region": "check",
+            "point": "plot"
+          },
+          {
+            "id": "check_yLabel_2",
+            "region": "check",
+            "point": "yLabel"
+          },
+          {
+            "id": "check_xLabel_2",
+            "region": "check",
+            "point": "xLabel"
+          },
+          {
+            "id": "plot_9",
+            "region": "plot",
+            "letter": "P",
+            "u": 0.382,
+            "v": 0.546
+          },
+          {
+            "id": "marginL_4",
+            "region": "margin",
+            "letter": "F",
+            "u": 0.629,
+            "v": 0.138,
+            "side": "L"
+          },
+          {
+            "id": "yLabel_0",
+            "region": "yLabel",
+            "letter": "Z",
+            "u": 0.221,
+            "v": 0.611
+          },
+          {
+            "id": "marginL_5",
+            "region": "margin",
+            "letter": "K",
+            "u": 0.529,
+            "v": 0.536,
+            "side": "L"
+          },
+          {
+            "id": "marginR_8",
+            "region": "margin",
+            "letter": "E",
+            "u": 0.497,
+            "v": 0.865,
+            "side": "R"
+          },
+          {
+            "id": "plot_2",
+            "region": "plot",
+            "letter": "F",
+            "u": 0.608,
+            "v": 0.852
+          },
+          {
+            "id": "plot_10",
+            "region": "plot",
+            "letter": "P",
+            "u": 0.832,
+            "v": 0.377
+          },
+          {
+            "id": "marginR_1",
+            "region": "margin",
+            "letter": "Z",
+            "u": 0.454,
+            "v": 0.702,
+            "side": "R"
+          },
+          {
+            "id": "yLabel_4",
+            "region": "yLabel",
+            "letter": "E",
+            "u": 0.681,
+            "v": 0.38
+          },
+          {
+            "id": "marginL_10",
+            "region": "margin",
+            "letter": "P",
+            "u": 0.511,
+            "v": 0.212,
+            "side": "L"
+          },
+          {
+            "id": "marginR_5",
+            "region": "margin",
+            "letter": "N",
+            "u": 0.598,
+            "v": 0.795,
+            "side": "R"
+          },
+          {
+            "id": "xLabel_5",
+            "region": "xLabel",
+            "letter": "T",
+            "u": 0.582,
+            "v": 0.658
+          }
+        ]
+      },
+      "response": [
+        {
+          "id": "targets",
+          "prompt": "Letter targets",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "letters_3": {
+      "type": "react-component",
+      "path": "gaze_aoi_validation/assets/LetterTargets.tsx",
+      "parameters": {
+        "block": 3,
+        "nBlocks": 4,
+        "targets": [
+          {
+            "id": "check_plot_3",
+            "region": "check",
+            "point": "plot"
+          },
+          {
+            "id": "check_yLabel_3",
+            "region": "check",
+            "point": "yLabel"
+          },
+          {
+            "id": "check_xLabel_3",
+            "region": "check",
+            "point": "xLabel"
+          },
+          {
+            "id": "xLabel_0",
+            "region": "xLabel",
+            "letter": "H",
+            "u": 0.771,
+            "v": 0.718
+          },
+          {
+            "id": "marginR_6",
+            "region": "margin",
+            "letter": "F",
+            "u": 0.331,
+            "v": 0.871,
+            "side": "R"
+          },
+          {
+            "id": "marginL_7",
+            "region": "margin",
+            "letter": "F",
+            "u": 0.472,
+            "v": 0.395,
+            "side": "L"
+          },
+          {
+            "id": "marginL_6",
+            "region": "margin",
+            "letter": "T",
+            "u": 0.552,
+            "v": 0.311,
+            "side": "L"
+          },
+          {
+            "id": "yLabel_5",
+            "region": "yLabel",
+            "letter": "N",
+            "u": 0.213,
+            "v": 0.206
+          },
+          {
+            "id": "plot_6",
+            "region": "plot",
+            "letter": "H",
+            "u": 0.366,
+            "v": 0.863
+          },
+          {
+            "id": "plot_11",
+            "region": "plot",
+            "letter": "F",
+            "u": 0.153,
+            "v": 0.256
+          },
+          {
+            "id": "marginR_9",
+            "region": "margin",
+            "letter": "Z",
+            "u": 0.521,
+            "v": 0.437,
+            "side": "R"
+          },
+          {
+            "id": "xLabel_1",
+            "region": "xLabel",
+            "letter": "H",
+            "u": 0.352,
+            "v": 0.565
+          },
+          {
+            "id": "plot_1",
+            "region": "plot",
+            "letter": "Z",
+            "u": 0.375,
+            "v": 0.666
+          },
+          {
+            "id": "marginL_3",
+            "region": "margin",
+            "letter": "K",
+            "u": 0.726,
+            "v": 0.333,
+            "side": "L"
+          },
+          {
+            "id": "marginR_4",
+            "region": "margin",
+            "letter": "N",
+            "u": 0.386,
+            "v": 0.634,
+            "side": "R"
+          }
+        ]
+      },
+      "response": [
+        {
+          "id": "targets",
+          "prompt": "Letter targets",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "letters_4": {
+      "type": "react-component",
+      "path": "gaze_aoi_validation/assets/LetterTargets.tsx",
+      "parameters": {
+        "block": 4,
+        "nBlocks": 4,
+        "targets": [
+          {
+            "id": "check_plot_4",
+            "region": "check",
+            "point": "plot"
+          },
+          {
+            "id": "check_yLabel_4",
+            "region": "check",
+            "point": "yLabel"
+          },
+          {
+            "id": "check_xLabel_4",
+            "region": "check",
+            "point": "xLabel"
+          },
+          {
+            "id": "marginL_11",
+            "region": "margin",
+            "letter": "P",
+            "u": 0.573,
+            "v": 0.528,
+            "side": "L"
+          },
+          {
+            "id": "plot_3",
+            "region": "plot",
+            "letter": "H",
+            "u": 0.818,
+            "v": 0.281
+          },
+          {
+            "id": "marginR_3",
+            "region": "margin",
+            "letter": "K",
+            "u": 0.592,
+            "v": 0.159,
+            "side": "R"
+          },
+          {
+            "id": "xLabel_3",
+            "region": "xLabel",
+            "letter": "F",
+            "u": 0.396,
+            "v": 0.672
+          },
+          {
+            "id": "marginR_2",
+            "region": "margin",
+            "letter": "N",
+            "u": 0.417,
+            "v": 0.194,
+            "side": "R"
+          },
+          {
+            "id": "marginL_8",
+            "region": "margin",
+            "letter": "Z",
+            "u": 0.328,
+            "v": 0.864,
+            "side": "L"
+          },
+          {
+            "id": "marginL_1",
+            "region": "margin",
+            "letter": "N",
+            "u": 0.531,
+            "v": 0.719,
+            "side": "L"
+          },
+          {
+            "id": "plot_0",
+            "region": "plot",
+            "letter": "H",
+            "u": 0.333,
+            "v": 0.48
+          },
+          {
+            "id": "plot_8",
+            "region": "plot",
+            "letter": "E",
+            "u": 0.538,
+            "v": 0.593
+          },
+          {
+            "id": "xLabel_2",
+            "region": "xLabel",
+            "letter": "Z",
+            "u": 0.363,
+            "v": 0.436
+          },
+          {
+            "id": "marginR_11",
+            "region": "margin",
+            "letter": "P",
+            "u": 0.55,
+            "v": 0.457,
+            "side": "R"
+          },
+          {
+            "id": "yLabel_3",
+            "region": "yLabel",
+            "letter": "N",
+            "u": 0.73,
+            "v": 0.19
+          }
+        ]
+      },
+      "response": [
+        {
+          "id": "targets",
+          "prompt": "Letter targets",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "gazeFinalCheck": {
+      "type": "react-component",
+      "path": "scatterplot_gaze/assets/GazeFinalCheck.tsx",
+      "parameters": {
+        "taskDots": true
+      },
+      "response": [
+        {
+          "id": "finalCheck",
+          "prompt": "End-of-session accuracy check",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "gazeEnd": {
+      "type": "react-component",
+      "path": "scatterplot_gaze/assets/GazeEnd.tsx",
+      "response": [
+        {
+          "id": "gazeEnd",
+          "prompt": "Eye tracking finished",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "instructionLocation": "belowStimulus",
+      "nextButtonLocation": "belowStimulus"
+    },
+    "demographics": {
+      "type": "markdown",
+      "path": "shared/blank.md",
+      "response": [
+        {
+          "id": "gender",
+          "prompt": "What is your **gender**?",
+          "required": true,
+          "location": "aboveStimulus",
+          "type": "radio",
+          "withOther": true,
+          "options": [
+            "Woman",
+            "Man",
+            "Prefer not to say"
+          ],
+          "withDivider": true
+        },
+        {
+          "id": "age",
+          "prompt": "What is your **age**?",
+          "required": true,
+          "location": "aboveStimulus",
+          "type": "radio",
+          "options": [
+            "Under 18 years",
+            "18-24 years",
+            "25-34 years",
+            "35-44 years",
+            "45-54 years",
+            "55-64 years",
+            "65 years or older",
+            "Prefer not to say"
+          ],
+          "withDivider": true
+        },
+        {
+          "id": "education",
+          "prompt": "What is the **highest degree or level of education** you have completed?",
+          "required": true,
+          "location": "aboveStimulus",
+          "type": "radio",
+          "withOther": true,
+          "options": [
+            "Less than high school",
+            "High school diploma or equivalent",
+            "Bachelor's degree or equivalent",
+            "Master's degree or equivalent",
+            "Doctoral degree or equivalent"
+          ],
+          "withDivider": true
+        },
+        {
+          "id": "eyewear",
+          "prompt": "Were you wearing **glasses or contact lenses** during this experiment?",
+          "required": true,
+          "location": "aboveStimulus",
+          "type": "radio",
+          "options": [
+            "Glasses",
+            "Contact lenses",
+            "None"
+          ],
+          "withDivider": true
+        }
+      ]
+    }
+  },
+  "sequence": {
+    "order": "fixed",
+    "components": [
+      "fullscreen",
+      "consent",
+      "intro",
+      "letters_practice",
+      "webcamPermission",
+      "gazeCalibration",
+      "letters_1",
+      "letters_2",
+      "letters_3",
+      "letters_4",
+      "gazeFinalCheck",
+      "gazeEnd",
+      "demographics"
+    ]
+  }
+}

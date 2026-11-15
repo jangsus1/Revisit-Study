@@ -15,7 +15,7 @@ type Backend = {
   onGazeResults: (r: SlimGazeResult) => void;
   start(): Promise<void>;
   calibStart(x: number, y: number, pursuit?: boolean): Promise<void>;
-  calibEnd(ptType: 'calib' | 'click', maxSamples?: number, defer?: boolean): Promise<CalibResult>;
+  calibEnd(ptType: 'calib' | 'click', maxSamples?: number, defer?: boolean, tag?: string): Promise<CalibResult>;
   calibFlush(): Promise<CalibResult & { points: number; fitMs: number }>;
   pursuitEnd(path: number[][], chunks?: number, perChunk?: number): Promise<CalibResult & { frames: number; chunks: number }>;
   snapshotCalib(): Promise<void>;
@@ -24,10 +24,14 @@ type Backend = {
   resetCalib(): Promise<void>;
   dispose(): void;
   hasFit?(): boolean;
+  fitVariants?(spec: Record<string, string[]>): Promise<VariantFit[]>;
   getState?(): unknown;
   setState?(st: unknown): void;
   frameErrors?: number;
 };
+
+/** Summary of one extra model fitted on a tagged subset of the calibration (RealEye only). */
+export type VariantFit = { name: string; entries: number; rows: number; lambdaRel: number | null; fitMs: number; fitted: boolean };
 
 export type GazeSample = {
   t: number;        // performance.now() when the frame was captured
@@ -39,6 +43,7 @@ export type GazeSample = {
   face: boolean;    // a face was detected in the frame
   head: number[] | null;    // unit head-direction vector (null without a face)
   origin: number[] | null;  // 3D face origin in cm, camera frame; [2] = distance to camera
+  alt?: Record<string, number[]>;  // raw normalized estimates of the variant models (fitVariants), if any
 };
 
 /** Mean face origin / head direction over a set of samples (null when no face was seen). */
@@ -261,6 +266,7 @@ export class GazeTracker {
       face: r.faceDetected,
       head: r.head ?? null,
       origin: r.origin ?? null,
+      alt: r.alt,
     };
     this.lastSample = sample;
     this.sampleCount += 1;
@@ -298,11 +304,20 @@ export class GazeTracker {
   }
 
   /** Collect gaze samples for `ms` while the participant fixates normalized (nx, ny), then adapt. */
-  async calibrate(nx: number, ny: number, ms: number, ptType: 'calib' | 'click', defer = false): Promise<CalibResult> {
+  async calibrate(nx: number, ny: number, ms: number, ptType: 'calib' | 'click', defer = false, tag?: string): Promise<CalibResult> {
     if (!this.proxy) throw new Error('tracker not started');
     await this.proxy.calibStart(nx, ny);
     await new Promise((resolve) => { setTimeout(resolve, ms); });
-    return this.proxy.calibEnd(ptType, 10, defer);
+    return this.proxy.calibEnd(ptType, 10, defer, tag);
+  }
+
+  /**
+   * Fit extra models on tagged subsets of the calibration (see RealEyeBackend.fitVariants); their raw estimates
+   * then arrive in every sample's `alt`. Resolves to [] for engines without variants.
+   */
+  async fitVariants(spec: Record<string, string[]>): Promise<VariantFit[]> {
+    if (!this.proxy) throw new Error('tracker not started');
+    return this.proxy.fitVariants ? this.proxy.fitVariants(spec) : [];
   }
 
   /** Adapt to all points collected with defer=true (call once the dots are gone). */

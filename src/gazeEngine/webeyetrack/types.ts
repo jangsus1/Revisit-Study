@@ -36,6 +36,7 @@ export interface GazeResult {
 export interface SlimGazeResult {
   normPog: number[];
   rawPog: number[];
+  alt?: Record<string, number[]>; // RealEye: raw estimates of extra models fitted on calibration subsets (fitVariants)
   gazeState: 'open' | 'closed';
   faceDetected: boolean;
   head?: number[] | null;       // unit head-direction vector

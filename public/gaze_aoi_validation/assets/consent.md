@@ -1,0 +1,34 @@
+# **Consent Form**  
+**Georgia Institute of Technology**  
+**Study Title:** Measuring trust in visualizations based on gaze patterns  
+
+## **Key Information**  
+- **Voluntary participation**: You can withdraw anytime without consequences.  
+- **Purpose**: Analyze gaze patterns to understand trust in visualizations.  
+- **Eligibility**: Must be **18 or older**, using a desktop or laptop computer **with a webcam**.  
+- **Duration**: **about 10 minutes**, one-time session.  
+- **Tasks**: Looking at dots on the screen and identifying small letters that briefly appear where a dot was, after a short eye-tracking calibration in which you look at dots on the screen.  
+- **Webcam use**: After the practice your webcam is used to estimate where on the screen you are looking. **Your camera video and your screen are never recorded, transmitted, or stored.** The video is processed locally in your browser only. Only estimated on-screen gaze coordinates, approximate head position, and calibration accuracy are saved.  
+- **Please keep your head still** while your webcam is in use; the eye tracking depends on it.  
+
+## **Risks**  
+- Minimal risks: fatigue, boredom, or eye strain—breaks allowed.  
+- You may cover or disable your camera as soon as the eye-tracking part ends.  
+
+## **Privacy & Confidentiality**  
+- Personal data is protected; de-identified data may be shared for research.  
+- No images or video of you are collected.  
+- Study records may be reviewed by Georgia Tech IRB and regulatory bodies.  
+
+## **Withdrawal & Contact**  
+- You may exit anytime; collected data will not be saved.  
+- **Study questions**: [minsuk@gatech.edu](mailto:minsuk@gatech.edu)  
+- **Participant rights**: [IRB@gatech.edu](mailto:IRB@gatech.edu)  
+
+## **Consent**  
+By clicking “I agree,” you confirm:  
+✔ You are **18+ years old**.  
+✔ You have read and understood this form, including the webcam use.  
+✔ You voluntarily agree to participate.  
+
+**[Download Full Consent Form (PDF)](../scatterplot_gaze/assets/consent.pdf)**
