@@ -365,6 +365,5 @@ intro, `arrows_practice` (8 targets with feedback, before the camera), webcam, `
   plus distance to the nearest calibration dot. Expected: aoi < ctrl in the AOIs, ctrl <= aoi in the margins.
 - Checked headless (arrow version: practice and a block played with arrow keys; a block with a simulated gaze feed logs the expected per-model
   errors); the calibration with a real face has not been run.
-- **Pilot 1** (2026-11-16, one session, letter version, stopped after block 1; data in ScatterplotMitigation
-  `data/gaze_aoi_validation_pilot1_tidy.csv`): MacBook 1512x949, 23 Hz, calibration validation 45 px (1.2 deg),
+- **Pilot 1** (2026-11-16, one session, letter version, stopped after block 1; export not kept): MacBook 1512x949, 23 Hz, calibration validation 45 px (1.2 deg),
   variant fits 0.4-1.0 s each, 11 / 12 letters correct. Too little data for the model comparison.
