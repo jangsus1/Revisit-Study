@@ -355,10 +355,10 @@ intro, `arrows_practice` (8 targets with feedback, before the camera), webcam, `
   every block (and the practice) starts with an arrow key, not a click, so the fingers rest on the keys and nobody
   looks down (2026-11-16; the first version used typed letters, and pilot 1 had a keyboard glance that put the gaze
   below the screen during a measurement window, plus head shift creeping from 3 to 20 mm over the block). 48 targets: plot 12, y label 6, x label 6, margins 24 (12 per side), dealt stratified
-  over 4 blocks of 12 plus 3 check dots (plot centre, y label, x label; 1500 ms, no letter) at each block start.
+  over 4 blocks of 12 plus 3 check dots (plot centre, y label, x label; 1500 ms, no arrow) at each block start.
   Positions are region-relative (u, v) in config.json, so they map onto any window.
-- **Data** (`responseId == 'targets'`, one row per block): `altNames`, per trial `px`, `region`, `letter`,
-  `arrow`, `response`, `correct`, `rtMs`, `earlyKeys` (arrow presses before the response screen), `errPx` (median error per model over [cue end - 500, letter end] ms; checks: last
+- **Data** (`responseId == 'targets'`, one row per block): `altNames`, per trial `px`, `region`,
+  `arrow`, `response`, `correct`, `rtMs`, `earlyKeys` (arrow presses before the response screen), `errPx` (median error per model over [cue end - 500, arrow end] ms; checks: last
   700 ms), `headShiftMm`, `samples` = `[t_ms_since_cue, x, y, open01, <alt x, y in altNames order>]` (raw, viewport
   px, -9999 = model missing).
 - **Analysis plan**: correct-arrow trials only (chance 25 %); error ~ model x region_group (AOI vs margin) + (1 | participant),
