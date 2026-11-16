@@ -7,7 +7,7 @@
 - **Purpose**: Analyze gaze patterns to understand trust in visualizations.  
 - **Eligibility**: Must be **18 or older**, using a desktop or laptop computer **with a webcam**.  
 - **Duration**: **about 10 minutes**, one-time session.  
-- **Tasks**: Looking at dots on the screen and identifying small letters that briefly appear where a dot was, after a short eye-tracking calibration in which you look at dots on the screen.  
+- **Tasks**: Looking at dots on the screen and pressing the arrow key that matches a small arrow that briefly appears where a dot was, after a short eye-tracking calibration in which you look at dots on the screen.  
 - **Webcam use**: After the practice your webcam is used to estimate where on the screen you are looking. **Your camera video and your screen are never recorded, transmitted, or stored.** The video is processed locally in your browser only. Only estimated on-screen gaze coordinates, approximate head position, and calibration accuracy are saved.  
 - **Please keep your head still** while your webcam is in use; the eye tracking depends on it.  
 

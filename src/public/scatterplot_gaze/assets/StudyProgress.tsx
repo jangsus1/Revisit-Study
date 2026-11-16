@@ -21,8 +21,8 @@ const WEIGHTS: [RegExp, number][] = [
   [/^gazeRecalibration/, 45],
   [/^phase1_/, 17],                   // Task 2 trial: 3 dots, 5 s plot, slider, feedback
   [/^phase2_example/, 15],
-  [/^letters_practice$/, 40],          // gaze_aoi_validation: 6 practice targets + reading
-  [/^letters_\d+$/, 50],              // gaze_aoi_validation: 3 check dots + 12 letter targets
+  [/^arrows_practice$/, 45],           // gaze_aoi_validation: 8 practice targets + reading
+  [/^arrows_\d+$/, 45],               // gaze_aoi_validation: 3 check dots + 12 arrow targets
   [/^intro$/, 20],
   [/^gazeFinalCheck$/, 25],
   [/^gazeEnd$/, 5],
