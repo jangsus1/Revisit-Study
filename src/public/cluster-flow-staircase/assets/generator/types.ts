@@ -82,6 +82,10 @@ export function layoutModeFor(cue: Cue): LayoutMode {
 }
 
 /** An axis-aligned rectangle in canvas px. */
+/** Line strength of a flowchart (`GENERATOR_CONFIG.FLOW_INK`). */
+export type FlowInk = 'dark' | 'medium' | 'light';
+export const FLOW_INKS: FlowInk[] = ['dark', 'medium', 'light'];
+
 export interface Rect {
   x: number;
   y: number;
@@ -130,11 +134,10 @@ export interface DisplayCluster {
   /** padded bounding rectangle in canvas px, present only for the rect cue */
   rect?: Rect;
   /**
-   * dagre flowcharts with highlighting only: the shaded region of the group, as filled polygons (one around
-   * each box, one between each pair of linked boxes in neighbouring rows) and thick lines along the
-   * longer links inside the group; canvas px
+   * dagre flowcharts with highlighting only: the group's shaded rectangle (canvas px) and the boxes it
+   * holds; absent when no rectangle could hold two of the group's boxes without touching another group
    */
-  shade?: { polygons: { x: number; y: number }[][]; lines: { points: { x: number; y: number }[]; width: number }[] };
+  shade?: { rect: Rect; nodeIds: number[] };
 }
 
 export interface Display {
@@ -156,6 +159,11 @@ export interface Display {
   attempts: number;
   /** follow-up variant this display was drawn with; absent for the original displays */
   variant?: Variant;
+  /**
+   * flowcharts only, set by the caller after generation: how strongly boxes and links are drawn
+   * (`FLOW_INK`); absent means `dark`, the drawing used so far
+   */
+  ink?: FlowInk;
   /** generator diagnostics for the gallery footer; A only */
   meta: {
     clusterSizes?: number[];

@@ -19,7 +19,7 @@ import {
   deltaE2000, hexToLab, makePalette, palettePositions,
 } from './generator/palette';
 import {
-  CUES, Cue, Density, Display, DisplayMetrics, NodeShape, VARIANTS, VARIANT_CUE, Variant,
+  CUES, Cue, Density, Display, DisplayMetrics, FLOW_INKS, FlowInk, NodeShape, VARIANTS, VARIANT_CUE, Variant,
 } from './generator/types';
 import { isDagre, isFlow } from './generator/variants';
 import { NoiseMask } from './render/NoiseMask';
@@ -42,12 +42,16 @@ interface Row {
 const fmt = (v: number, digits = 0) => (Number.isFinite(v) ? v.toFixed(digits) : '–');
 const ratio = (b: number, a: number) => (a > 0 ? (b / a).toFixed(2) : '–');
 
-function buildRow(cue: Cue, seed: number, density: Density, nB: number, hueOffset: number, variant?: Variant): Row {
+function buildRow(cue: Cue, seed: number, density: Density, nB: number, hueOffset: number, variant?: Variant, ink: FlowInk = 'dark'): Row {
   const key = variant ?? cue;
   try {
-    const { displayA, displayB } = generateTrialPair(seed, hashSeed(seed, 'B'), {
+    const pair = generateTrialPair(seed, hashSeed(seed, 'B'), {
       cue, density, nB, hueOffset, variant,
     });
+    // the flowcharts' line strength is a drawing choice, set on both displays after generation
+    const inked = (d: Display): Display => (isFlow(variant) && ink !== 'dark' ? { ...d, ink } : d);
+    const displayA = inked(pair.displayA);
+    const displayB = inked(pair.displayB);
     return {
       key, cue, variant, displayA, displayB, metricsA: measureDisplay(displayA), metricsB: measureDisplay(displayB), error: null,
     };
@@ -222,6 +226,7 @@ export default function Gallery() {
   const [nB, setNB] = useState(24);
   const [density, setDensity] = useState<Density>('sparse');
   const [hueOffset, setHueOffset] = useState(0);
+  const [ink, setInk] = useState<FlowInk>('dark');
   const [aFirstByCue, setAFirstByCue] = useState<Record<string, boolean>>({});
   // the frame period is frozen when Play is clicked, so a late refresh estimate cannot restart a run
   const [playing, setPlaying] = useState<{ key: string; runKey: number; refreshMs: number } | null>(null);
@@ -232,9 +237,9 @@ export default function Gallery() {
       ...CUES.map((cue) => buildRow(cue, seed, density, nB, hueOffset)),
       // the follow-up variants (meeting 2026-10-21) and the flowchart prototypes (meeting 2026-11-04);
       // the fully connected ones are always sparse-based
-      ...VARIANTS.map((v) => buildRow(VARIANT_CUE[v], seed, v.startsWith('intra-') ? 'sparse' : density, nB, hueOffset, v)),
+      ...VARIANTS.map((v) => buildRow(VARIANT_CUE[v], seed, v.startsWith('intra-') ? 'sparse' : density, nB, hueOffset, v, ink)),
     ],
-    [seed, nB, density, hueOffset],
+    [seed, nB, density, hueOffset, ink],
   );
   const { width, height } = GENERATOR_CONFIG.CANVAS;
   const previewScale = 1 / 3;
@@ -280,6 +285,15 @@ export default function Gallery() {
           value={density}
           onChange={(value) => setDensity(value as Density)}
         />
+        <Stack gap={2}>
+          <Text size="sm" fw={500}>Flowchart lines</Text>
+          <SegmentedControl
+            data-testid="gallery-flow-ink"
+            data={FLOW_INKS.map((value) => ({ label: value, value }))}
+            value={ink}
+            onChange={(value) => setInk(value as FlowInk)}
+          />
+        </Stack>
         <Button onClick={() => setSeed(Math.floor(Math.random() * 1000000))}>Random seed</Button>
       </Group>
 

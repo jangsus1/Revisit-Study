@@ -6,6 +6,8 @@ import { ReactNode } from 'react';
 import { GENERATOR_CONFIG as C } from '../generator/config';
 import { DASH_ARRAY, DOT_R, MARK_POINTS } from '../generator/geometry';
 import { Display, DisplayNode, NodeShape } from '../generator/types';
+
+type InkStyle = typeof C.FLOW_INK[keyof typeof C.FLOW_INK];
 import {
   flowBox, groundOf, isFlow, isShade, linkStyle, nodeScale,
 } from '../generator/variants';
@@ -19,13 +21,14 @@ export function markPoints(shape: Exclude<NodeShape, 'circle'>, x: number, y: nu
  * One node mark, always filled. The outlines come from `MARK_POINTS`, the same polygons the
  * invariants and the ink metrics use.
  */
-function nodeMark(node: DisplayNode, scale: number, flow: { width: number; height: number } | null) {
+function nodeMark(node: DisplayNode, scale: number, flow: { width: number; height: number } | null, ink: InkStyle) {
   const {
     id, x, y, fill, shape,
   } = node;
   if (flow) {
     // flowchart prototypes: every node is a box, whatever `shape` the record carries
     const box = C.FLOW_BOX;
+    // `ink` is `FLOW_INK.dark` (FLOW_BOX's own stroke) unless the display asks for a lighter one
     return (
       <rect
         key={id}
@@ -35,8 +38,8 @@ function nodeMark(node: DisplayNode, scale: number, flow: { width: number; heigh
         height={flow.height}
         rx={box.radius}
         fill={box.fill}
-        stroke={box.stroke}
-        strokeWidth={box.strokeWidth}
+        stroke={ink.box}
+        strokeWidth={ink.boxWidth}
       />
     );
   }
@@ -44,15 +47,27 @@ function nodeMark(node: DisplayNode, scale: number, flow: { width: number; heigh
   return <polygon key={id} points={markPoints(shape, x, y, scale)} fill={fill} strokeLinejoin="miter" />;
 }
 
+/** The link geometry scaled for a flowchart's line strength. */
+function flowInkLink(base: ReturnType<typeof linkStyle>, ink: InkStyle | null) {
+  if (!ink) return base;
+  return {
+    ...base, width: base.width * ink.linkScale, headLen: base.headLen * ink.head, headW: base.headW * ink.head,
+  };
+}
+
 /** The stimulus itself: an SVG of exactly `display.width` x `display.height` canvas px. */
 export function StimulusSVG({ display }: { display: Display }) {
   const byId = new Map(display.nodes.map((n) => [n.id, n]));
   const scale = nodeScale(display.variant);
-  const link = linkStyle(display.variant);
+  const ink = C.FLOW_INK[display.ink ?? 'dark'];
+  const base = linkStyle(display.variant);
+  // the flowcharts' line strength (`Display.ink`); every other display is drawn as before
+  const link = flowInkLink(base, display.ink ? ink : null);
   const shade = isShade(display.variant);
   const flow = isFlow(display.variant);
   const box = flowBox(display.variant);
   const bold = display.variant === 'edge-bold';
+  const linkColour = display.ink ? ink.link : C.LINK_STROKE;
 
   return (
     <svg
@@ -78,25 +93,18 @@ export function StimulusSVG({ display }: { display: Display }) {
         />
       ) : null))}
 
-      {/* flow-dagre-highlight: each group's region follows its boxes and the links between them */}
+      {/* dagre flowcharts with highlighting: one rough rectangle per group, under the links and boxes */}
       {display.clusters.map((cluster) => (cluster.shade ? (
-        <g key={`shade-${cluster.index}`} data-testid="group-highlight">
-          {cluster.shade.polygons.map((poly, i) => (
-
-            <polygon key={`p${i}`} points={poly.map((q) => `${q.x},${q.y}`).join(' ')} fill={C.SHADE_FILL} stroke={C.SHADE_FILL} strokeWidth={0.5} />
-          ))}
-          {cluster.shade.lines.map((line, i) => (
-
-            <polyline
-              key={`l${i}`}
-              points={line.points.map((q) => `${q.x},${q.y}`).join(' ')}
-              fill="none"
-              stroke={C.SHADE_FILL}
-              strokeWidth={line.width}
-              strokeLinejoin="round"
-            />
-          ))}
-        </g>
+        <rect
+          key={`shade-${cluster.index}`}
+          data-testid="group-highlight"
+          x={cluster.shade.rect.x}
+          y={cluster.shade.rect.y}
+          width={cluster.shade.rect.w}
+          height={cluster.shade.rect.h}
+          rx={C.FLOW_DAGRE.highlightRadius}
+          fill={C.SHADE_FILL}
+        />
       ) : null))}
 
       {display.edges.map((edge) => {
@@ -123,11 +131,11 @@ export function StimulusSVG({ display }: { display: Display }) {
               <polyline
                 points={[...pts.slice(0, -1).map((q) => [q.x, q.y]), [baseX, baseY]].map(([x, y]) => `${x},${y}`).join(' ')}
                 fill="none"
-                stroke={C.LINK_STROKE}
+                stroke={linkColour}
                 strokeWidth={link.width}
                 strokeLinejoin="round"
               />
-              <polygon points={arrow} fill={C.LINK_STROKE} />
+              <polygon points={arrow} fill={linkColour} />
             </g>
           );
         }
@@ -158,7 +166,7 @@ export function StimulusSVG({ display }: { display: Display }) {
           [bx - (uy * link.headW) / 2, by + (ux * link.headW) / 2],
           [bx + (uy * link.headW) / 2, by - (ux * link.headW) / 2],
         ].map(([x, y]) => `${x},${y}`).join(' ');
-        const stroke = bold && edge.dashed ? C.VARIANT_DOTS.stroke : C.LINK_STROKE;
+        const stroke = bold && edge.dashed ? C.VARIANT_DOTS.stroke : linkColour;
         const dash = edge.dashed ? (bold ? `${C.VARIANT_DOTS.dash} ${C.VARIANT_DOTS.gap}` : DASH_ARRAY) : undefined;
         return (
           <g key={`${edge.source}-${edge.target}`}>
@@ -187,7 +195,7 @@ export function StimulusSVG({ display }: { display: Display }) {
         );
       })}
 
-      {display.nodes.map((node) => nodeMark(node, scale, flow ? box : null))}
+      {display.nodes.map((node) => nodeMark(node, scale, flow ? box : null, ink))}
     </svg>
   );
 }

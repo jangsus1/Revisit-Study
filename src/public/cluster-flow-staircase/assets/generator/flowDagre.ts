@@ -10,8 +10,9 @@
  * Stimulus B (N_B boxes) is always the baseline: plain dagre, nothing added. Stimulus A (24 boxes,
  * six groups) starts from the same baseline layout of its own graph and differs from it in exactly
  * one of three ways:
- * - `flow-dagre-highlight`: each group's boxes and the links inside it lie on a shaded region.
- *   No box moves.
+ * - `flow-dagre-highlight`: groups are marked by rough shaded rectangles (`highlightRects`), each
+ *   around as many of its group's boxes as fit without touching another group, so some boxes stay
+ *   unshaded. No box moves.
  * - `flow-dagre-apart`: the groups are moved apart (`moveApart`): each group keeps its own shape
  *   and its place relative to the others, only the distances between groups grow. Nothing is shaded.
  * - `flow-dagre-both`: moved apart exactly as in `flow-dagre-apart`, and shaded.
@@ -242,37 +243,107 @@ function centred(layout: FlowLayout): FlowLayout {
   return { pts: layout.pts.map(move), routes: layout.routes.map((route) => route.map(move)) };
 }
 
+/** True when two rectangles overlap or come closer than `gap`. */
+function near(a: Rect, b: Rect, gap: number): boolean {
+  return a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+}
+
+/** The box drawn at `p`. */
+function boxAt(p: Pt): Rect {
+  return {
+    x: p.x - D.box.width / 2, y: p.y - D.box.height / 2, w: D.box.width, h: D.box.height,
+  };
+}
+
 /**
- * The shaded region of group `k`: a padded rectangle around each of its boxes, and for each link
- * inside the group either the strip between the facing edges of its two boxes (boxes in
- * neighbouring rows: the strip lies in the free channel between them) or a thick line along its
- * route (a link that passes a row). The pad is under half of dagre's gap between boxes, so the
- * regions of two groups never touch.
+ * The highlight of every group (decided 2026-11-16): one rough rectangle per group, at most, around
+ * as many of the group's boxes as a rectangle can hold without touching a box of another group
+ * (`highlightClear`) or coming within `highlightGap` of another group's rectangle. Groups whose boxes lie spread among the others' get a rectangle around
+ * part of them only, and a group that cannot hold two of its boxes in one rectangle gets none, so
+ * the regions stay apart and some boxes stay unshaded. Groups are served largest share first; each
+ * rectangle is then padded by up to `highlightPad`, never past half the free space to its
+ * neighbours. Returns per group (in `graph.group` order of first appearance) the rectangle, or `null`.
  */
-export function highlightOf(k: number, graph: FlowGraph, pts: Pt[], edges: DisplayEdge[]): NonNullable<DisplayCluster['shade']> {
-  const hw = D.box.width / 2 + D.highlightPad;
-  const hh = D.box.height / 2 + D.highlightPad;
-  const polygons: Pt[][] = [];
-  const lines: { points: Pt[]; width: number }[] = [];
-  pts.forEach((p, id) => {
-    if (graph.group[id] !== k) return;
-    polygons.push([
-      { x: p.x - hw, y: p.y - hh }, { x: p.x + hw, y: p.y - hh }, { x: p.x + hw, y: p.y + hh }, { x: p.x - hw, y: p.y + hh },
-    ]);
-  });
-  edges.forEach((edge) => {
-    if (graph.group[edge.source] !== k || graph.group[edge.target] !== k) return;
-    const s = pts[edge.source];
-    const t = pts[edge.target];
-    if ((edge.points ?? []).length <= 2) {
-      polygons.push([
-        { x: s.x - hw, y: s.y + hh }, { x: s.x + hw, y: s.y + hh }, { x: t.x + hw, y: t.y - hh }, { x: t.x - hw, y: t.y - hh },
-      ]);
-    } else {
-      lines.push({ points: [s, ...(edge.points ?? []).slice(1, -1), t], width: D.highlightLine });
+export function highlightRects(graph: FlowGraph, pts: Pt[]): Map<number, { rect: Rect; nodeIds: number[] } | null> {
+  const boxes = pts.map(boxAt);
+  const groups = [...new Set(graph.group)];
+  const members = new Map(groups.map((k) => [k, graph.group.map((g, id) => (g === k ? id : -1)).filter((id) => id >= 0)]));
+  const foreign = (k: number) => boxes.filter((_, id) => graph.group[id] !== k);
+  /** The best core rectangle of group `k` that keeps clear of other groups and of `taken`. */
+  const bestCore = (k: number, taken: Rect[]) => {
+    const ids = members.get(k) as number[];
+    const others = foreign(k);
+    let best: { rect: Rect; nodeIds: number[] } | null = null;
+    for (let mask = 1; mask < (1 << ids.length); mask += 1) {
+      const pick = ids.filter((_, i) => mask & (1 << i));
+      if (pick.length >= 2) {
+        const rect = boxBounds(pick.map((id) => pts[id]));
+        if (!others.some((o) => near(rect, o, D.highlightClear)) && !taken.some((t) => near(rect, t, D.highlightGap))) {
+          const held = ids.filter((id) => near(boxes[id], rect, -1));
+          if (!best || held.length > best.nodeIds.length
+            || (held.length === best.nodeIds.length && rect.w * rect.h < best.rect.w * best.rect.h)) best = { rect, nodeIds: held };
+        }
+      }
     }
+    return best;
+  };
+  // largest share of its group first, so a small group cannot block a large one
+  const order = groups
+    .map((k) => ({ k, core: bestCore(k, []) }))
+    .sort((a, b) => (b.core?.nodeIds.length ?? 0) / (members.get(b.k) as number[]).length
+      - (a.core?.nodeIds.length ?? 0) / (members.get(a.k) as number[]).length);
+  const cores = new Map<number, { rect: Rect; nodeIds: number[] } | null>();
+  order.forEach(({ k }) => cores.set(k, bestCore(k, [...cores.values()].filter((c) => c).map((c) => (c as { rect: Rect }).rect))));
+  // pad each side up to `highlightPad`: short of other groups' boxes, half way to other rectangles
+  const out = new Map<number, { rect: Rect; nodeIds: number[] } | null>();
+  groups.forEach((k) => {
+    const core = cores.get(k);
+    if (!core) {
+      out.set(k, null);
+      return;
+    }
+    const r = core.rect;
+    const P: number = D.highlightPad;
+    const obstacles = [
+      ...foreign(k).map((o) => ({ o, share: 1, clear: D.highlightClear })),
+      ...groups.filter((j) => j !== k && cores.get(j)).map((j) => ({ o: (cores.get(j) as { rect: Rect }).rect, share: 0.5, clear: D.highlightGap })),
+    ];
+    const pad: Record<'left' | 'right' | 'top' | 'bottom', number> = {
+      left: P, right: P, top: P, bottom: P,
+    };
+    obstacles.forEach(({ o, share, clear }) => {
+      const ySpan = o.y < r.y + r.h + P && o.y + o.h > r.y - P;
+      const xSpan = o.x < r.x + r.w + P && o.x + o.w > r.x - P;
+      const room = (gap: number) => Math.max(0, (gap - clear) * share);
+      if (ySpan && o.x + o.w <= r.x) pad.left = Math.min(pad.left, room(r.x - (o.x + o.w)));
+      if (ySpan && o.x >= r.x + r.w) pad.right = Math.min(pad.right, room(o.x - (r.x + r.w)));
+      if (xSpan && o.y + o.h <= r.y) pad.top = Math.min(pad.top, room(r.y - (o.y + o.h)));
+      if (xSpan && o.y >= r.y + r.h) pad.bottom = Math.min(pad.bottom, room(o.y - (r.y + r.h)));
+    });
+    out.set(k, {
+      rect: {
+        x: r.x - pad.left, y: r.y - pad.top, w: r.w + pad.left + pad.right, h: r.h + pad.top + pad.bottom,
+      },
+      nodeIds: core.nodeIds,
+    });
   });
-  return { polygons, lines };
+  // a padded corner can still reach a neighbour diagonally: that rectangle loses its padding (the
+  // cores keep clear of each other and of other groups by construction)
+  for (let changed = true; changed;) {
+    changed = false;
+    groups.forEach((k) => {
+      const mine = out.get(k);
+      const core = cores.get(k);
+      if (!mine || !core || mine.rect === core.rect) return;
+      const clash = foreign(k).some((o) => near(mine.rect, o, D.highlightClear))
+        || groups.some((j) => j !== k && out.get(j) && near(mine.rect, (out.get(j) as { rect: Rect }).rect, D.highlightGap));
+      if (clash) {
+        out.set(k, core);
+        changed = true;
+      }
+    });
+  }
+  return out;
 }
 
 function toDisplay(
@@ -300,7 +371,9 @@ function toDisplay(
     extra,
     points: layout.routes[i],
   }));
+  const shades = highlight ? highlightRects(graph, pts) : null;
   const clusters: DisplayCluster[] = kind === 'A' ? [...new Set(graph.group)].map((k, orderPos) => {
+    const shade = shades?.get(k);
     const mine = pts.filter((_, id) => graph.group[id] === k);
     return {
       index: k,
@@ -308,7 +381,7 @@ function toDisplay(
       cx: mine.reduce((sum, p) => sum + p.x, 0) / mine.length,
       cy: mine.reduce((sum, p) => sum + p.y, 0) / mine.length,
       orderPos,
-      ...(highlight ? { shade: highlightOf(k, graph, pts, edges) } : {}),
+      ...(shade ? { shade } : {}),
     };
   }) : [];
   return {

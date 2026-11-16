@@ -216,12 +216,28 @@ export const GENERATOR_CONFIG = {
    * `bendTolerance`: a route point closer than this to the line between its neighbours is dropped.
    * `apart`: moving the groups apart puts every group's centroid this many times as far from the
    * chart's centre, per axis; `minDrop`: the least height a link between two moved groups must
-   * still fall. `highlightPad`: how far a group's shaded region reaches past its boxes (under half
-   * of `nodeSep`, so two groups' regions never touch); `highlightLine`: the width of the shading
-   * along a link that passes a row.
+   * still fall. `highlightPad`: how far a group's shaded rectangle reaches past its boxes at most
+   * (less where a neighbour is closer); `highlightClear`: the least gap between a rectangle and a
+   * box of another group; `highlightGap`: the least white gap between two groups' rectangles; `highlightRadius`: its corner radius.
    */
   FLOW_DAGRE: {
-    rankdir: 'TB' as 'TB' | 'LR', box: { width: 36, height: 22 }, nodeSep: 10, rankSep: 20, groupSize: { min: 3, max: 6 }, maxChildren: 3, attachBack: 3, extraWithin: 0.8, maxDepth: 9, groupRoom: 2, bendTolerance: 0.5, apart: { x: 1.5, y: 1.25 }, minDrop: 8, highlightPad: 3, highlightLine: 10,
+    rankdir: 'TB' as 'TB' | 'LR', box: { width: 36, height: 22 }, nodeSep: 10, rankSep: 20, groupSize: { min: 3, max: 6 }, maxChildren: 3, attachBack: 3, extraWithin: 0.8, maxDepth: 9, groupRoom: 2, bendTolerance: 0.5, apart: { x: 1.5, y: 1.25 }, minDrop: 8, highlightPad: 6, highlightClear: 3, highlightGap: 6, highlightRadius: 4,
+  },
+  /**
+   * Line strength of the flowchart boxes and links (`Display.ink`, exploration of 2026-11-16):
+   * `dark` is the drawing used so far (`FLOW_BOX` stroke, `LINK_STROKE` at `LINK_WIDTH`); `medium`
+   * and `light` draw both in a lighter grey and thinner, with a smaller arrowhead (`head` scales it).
+   */
+  FLOW_INK: {
+    dark: {
+      box: '#111111', boxWidth: 1.5, link: '#111111', linkScale: 1, head: 1,
+    },
+    medium: {
+      box: '#555555', boxWidth: 1.2, link: '#666666', linkScale: 0.7, head: 0.85,
+    },
+    light: {
+      box: '#A6A6A6', boxWidth: 0.9, link: '#B0B0B0', linkScale: 0.45, head: 0.7,
+    },
   },
   FLOW_FIT_COLS: 6,
   FLOW_FIT_ROWS: 6,

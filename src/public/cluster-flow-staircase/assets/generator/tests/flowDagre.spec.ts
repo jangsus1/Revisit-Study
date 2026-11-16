@@ -6,7 +6,9 @@ import {
 import { generateAttentionPair, generateTrialPair } from '../generator';
 import { checkInvariants } from '../invariants';
 import { mulberry32 } from '../prng';
-import { Density, Display, VARIANT_CUE } from '../types';
+import {
+  Density, Display, Rect, VARIANT_CUE,
+} from '../types';
 
 const D = C.FLOW_DAGRE;
 // dagre takes tens of ms per chart, so the sets are small and the tests get a longer limit
@@ -110,32 +112,36 @@ describe('dagre flowcharts', () => {
     });
   }, SLOW);
 
-  test('highlight only: A is the baseline layout of its graph, with a region per group', () => {
-    const inside = (poly: { x: number; y: number }[], x: number, y: number) => {
-      const xs = poly.map((q) => q.x);
-      const ys = poly.map((q) => q.y);
-      return x > Math.min(...xs) && x < Math.max(...xs) && y > Math.min(...ys) && y < Math.max(...ys);
-    };
-    SEEDS.forEach((seed) => {
-      const { displayA } = pair('flow-dagre-highlight', seed, 24);
-      if (displayA.attempts === 1) {
+  test('highlight only: A is the baseline layout of its graph, with rough rectangles that keep groups apart', () => {
+    const near = (a: Rect, b: Rect, gap: number) => a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
+    let shaded = 0;
+    let groups = 0;
+    SEEDS.forEach((seed) => ['flow-dagre-highlight', 'flow-dagre-both'].forEach((variant) => {
+      const { displayA } = pair(variant as DagreVariant, seed, 24);
+      if (variant === 'flow-dagre-highlight' && displayA.attempts === 1) {
         const rng = mulberry32(seed);
         const graph = drawFlowGraph(rng, drawGroupSizes(rng, 24), 'sparse');
         expect(shape(displayA.nodes)).toEqual(shape(layoutFlow(graph).pts));
       }
-      displayA.clusters.forEach((cluster) => {
-        const shade = cluster.shade!;
-        // one rectangle per box, and one strip or line per link inside the group
-        const inner = displayA.edges.filter((e) => cluster.nodeIds.includes(e.source) && cluster.nodeIds.includes(e.target)).length;
-        expect(shade.polygons.length + shade.lines.length).toBe(cluster.nodeIds.length + inner);
-        // the box rectangles (listed first) hold their own box and no box of another group
-        shade.polygons.slice(0, cluster.nodeIds.length).forEach((poly) => {
-          const held = displayA.nodes.filter((n) => inside(poly, n.x, n.y));
-          expect(held).toHaveLength(1);
-          expect(held[0].cluster).toBe(cluster.index);
+      const boxOf = (n: { x: number; y: number }) => ({
+        x: n.x - D.box.width / 2, y: n.y - D.box.height / 2, w: D.box.width, h: D.box.height,
+      });
+      const rects = displayA.clusters.filter((c) => c.shade).map((c) => ({ c, rect: c.shade!.rect }));
+      groups += displayA.clusters.length;
+      shaded += rects.length;
+      rects.forEach(({ c, rect }) => {
+        // at least two of its own boxes, every one it touches is its own, and never another group's
+        const touched = displayA.nodes.filter((n) => near(boxOf(n), rect, D.highlightClear - 0.01));
+        expect(touched.every((n) => n.cluster === c.index)).toBe(true);
+        expect(c.shade!.nodeIds.length).toBeGreaterThanOrEqual(2);
+        c.shade!.nodeIds.forEach((id) => expect(c.nodeIds).toContain(id));
+        rects.forEach((other) => {
+          if (other.c !== c) expect(near(rect, other.rect, D.highlightGap - 0.01)).toBe(false);
         });
       });
-    });
+    }));
+    // most groups get a rectangle
+    expect(shaded / groups).toBeGreaterThan(0.6);
   }, SLOW);
 
   test('apart and both share one layout; only the shading differs, and neither shades in apart', () => {
@@ -145,7 +151,7 @@ describe('dagre flowcharts', () => {
       expect(xy(both)).toEqual(xy(apart));
       expect(both.edges).toEqual(apart.edges);
       expect(apart.clusters.every((c) => c.shade === undefined)).toBe(true);
-      expect(both.clusters.every((c) => c.shade !== undefined)).toBe(true);
+      expect(both.clusters.some((c) => c.shade !== undefined)).toBe(true);
       // the same graph as the highlight variant when all three took the first seed
       const highlight = pair('flow-dagre-highlight', seed, 24).displayA;
       if (apart.attempts === 1 && highlight.attempts === 1) {
