@@ -46,7 +46,7 @@ const CELL = { cue: 'shape' as const, density: 'dense' as const };
 
 function runPractice(count: number, overrides: { trials?: number } = {}) {
   return practiceBlock({
-    answers: storedTrials(count), customParameters: { ...CELL, ...overrides }, currentStep: STEP, currentBlock: BLOCK,
+    answers: storedTrials(count), customParameters: { ...CELL, ...overrides }, currentStep: STEP, currentBlock: BLOCK, store: {},
   });
 }
 
@@ -111,7 +111,7 @@ describe('practiceBlock', () => {
       } as unknown as ParticipantData['answers'],
       customParameters: CELL,
       currentStep: STEP,
-      currentBlock: BLOCK,
+      currentBlock: BLOCK, store: {},
     });
     const parameters = withSetup.parameters as unknown as TrialParams;
     expect(parameters.refreshMs).toBe(10);
@@ -123,7 +123,7 @@ describe('practiceBlock', () => {
     const ON = { maxOffTargetTrials: PRACTICE_MAX_OFF_TRIALS };
     function finish(offTarget: number[], overrides: { maxOffTargetTrials?: number } = ON) {
       return practiceBlock({
-        answers: storedTrials(3, offTarget), customParameters: { ...CELL, ...overrides }, currentStep: STEP, currentBlock: BLOCK,
+        answers: storedTrials(3, offTarget), customParameters: { ...CELL, ...overrides }, currentStep: STEP, currentBlock: BLOCK, store: {},
       });
     }
     test('none or one of three practice trials off target: on to the main task', () => {
@@ -137,7 +137,7 @@ describe('practiceBlock', () => {
     test('a reload stays on the end page (it is re-derived from the stored trials)', () => {
       const answers = storedTrials(3, [0, 1]);
       const call = () => practiceBlock({
-        answers, customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK,
+        answers, customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK, store: {},
       });
       expect(call()).toEqual({ component: 'display-failed' });
       expect(call()).toEqual({ component: 'display-failed' });
@@ -145,7 +145,7 @@ describe('practiceBlock', () => {
     test('only judged after the last practice trial', () => {
       expect(runPractice(2).component).toBe('practice-trial');
       expect(practiceBlock({
-        answers: storedTrials(2, [0, 1]), customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK,
+        answers: storedTrials(2, [0, 1]), customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK, store: {},
       }).component).toBe('practice-trial');
     });
     test('fixation off target does not count; maxOffTargetTrials can switch the backstop off', () => {
@@ -154,7 +154,7 @@ describe('practiceBlock', () => {
         (record.answer.trialData as unknown as { measured: Record<string, number> }).measured.fixation = 600;
       });
       expect(practiceBlock({
-        answers, customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK,
+        answers, customParameters: { ...CELL, ...ON }, currentStep: STEP, currentBlock: BLOCK, store: {},
       })).toEqual({ component: null });
       expect(finish([0, 1, 2], { maxOffTargetTrials: 3 })).toEqual({ component: null });
     });

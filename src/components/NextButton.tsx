@@ -1,6 +1,8 @@
-import { Alert, Button, Group } from '@mantine/core';
 import {
-  JSX, useEffect, useMemo, useRef, useState,
+  Alert, Button, Group, Kbd,
+} from '@mantine/core';
+import {
+  ReactNode, useEffect, useMemo, useRef, useState,
 } from 'react';
 import { IconInfoCircle, IconAlertTriangle } from '@tabler/icons-react';
 import { useNavigate } from 'react-router';
@@ -10,11 +12,15 @@ import type { IndividualComponent, ResponseBlockLocation } from '../parser/types
 import { useStudyConfig } from '../store/hooks/useStudyConfig';
 import { useCurrentIdentifier } from '../routes/utils';
 import { PreviousButton } from './PreviousButton';
+import { getComponentContainerStyle } from '../utils/componentStyle';
+import classes from './response/css/ButtonsInput.module.css';
+
 import {
   DEFAULT_AUTO_ADVANCE_WARNING_MESSAGE,
   DEFAULT_AUTO_ADVANCE_WARNING_TIME,
   getAutoAdvanceWarning,
 } from './nextButtonTimeout';
+import { useStartupInteractionBlocked } from './StartupContext';
 
 const nextButtonJustify = {
   left: 'flex-start',
@@ -27,7 +33,7 @@ type Props = {
   disabled?: boolean;
   config?: IndividualComponent;
   location?: ResponseBlockLocation;
-  checkAnswer: JSX.Element | null;
+  checkAnswer?: ReactNode;
   onCheckAnswer?: () => void;
   onNext: () => void;
   /** True while the stimulus has asked to advance via `StimulusParams.advance()`. */
@@ -47,10 +53,11 @@ export function NextButton({
   advanceRequested = false,
   onAdvanceConsumed,
 }: Props) {
-  const { isNextDisabled, goToNextStep } = useNextStep();
+  const { isNextDisabled, goToNextStep } = useNextStep(config?.response, config?.correctAnswer);
   const studyConfig = useStudyConfig();
   const navigate = useNavigate();
   const identifier = useCurrentIdentifier();
+  const startupInteractionBlocked = useStartupInteractionBlocked();
 
   const nextButtonDisableTime = config?.nextButtonDisableTime ?? studyConfig.uiConfig.nextButtonDisableTime;
   const nextButtonEnableTime = config?.nextButtonEnableTime ?? studyConfig.uiConfig.nextButtonEnableTime ?? 0;
@@ -62,6 +69,11 @@ export function NextButton({
   const autoAdvanceTriggered = useRef(false);
   // Use the current identifier so nested function-sequence items reset their timer state.
   useEffect(() => {
+    if (startupInteractionBlocked) {
+      setTimer(undefined);
+      return undefined;
+    }
+
     autoAdvanceTriggered.current = false;
     const start = Date.now();
     setTimer(0);
@@ -71,25 +83,25 @@ export function NextButton({
     return () => {
       clearInterval(interval);
     };
-  }, [identifier]);
+  }, [identifier, startupInteractionBlocked]);
 
   useEffect(() => {
-    if (timer === undefined) {
+    if (startupInteractionBlocked || timer === undefined) {
       return;
     }
     if (nextButtonDisableTime && timer >= nextButtonDisableTime && studyConfig.uiConfig.timeoutReject) {
       navigate(`./../__timedOut${window.location.search}`);
     }
-  }, [nextButtonDisableTime, timer, navigate, studyConfig.uiConfig.timeoutReject]);
+  }, [nextButtonDisableTime, timer, navigate, startupInteractionBlocked, studyConfig.uiConfig.timeoutReject]);
 
   useEffect(() => {
-    if (timer === undefined || nextButtonAutoAdvanceTime === undefined || timer < nextButtonAutoAdvanceTime || autoAdvanceTriggered.current) {
+    if (startupInteractionBlocked || isNextDisabled || timer === undefined || nextButtonAutoAdvanceTime === undefined || timer < nextButtonAutoAdvanceTime || autoAdvanceTriggered.current) {
       return;
     }
 
     autoAdvanceTriggered.current = true;
     goToNextStep(false);
-  }, [goToNextStep, nextButtonAutoAdvanceTime, timer]);
+  }, [startupInteractionBlocked, goToNextStep, isNextDisabled, nextButtonAutoAdvanceTime, timer]);
 
   const buttonTimerSatisfied = useMemo(
     () => {
@@ -114,26 +126,28 @@ export function NextButton({
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== 'Enter' || shouldIgnoreEnter(event.target)) {
+      if (event.key !== 'Enter' || event.defaultPrevented || (event as unknown as { __keyMapperHandled?: boolean }).__keyMapperHandled || shouldIgnoreEnter(event.target)) {
         return;
       }
 
-      if (onCheckAnswer) {
+      if (checkAnswer && onCheckAnswer && !isNextDisabled) {
         onCheckAnswer();
-        return;
-      }
-      if (!disabled && !isNextDisabled && buttonTimerSatisfied) {
-        onNext();
+      } else if (!disabled && !isNextDisabled && buttonTimerSatisfied) {
+        if (onCheckAnswer) {
+          onCheckAnswer();
+        } else {
+          onNext();
+        }
       }
     };
 
-    if (nextOnEnter) {
+    if (nextOnEnter && !startupInteractionBlocked) {
       window.addEventListener('keydown', handleKeyDown);
     }
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [disabled, isNextDisabled, buttonTimerSatisfied, onCheckAnswer, onNext, nextOnEnter]);
+  }, [startupInteractionBlocked, checkAnswer, disabled, isNextDisabled, buttonTimerSatisfied, onCheckAnswer, onNext, nextOnEnter]);
 
   // A programmatic advance from the stimulus behaves like Enter, except that it never triggers Check Answer:
   // while feedback is pending the request is dropped, and while a timer or validation blocks Next it waits.
@@ -152,21 +166,31 @@ export function NextButton({
       return;
     }
     // `timer` is undefined only before the mount effect starts it; wait so an enable time is honoured.
-    if (disabled || isNextDisabled || timer === undefined || !buttonTimerSatisfied) {
+    if (startupInteractionBlocked || disabled || isNextDisabled || timer === undefined || !buttonTimerSatisfied) {
       return;
     }
     advancePendingRef.current = false;
     onAdvanceConsumed();
     onNext();
-  }, [advanceRequested, onAdvanceConsumed, onCheckAnswer, disabled, isNextDisabled, timer, buttonTimerSatisfied, onNext]);
+  }, [advanceRequested, onAdvanceConsumed, onCheckAnswer, startupInteractionBlocked, disabled, isNextDisabled, timer, buttonTimerSatisfied, onNext]);
 
-  const nextButtonDisabled = disabled || isNextDisabled || !buttonTimerSatisfied;
+  const nextButtonDisabled = startupInteractionBlocked
+    || disabled || isNextDisabled || !buttonTimerSatisfied;
   const previousButtonText = config?.previousButtonText ?? studyConfig.uiConfig.previousButtonText ?? 'Previous';
   const nextButtonAlignment = config?.nextButtonAlignment ?? studyConfig.uiConfig.nextButtonAlignment ?? 'right';
+  const componentWidth = config && getComponentContainerStyle(config.type, config.style);
 
   return (
     <>
-      <Group justify={nextButtonJustify[nextButtonAlignment]} gap="xs" mt="sm" wrap="wrap">
+      <Group
+        className={location === 'sidebar' ? undefined : 'responseBlock-actions'}
+        data-alignment={nextButtonAlignment}
+        justify={nextButtonJustify[nextButtonAlignment]}
+        gap="xs"
+        mt="sm"
+        wrap="wrap"
+        style={location === 'sidebar' ? undefined : { width: componentWidth?.width, maxWidth: componentWidth?.maxWidth }}
+      >
         {config?.previousButton && (
           <PreviousButton
             label={previousButtonText}
@@ -176,9 +200,41 @@ export function NextButton({
         {checkAnswer}
         <Button
           type="submit"
+          className={classes.nextButton}
           disabled={nextButtonDisabled}
-          onClick={() => onNext()}
+          onClick={() => (checkAnswer ? onNext : (onCheckAnswer ?? onNext))()}
+          fw={700}
           px={location === 'sidebar' && checkAnswer ? 8 : undefined}
+          aria-label={label}
+          rightSection={nextOnEnter && (!checkAnswer || !onCheckAnswer) ? (
+            <Kbd
+              size="xs"
+              aria-hidden="true"
+              style={{
+                backgroundColor: 'transparent',
+                color: 'inherit',
+                boxShadow: 'none',
+                border: 'none',
+                marginTop: -4,
+                fontSize: '16px',
+                fontWeight: 600,
+              }}
+            >
+              ↵
+            </Kbd>
+          ) : undefined}
+          styles={{
+            inner: { alignItems: 'stretch' },
+            section: nextOnEnter && (!checkAnswer || !onCheckAnswer) ? {
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0 8px',
+              marginRight: -16,
+              marginBlock: -1,
+              borderLeft: '1px solid rgba(255, 255, 255, 0.25)',
+              backgroundColor: 'rgba(0, 0, 0, 0.08)',
+            } : undefined,
+          }}
         >
           {label}
         </Button>
@@ -208,7 +264,7 @@ export function NextButton({
                 <Alert mt="md" title="Next button disabled" color="red" icon={<IconAlertTriangle />}>
                   The next button has timed out and is now disabled.
                   <Group justify="right" mt="sm">
-                    <Button onClick={() => goToNextStep(false)} variant="link" color="red">Proceed</Button>
+                    <Button disabled={isNextDisabled} onClick={() => goToNextStep(false)} variant="link" color="red">Proceed</Button>
                   </Group>
                 </Alert>
               ))}

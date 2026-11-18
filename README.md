@@ -14,15 +14,6 @@ If you are using reVISit for a paper, please cite:
 
 GitHub citation metadata for this repository is available in [CITATION.cff](./CITATION.cff).
 
-## Trying it out
-
-You can try out reVISit in a couple of different versions: 
-
-* [Stable with Firebase](https://revisit.dev/study/)
-* [Stable with Supabase](https://revisit.dev/study/supabase/)
-* [Development with Firebase](https://revisit.dev/study/dev/)
-* [Development with Supabase](https://revisit.dev/study/dev-supabase/)
-
 ## Build Instructions
 
 To run this demo experiment locally, you will need to install Node.js on your computer.
@@ -31,6 +22,10 @@ To run this demo experiment locally, you will need to install Node.js on your co
 * Run `yarn install`. If you don't have Yarn installed, run `npm i -g yarn`.
 * To run locally, run `yarn serve`.
 * Go to [http://localhost:8080](http://localhost:8080) to view it in your browser. The page will reload when you make changes.
+
+## Self-hosted Supabase
+
+See [first-time setup](supabase/README.md) and the [migration guide](supabase/MIGRATION.md) for a version-pinned upstream Supabase deployment. Existing MinIO or pgsty-backed installations must migrate before starting the new configuration.
 
 ## Adding Tests
 

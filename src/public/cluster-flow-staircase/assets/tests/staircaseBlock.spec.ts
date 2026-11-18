@@ -258,7 +258,7 @@ describe('countRests', () => {
 describe('staircaseBlock', () => {
   test('starts with a trial from one of the two staircases at the participant\'s drawn starts', () => {
     const result = staircaseBlock({
-      answers: answers({}), customParameters: params, currentStep: STEP, currentBlock: BLOCK,
+      answers: answers({}), customParameters: params, currentStep: STEP, currentBlock: BLOCK, store: {},
     });
 
     const parameters = result.parameters as unknown as TrialParams;
@@ -280,7 +280,7 @@ describe('staircaseBlock', () => {
 
   test('is deterministic for the same history', () => {
     const call = () => staircaseBlock({
-      answers: answers({}), customParameters: params, currentStep: STEP, currentBlock: BLOCK,
+      answers: answers({}), customParameters: params, currentStep: STEP, currentBlock: BLOCK, store: {},
     });
     expect(call()).toEqual(call());
   });
@@ -290,10 +290,10 @@ describe('staircaseBlock', () => {
       answers: answers({ setup_2: { componentName: 'setup', endTime: 1, answer: { setup: { sessionSalt: 424242, refreshMs: 8.33 } } } }),
       customParameters: params,
       currentStep: STEP,
-      currentBlock: BLOCK,
+      currentBlock: BLOCK, store: {},
     });
     const withoutSetup = staircaseBlock({
-      answers: answers({}), customParameters: params, currentStep: STEP, currentBlock: BLOCK,
+      answers: answers({}), customParameters: params, currentStep: STEP, currentBlock: BLOCK, store: {},
     });
 
     const a = withSetup.parameters as unknown as TrialParams;
@@ -311,7 +311,7 @@ describe('staircaseBlock', () => {
       answers: answers({ setup_2: { componentName: 'setup', endTime: 1, answer: { setup: { sessionSalt: 3, refreshMs: 10, pxPerCm: 40 } } } }),
       customParameters: params,
       currentStep: STEP,
-      currentBlock: BLOCK,
+      currentBlock: BLOCK, store: {},
     });
     expect((result.parameters as unknown as TrialParams).pxPerCm).toBe(40);
   });
@@ -322,7 +322,7 @@ describe('staircaseBlock', () => {
         answers: answers(blockAnswers(new Array(i).fill(null).map((_, index) => trialAnswer({ trialIndex: index, staircaseId: index % 2 === 0 ? 'above' : 'below' })))),
         customParameters: params,
         currentStep: STEP,
-        currentBlock: BLOCK,
+        currentBlock: BLOCK, store: {},
       });
       const parameters = result.parameters as unknown as TrialParams;
       expect(parameters.aFirst).toBe(drawAFirst(1, 'cell-color-sparse', i));
@@ -338,7 +338,7 @@ describe('staircaseBlock', () => {
       ])),
       customParameters: params,
       currentStep: STEP,
-      currentBlock: BLOCK,
+      currentBlock: BLOCK, store: {},
     });
     expect((result.parameters as unknown as TrialParams).trialIndex).toBe(2);
   });
@@ -374,7 +374,7 @@ describe('staircaseBlock', () => {
       answers: answers({ ...setup, ...blockAnswers(trials) }),
       customParameters: { ...params, restEvery: 0, ...extra },
       currentStep: STEP,
-      currentBlock: BLOCK,
+      currentBlock: BLOCK, store: {},
     });
 
     test('the first check comes after 15 staircase trials: 5 vs 30, the 30 correct', () => {
@@ -436,7 +436,7 @@ describe('staircaseBlock', () => {
         }),
         customParameters: { ...params, restEvery: 0 },
         currentStep: STEP,
-        currentBlock: BLOCK,
+        currentBlock: BLOCK, store: {},
       });
       expect(reloaded.component).toBe(ATTENTION_FAILED);
       // a config override of the allowed misses
@@ -452,7 +452,7 @@ describe('staircaseBlock', () => {
       ])),
       customParameters: { ...params, maxTrials: 1 },
       currentStep: STEP,
-      currentBlock: BLOCK,
+      currentBlock: BLOCK, store: {},
     });
     expect(result).toEqual({ component: null });
   });
@@ -470,7 +470,7 @@ describe('staircaseBlock', () => {
       answers: answers(blockAnswers(trials)),
       customParameters: { ...params, maxReversals: 1 },
       currentStep: STEP,
-      currentBlock: BLOCK,
+      currentBlock: BLOCK, store: {},
     });
     expect(result).toEqual({ component: null });
   });
@@ -485,7 +485,7 @@ describe('staircaseBlock', () => {
         ...params, attentionEvery: 999, ...(restEvery === undefined ? {} : { restEvery }),
       },
       currentStep: STEP,
-      currentBlock: BLOCK,
+      currentBlock: BLOCK, store: {},
     });
 
     test('offers the rest page after every 50 main-block trials by default', () => {
@@ -532,7 +532,7 @@ describe('staircaseBlock', () => {
           ...params, maxTrials: 1, restEvery: 2,
         },
         currentStep: STEP,
-        currentBlock: BLOCK,
+        currentBlock: BLOCK, store: {},
       });
       expect(result).toEqual({ component: null });
     });

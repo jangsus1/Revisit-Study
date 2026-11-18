@@ -1,5 +1,31 @@
 {
-  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/GlobalConfigSchema.json",
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v3.0.0/src/parser/GlobalConfigSchema.json",
+  "tabs": [
+    {
+      "label": "Demo Studies",
+      "description": "These studies show off individual features of the reVISit platform."
+    },
+    {
+      "label": "Factor-demos",
+      "description": "These studies demonstrate the factors configuration language and its participant-level scheduling behavior."
+    },
+    {
+      "label": "Example Studies",
+      "description": "These are full studies that demonstrate the capabilities of the reVISit platform."
+    },
+    {
+      "label": "Tutorials",
+      "description": "These studies are designed to help you learn how to use the reVISit platform."
+    },
+    {
+      "label": "Tests",
+      "description": "These studies exist for testing purposes."
+    },
+    {
+      "label": "Libraries",
+      "description": "Here you can see an example of every library that we publish."
+    }
+  ],
   "configsList": [
     "scatterplot_gaze_basic",
     "gaze_aoi_validation",
@@ -9,26 +35,44 @@
     "scatterplot_duration",
     "scatterplot_extend",
     "scatterplot_interval",
+    "cluster-flow-staircase",
+    "cluster-flow-extended",
+    "cluster-flow-gallery",
+    "test-cluster-flow",
     "tutorial",
     "tutorial-replication",
     "demo-html",
+    "test-factors",
+    "test-markdown-factors",
+    "demo-stroop-factors",
+    "demo-stroop-html-factors",
+    "test-max-study2",
+    "demo-ffl-study",
+    "demo-dsf-study",
+    "demo-calvi-study",
     "demo-html-input",
+    "demo-templating",
     "demo-form-elements",
     "demo-training",
+    "demo-answer-feedback",
     "demo-html-trrack",
     "demo-svelte-trrack",
     "demo-react-trrack",
+    "demo-codemirror",
     "demo-screen-recording",
+    "demo-gamepad",
     "demo-image",
     "demo-vega",
     "demo-video",
     "demo-dynamic",
     "demo-condition",
+    "demo-dark-mode",
     "demo-style",
     "demo-yaml",
     "demo-ranking-widget",
     "demo-upset",
     "demo-choropleth-map",
+    "incentives-corr",
     "example-brush-interactions",
     "example-cleveland",
     "example-llm-chatbot",
@@ -48,7 +92,9 @@
     "library-quis",
     "library-sam",
     "library-screen-recording",
+    "library-webcam-recording",
     "library-smeq",
+    "library-drawing",
     "library-sus",
     "library-ueq",
     "library-ueq-s",
@@ -56,6 +102,8 @@
     "library-umux-lite",
     "library-virtual-chinrest",
     "library-vlat",
+    "test-keymapping",
+    "test-response-functions",
     "test-audio",
     "test-device-restriction",
     "test-library",
@@ -65,17 +113,368 @@
     "test-component-timeout",
     "test-skip-logic",
     "test-step-logic",
-    "cluster-flow-staircase",
-    "cluster-flow-extended",
-    "cluster-flow-gallery",
-    "test-cluster-flow"
+    "test-global-store",
+    "test-global-store-operations",
+    "test-global-store-failures"
   ],
   "configs": {
+    "tutorial": {
+      "tab": "Tutorials",
+      "path": "tutorial/config.json"
+    },
+    "tutorial-replication": {
+      "tab": "Tutorials",
+      "path": "tutorial/replication-config.json"
+    },
+    "demo-html": {
+      "tab": "Demo Studies",
+      "path": "demo-html/config.json"
+    },
+    "test-factors": {
+      "path": "test-factors/config.json",
+      "test": true
+    },
+    "test-markdown-factors": {
+      "path": "test-markdown-factors/config.json",
+      "test": true
+    },
+    "demo-stroop-factors": {
+      "tab": "Factor-demos",
+      "path": "demo-stroop-factors/config.json"
+    },
+    "demo-stroop-html-factors": {
+      "tab": "Factor-demos",
+      "path": "demo-stroop-html-factors/config.json"
+    },
+    "demo-ffl-study": {
+      "tab": "Factor-demos",
+      "path": "demo-ffl-study/config.json"
+    },
+    "demo-dsf-study": {
+      "tab": "Factor-demos",
+      "path": "demo-dsf-study/config.json"
+    },
+    "demo-calvi-study": {
+      "tab": "Factor-demos",
+      "path": "demo-calvi-study/config.json"
+    },
+    "demo-screen-recording": {
+      "tab": "Demo Studies",
+      "path": "demo-screen-recording/config.json"
+    },
+    "demo-gamepad": {
+      "tab": "Demo Studies",
+      "path": "demo-gamepad/config.json"
+    },
+    "demo-html-input": {
+      "tab": "Demo Studies",
+      "path": "demo-html-input/config.json"
+    },
+    "demo-templating": {
+      "tab": "Demo Studies",
+      "path": "demo-templating/config.json"
+    },
+    "demo-form-elements": {
+      "tab": "Demo Studies",
+      "path": "demo-form-elements/config.json"
+    },
+    "demo-dark-mode": {
+      "tab": "Demo Studies",
+      "path": "demo-dark-mode/config.json"
+    },
+    "demo-answer-feedback": {
+      "tab": "Demo Studies",
+      "path": "demo-answer-feedback/config.json"
+    },
+    "demo-training": {
+      "tab": "Demo Studies",
+      "path": "demo-training/config.json"
+    },
+    "demo-upset": {
+      "tab": "Demo Studies",
+      "path": "demo-upset/config.json"
+    },
+    "demo-video": {
+      "tab": "Demo Studies",
+      "path": "demo-video/config.json"
+    },
+    "demo-dynamic": {
+      "tab": "Demo Studies",
+      "path": "demo-dynamic/config.json"
+    },
+    "demo-condition": {
+      "tab": "Demo Studies",
+      "path": "demo-condition/config.json"
+    },
+    "demo-html-trrack": {
+      "tab": "Demo Studies",
+      "path": "demo-html-trrack/config.json"
+    },
+    "demo-svelte-trrack": {
+      "tab": "Demo Studies",
+      "path": "demo-svelte-trrack/config.json"
+    },
+    "demo-react-trrack": {
+      "tab": "Demo Studies",
+      "path": "demo-react-trrack/config.json"
+    },
+    "demo-codemirror": {
+      "tab": "Demo Studies",
+      "path": "demo-codemirror/config.json"
+    },
+    "demo-image": {
+      "tab": "Demo Studies",
+      "path": "demo-image/config.json"
+    },
+    "demo-style": {
+      "tab": "Demo Studies",
+      "path": "demo-style/config.json"
+    },
+    "demo-vega": {
+      "tab": "Demo Studies",
+      "path": "demo-vega/config.json"
+    },
+    "demo-yaml": {
+      "tab": "Demo Studies",
+      "path": "demo-yaml/config.yaml"
+    },
+    "demo-ranking-widget": {
+      "tab": "Demo Studies",
+      "path": "demo-ranking-widget/config.json"
+    },
+    "demo-choropleth-map": {
+      "tab": "Demo Studies",
+      "path": "demo-choropleth-map/config.json"
+    },
+    "incentives-corr": {
+      "tab": "Factor-demos",
+      "path": "incentives-corr/config.json"
+    },
+    "example-llm-chatbot": {
+      "tab": "Example Studies",
+      "path": "example-llm-chatbot/config.json"
+    },
+    "example-brush-interactions": {
+      "tab": "Example Studies",
+      "path": "example-brush-interactions/config.json"
+    },
+    "example-cleveland": {
+      "tab": "Example Studies",
+      "path": "example-cleveland/config.json"
+    },
+    "example-mvnv": {
+      "tab": "Example Studies",
+      "path": "example-mvnv/config.json"
+    },
+    "library-adaptive-vlat": {
+      "tab": "Libraries",
+      "path": "library-adaptive-vlat/config.json",
+      "test": true
+    },
+    "library-beauvis": {
+      "tab": "Libraries",
+      "path": "library-beauvis/config.json",
+      "test": true
+    },
+    "library-berlin-num": {
+      "tab": "Libraries",
+      "path": "library-berlin-num/config.json",
+      "test": true
+    },
+    "library-calvi": {
+      "tab": "Libraries",
+      "path": "library-calvi/config.json",
+      "test": true
+    },
+    "library-color-blindness": {
+      "tab": "Libraries",
+      "path": "library-color-blindness/config.json",
+      "test": true
+    },
+    "library-demographics": {
+      "tab": "Libraries",
+      "path": "library-demographics/config.json",
+      "test": true
+    },
+    "library-graph-literacy-scale": {
+      "tab": "Libraries",
+      "path": "library-graph-literacy-scale/config.json",
+      "test": true
+    },
+    "library-mic-check": {
+      "tab": "Libraries",
+      "path": "library-mic-check/config.json",
+      "test": true
+    },
+    "library-mini-vlat": {
+      "tab": "Libraries",
+      "path": "library-mini-vlat/config.json",
+      "test": true
+    },
+    "library-nasa-tlx": {
+      "tab": "Libraries",
+      "path": "library-nasa-tlx/config.json",
+      "test": true
+    },
+    "library-previs": {
+      "tab": "Libraries",
+      "path": "library-previs/config.json",
+      "test": true
+    },
+    "library-quis": {
+      "tab": "Libraries",
+      "path": "library-quis/config.json",
+      "test": true
+    },
+    "library-sam": {
+      "tab": "Libraries",
+      "path": "library-sam/config.json",
+      "test": true
+    },
+    "library-screen-recording": {
+      "tab": "Libraries",
+      "path": "library-screen-recording/config.json",
+      "test": true
+    },
+    "library-webcam-recording": {
+      "tab": "Libraries",
+      "path": "library-webcam-recording/config.json",
+      "test": true
+    },
+    "library-smeq": {
+      "tab": "Libraries",
+      "path": "library-smeq/config.json",
+      "test": true
+    },
+    "library-drawing": {
+      "tab": "Libraries",
+      "path": "library-drawing/config.json",
+      "test": true
+    },
+    "library-sus": {
+      "tab": "Libraries",
+      "path": "library-sus/config.json",
+      "test": true
+    },
+    "library-ueq": {
+      "tab": "Libraries",
+      "path": "library-ueq/config.json",
+      "test": true
+    },
+    "library-ueq-s": {
+      "tab": "Libraries",
+      "path": "library-ueq-s/config.json",
+      "test": true
+    },
+    "library-vlat": {
+      "tab": "Libraries",
+      "path": "library-vlat/config.json",
+      "test": true
+    },
+    "test-keymapping": {
+      "tab": "Tests",
+      "path": "test-keymapping/config.json",
+      "test": true
+    },
+    "test-response-functions": {
+      "tab": "Tests",
+      "path": "test-response-functions/config.json",
+      "test": true
+    },
+    "test-max-study2": {
+      "tab": "Tests",
+      "path": "test-max-study2/config.json",
+      "test": true
+    },
+    "test-audio": {
+      "tab": "Tests",
+      "path": "test-audio/config.json",
+      "test": true
+    },
+    "test-device-restriction": {
+      "tab": "Tests",
+      "path": "test-device-restriction/config.json"
+    },
+    "test-library": {
+      "tab": "Tests",
+      "path": "test-library/config.json",
+      "test": true
+    },
+    "test-likert-matrix": {
+      "tab": "Tests",
+      "path": "test-likert-matrix/config.json"
+    },
+    "test-parser-errors": {
+      "tab": "Tests",
+      "path": "test-parser-errors/config.json",
+      "test": true
+    },
+    "test-randomization": {
+      "tab": "Tests",
+      "path": "test-randomization/config.json",
+      "test": true
+    },
+    "test-component-timeout": {
+      "tab": "Tests",
+      "path": "test-component-timeout/config.json",
+      "test": true
+    },
+    "test-skip-logic": {
+      "tab": "Tests",
+      "path": "test-skip-logic/config.json",
+      "test": true
+    },
+    "test-step-logic": {
+      "tab": "Tests",
+      "path": "test-step-logic/config.json",
+      "test": true
+    },
+    "library-umux": {
+      "tab": "Libraries",
+      "path": "library-umux/config.json",
+      "test": true
+    },
+    "library-umux-lite": {
+      "tab": "Libraries",
+      "path": "library-umux-lite/config.json",
+      "test": true
+    },
+    "library-virtual-chinrest": {
+      "tab": "Libraries",
+      "path": "library-virtual-chinrest/config.json",
+      "test": true
+    },
+    "example-VLAT-adaptive": {
+      "tab": "Example Studies",
+      "path": "example-VLAT-adaptive/config.json",
+      "test": true
+    },
+    "test-global-store": {
+      "tab": "Tests",
+      "path": "test-global-store/config.json"
+    },
+    "test-global-store-operations": {
+      "tab": "Tests",
+      "path": "test-global-store-operations/config.json"
+    },
+    "test-global-store-failures": {
+      "tab": "Tests",
+      "path": "test-global-store-failures/config.json"
+    },
+    "scatterplot_gaze_basic": {
+      "path": "scatterplot_gaze_basic/config.json"
+    },
+    "gaze_aoi_validation": {
+      "path": "gaze_aoi_validation/config.json"
+    },
     "scatterplot_timing": {
       "path": "scatterplot_timing/config.json"
     },
     "scatterplot_gaze": {
       "path": "scatterplot_gaze/config.json"
+    },
+    "gaze_playground": {
+      "path": "gaze_playground/config.json"
     },
     "scatterplot_duration": {
       "path": "scatterplot_duration/config.json"
@@ -85,6 +484,19 @@
     },
     "scatterplot_interval": {
       "path": "scatterplot_interval/config.json"
+    },
+    "cluster-flow-staircase": {
+      "path": "cluster-flow-staircase/config.json"
+    },
+    "cluster-flow-extended": {
+      "path": "cluster-flow-extended/config.json"
+    },
+    "cluster-flow-gallery": {
+      "path": "cluster-flow-gallery/config.json"
+    },
+    "test-cluster-flow": {
+      "path": "test-cluster-flow/config.json",
+      "test": true
     },
     "scatterplot": {
       "path": "scatterplot/config.json"
@@ -106,226 +518,6 @@
     },
     "flowchart": {
       "path": "flowchart/config.json"
-    },
-    "tutorial": {
-      "path": "tutorial/config.json"
-    },
-    "tutorial-replication": {
-      "path": "tutorial/replication-config.json"
-    },
-    "demo-html": {
-      "path": "demo-html/config.json"
-    },
-    "demo-screen-recording": {
-      "path": "demo-screen-recording/config.json"
-    },
-    "demo-html-input": {
-      "path": "demo-html-input/config.json"
-    },
-    "demo-form-elements": {
-      "path": "demo-form-elements/config.json"
-    },
-    "demo-training": {
-      "path": "demo-training/config.json"
-    },
-    "demo-upset": {
-      "path": "demo-upset/config.json"
-    },
-    "demo-video": {
-      "path": "demo-video/config.json"
-    },
-    "demo-dynamic": {
-      "path": "demo-dynamic/config.json"
-    },
-    "demo-condition": {
-      "path": "demo-condition/config.json"
-    },
-    "demo-html-trrack": {
-      "path": "demo-html-trrack/config.json"
-    },
-    "demo-svelte-trrack": {
-      "path": "demo-svelte-trrack/config.json"
-    },
-    "demo-react-trrack": {
-      "path": "demo-react-trrack/config.json"
-    },
-    "demo-image": {
-      "path": "demo-image/config.json"
-    },
-    "demo-style": {
-      "path": "demo-style/config.json"
-    },
-    "demo-vega": {
-      "path": "demo-vega/config.json"
-    },
-    "demo-yaml": {
-      "path": "demo-yaml/config.yaml"
-    },
-    "demo-ranking-widget": {
-      "path": "demo-ranking-widget/config.json"
-    },
-    "demo-choropleth-map": {
-      "path": "demo-choropleth-map/config.json"
-    },
-    "example-llm-chatbot": {
-      "path": "example-llm-chatbot/config.json"
-    },
-    "example-brush-interactions": {
-      "path": "example-brush-interactions/config.json"
-    },
-    "example-cleveland": {
-      "path": "example-cleveland/config.json"
-    },
-    "example-mvnv": {
-      "path": "example-mvnv/config.json"
-    },
-    "library-adaptive-vlat": {
-      "path": "library-adaptive-vlat/config.json",
-      "test": true
-    },
-    "library-beauvis": {
-      "path": "library-beauvis/config.json",
-      "test": true
-    },
-    "library-berlin-num": {
-      "path": "library-berlin-num/config.json",
-      "test": true
-    },
-    "library-calvi": {
-      "path": "library-calvi/config.json",
-      "test": true
-    },
-    "library-color-blindness": {
-      "path": "library-color-blindness/config.json",
-      "test": true
-    },
-    "library-demographics": {
-      "path": "library-demographics/config.json",
-      "test": true
-    },
-    "library-graph-literacy-scale": {
-      "path": "library-graph-literacy-scale/config.json",
-      "test": true
-    },
-    "library-mic-check": {
-      "path": "library-mic-check/config.json",
-      "test": true
-    },
-    "library-mini-vlat": {
-      "path": "library-mini-vlat/config.json",
-      "test": true
-    },
-    "library-nasa-tlx": {
-      "path": "library-nasa-tlx/config.json",
-      "test": true
-    },
-    "library-previs": {
-      "path": "library-previs/config.json",
-      "test": true
-    },
-    "library-quis": {
-      "path": "library-quis/config.json",
-      "test": true
-    },
-    "library-sam": {
-      "path": "library-sam/config.json",
-      "test": true
-    },
-    "library-screen-recording": {
-      "path": "library-screen-recording/config.json",
-      "test": true
-    },
-    "library-smeq": {
-      "path": "library-smeq/config.json",
-      "test": true
-    },
-    "library-sus": {
-      "path": "library-sus/config.json",
-      "test": true
-    },
-    "library-ueq": {
-      "path": "library-ueq/config.json",
-      "test": true
-    },
-    "library-ueq-s": {
-      "path": "library-ueq-s/config.json",
-      "test": true
-    },
-    "library-vlat": {
-      "path": "library-vlat/config.json",
-      "test": true
-    },
-    "test-audio": {
-      "path": "test-audio/config.json",
-      "test": true
-    },
-    "test-device-restriction": {
-      "path": "test-device-restriction/config.json"
-    },
-    "test-library": {
-      "path": "test-library/config.json",
-      "test": true
-    },
-    "test-likert-matrix": {
-      "path": "test-likert-matrix/config.json"
-    },
-    "test-parser-errors": {
-      "path": "test-parser-errors/config.json",
-      "test": true
-    },
-    "test-randomization": {
-      "path": "test-randomization/config.json",
-      "test": true
-    },
-    "test-component-timeout": {
-      "path": "test-component-timeout/config.json",
-      "test": true
-    },
-    "test-skip-logic": {
-      "path": "test-skip-logic/config.json",
-      "test": true
-    },
-    "test-step-logic": {
-      "path": "test-step-logic/config.json",
-      "test": true
-    },
-    "library-umux": {
-      "path": "library-umux/config.json",
-      "test": true
-    },
-    "library-umux-lite": {
-      "path": "library-umux-lite/config.json",
-      "test": true
-    },
-    "library-virtual-chinrest": {
-      "path": "library-virtual-chinrest/config.json",
-      "test": true
-    },
-    "example-VLAT-adaptive": {
-      "path": "example-VLAT-adaptive/config.json",
-      "test": true
-    },
-    "cluster-flow-staircase": {
-      "path": "cluster-flow-staircase/config.json"
-    },
-    "cluster-flow-gallery": {
-      "path": "cluster-flow-gallery/config.json"
-    },
-    "test-cluster-flow": {
-      "path": "test-cluster-flow/config.json",
-      "test": true
-    },
-    "gaze_playground": {
-      "path": "gaze_playground/config.json"
-    },
-    "cluster-flow-extended": {
-      "path": "cluster-flow-extended/config.json"
-    },
-    "scatterplot_gaze_basic": {
-      "path": "scatterplot_gaze_basic/config.json"
-    },
-    "gaze_aoi_validation": {
-      "path": "gaze_aoi_validation/config.json"
     }
   }
 }

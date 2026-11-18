@@ -26,7 +26,7 @@ function renderPage(parameters: InfoPageParameters, answers: Record<string, unkn
         setAnswer={setAnswer}
         advance={advance}
         answers={answers as unknown as ParticipantData['answers']}
-        useTrrack={(() => undefined) as never}
+        useTrrack={(() => undefined) as never} globalVariables={{}} registerGlobalStoreUpdater={(() => undefined) as never}
       />
     </MantineProvider>,
   );

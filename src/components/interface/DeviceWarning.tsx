@@ -11,6 +11,7 @@ import {
 import { useStorageEngine } from '../../storage/storageEngineHooks';
 import { useStudyConfig } from '../../store/hooks/useStudyConfig';
 import { useDeviceRules } from '../../utils/useDeviceRules';
+import { useStartupInteractionBlocked } from '../StartupContext';
 
 export function DeviceWarning({
   developmentModeEnabled,
@@ -22,6 +23,7 @@ export function DeviceWarning({
   const navigate = useNavigate();
   const [timeLeft, setTimeLeft] = useState(60);
   const [isRejected, setIsRejected] = useState(false);
+  const startupInteractionBlocked = useStartupInteractionBlocked();
   const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const storageEngineRef = useRef(storageEngine);
   const navigateRef = useRef(navigate);
@@ -67,7 +69,8 @@ export function DeviceWarning({
     (display?.minWidth !== undefined && currentDisplay.width < display.minWidth)
     || (display?.minHeight !== undefined && currentDisplay.height < display.minHeight)
   );
-  const shouldRunDisplayCountdown = !developmentModeEnabled && !isRejected && isDisplayRequirementNotMet;
+  const shouldRunDisplayCountdown = !startupInteractionBlocked
+    && !developmentModeEnabled && !isRejected && isDisplayRequirementNotMet;
 
   useEffect(() => {
     if (shouldRunDisplayCountdown) {
@@ -120,7 +123,7 @@ export function DeviceWarning({
     };
   }, [shouldRunDisplayCountdown]);
 
-  if (developmentModeEnabled || (!isRejected && !hasAnyViolation)) {
+  if (startupInteractionBlocked || developmentModeEnabled || (!isRejected && !hasAnyViolation)) {
     return null;
   }
 
@@ -128,7 +131,7 @@ export function DeviceWarning({
     // zIndex above study overlays (scatterplot_gaze full-window panels use 2000-5000) so the countdown is never hidden
     <Modal opened onClose={() => {}} fullScreen withCloseButton={false} zIndex={6000}>
       <Stack align="center" justify="center">
-        <IconAlertTriangle size={64} color="orange" />
+        <IconAlertTriangle size={64} color="var(--mantine-color-orange-text)" />
         <Title order={3}>{warningTitle}</Title>
         {isRejected && (
           <Text size="md" ta="center" c="red">
@@ -148,8 +151,8 @@ export function DeviceWarning({
         <Flex wrap="wrap" justify="center">
           {!isBrowserAllowed && (
           <Card shadow="sm" padding="lg" radius="md" mx="md" my="md" withBorder w={400}>
-            <Card.Section bg="gray.3" mb="md" p="md" style={{ display: 'flex', justifyContent: 'center' }}>
-              <IconBrowser size={48} color="gray" />
+            <Card.Section bg="light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5))" mb="md" p="md" style={{ display: 'flex', justifyContent: 'center' }}>
+              <IconBrowser size={48} color="var(--mantine-color-dimmed)" />
             </Card.Section>
             {browsers?.blockedMessage
               ? (
@@ -191,8 +194,8 @@ export function DeviceWarning({
 
           {!isDeviceAllowed && (
           <Card shadow="sm" padding="lg" radius="md" mx="md" my="md" withBorder w={400}>
-            <Card.Section bg="gray.3" mb="md" p="md" style={{ display: 'flex', justifyContent: 'center' }}>
-              <IconDevices size={48} color="gray" />
+            <Card.Section bg="light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5))" mb="md" p="md" style={{ display: 'flex', justifyContent: 'center' }}>
+              <IconDevices size={48} color="var(--mantine-color-dimmed)" />
             </Card.Section>
             {devices?.blockedMessage
               ? (
@@ -231,8 +234,8 @@ export function DeviceWarning({
 
           {!isInputAllowed && (
           <Card shadow="sm" padding="lg" radius="md" mx="md" my="md" withBorder w={400}>
-            <Card.Section bg="gray.3" mb="md" p="md" style={{ display: 'flex', justifyContent: 'center' }}>
-              <IconHandClick size={48} color="gray" />
+            <Card.Section bg="light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5))" mb="md" p="md" style={{ display: 'flex', justifyContent: 'center' }}>
+              <IconHandClick size={48} color="var(--mantine-color-dimmed)" />
             </Card.Section>
             {inputs?.blockedMessage
               ? (
@@ -271,8 +274,8 @@ export function DeviceWarning({
 
           {!isDisplayAllowed && (
             <Card shadow="sm" padding="lg" radius="md" mx="md" my="md" withBorder w={400}>
-              <Card.Section bg="gray.3" mb="md" p="md" style={{ display: 'flex', justifyContent: 'center' }}>
-                <IconDeviceDesktop size={48} color="gray" />
+              <Card.Section bg="light-dark(var(--mantine-color-gray-3), var(--mantine-color-dark-5))" mb="md" p="md" style={{ display: 'flex', justifyContent: 'center' }}>
+                <IconDeviceDesktop size={48} color="var(--mantine-color-dimmed)" />
               </Card.Section>
               {display?.blockedMessage
                 ? (

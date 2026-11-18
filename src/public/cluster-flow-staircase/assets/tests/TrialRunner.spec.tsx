@@ -96,7 +96,7 @@ function renderTrial(overrides: Partial<TrialParams> = {}) {
         setAnswer={setAnswer}
         advance={advance}
         answers={{}}
-        useTrrack={(() => undefined) as never}
+        useTrrack={(() => undefined) as never} globalVariables={{}} registerGlobalStoreUpdater={(() => undefined) as never}
       />
     </MantineProvider>,
   );

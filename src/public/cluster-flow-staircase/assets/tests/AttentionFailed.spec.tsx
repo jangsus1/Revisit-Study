@@ -18,7 +18,7 @@ function renderPage(parameters?: AttentionFailedParameters, answers: Record<stri
   const advance = vi.fn();
   render(
     <MantineProvider>
-      <AttentionFailed parameters={parameters} setAnswer={setAnswer} advance={advance} answers={answers as never} useTrrack={(() => undefined) as never} />
+      <AttentionFailed parameters={parameters} setAnswer={setAnswer} advance={advance} answers={answers as never} useTrrack={(() => undefined) as never} globalVariables={{}} registerGlobalStoreUpdater={(() => undefined) as never} />
     </MantineProvider>,
   );
   return { setAnswer, advance };

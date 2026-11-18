@@ -3,6 +3,7 @@ import {
   afterEach, describe, expect, test, vi,
 } from 'vitest';
 import { ReactNode } from 'react';
+import { StartupInteractionProvider } from '../StartupContext';
 import { TrainingFailed } from '../TrainingFailed';
 import { useStorageEngine } from '../../storage/storageEngineHooks';
 
@@ -18,7 +19,20 @@ vi.mock('../../storage/storageEngineHooks', () => ({
   })),
 }));
 
-afterEach(() => vi.clearAllMocks());
+const mockUiConfig: Record<string, unknown> = {};
+
+vi.mock('../../store/hooks/useStudyConfig', () => ({
+  useStudyConfig: () => ({ uiConfig: mockUiConfig }),
+}));
+
+vi.mock('../ReactMarkdownWrapper', () => ({
+  ReactMarkdownWrapper: ({ text }: { text: string }) => <div>{text}</div>,
+}));
+
+afterEach(() => {
+  vi.clearAllMocks();
+  Object.keys(mockUiConfig).forEach((key) => { delete mockUiConfig[key]; });
+});
 
 describe('TrainingFailed', () => {
   test('renders the training-failed message', () => {
@@ -27,8 +41,25 @@ describe('TrainingFailed', () => {
     unmount();
   });
 
+  test('renders trainingFailedMsg when configured', () => {
+    mockUiConfig.trainingFailedMsg = 'Custom failure message';
+    const { container, unmount } = render(<TrainingFailed />);
+    expect(container.textContent).toContain('Custom failure message');
+    unmount();
+  });
+
   test('calls rejectCurrentParticipant with the correct reason on mount', async () => {
     const { unmount } = render(<TrainingFailed />);
+    await waitFor(() => expect(mockReject).toHaveBeenCalledWith('Failed training'));
+    unmount();
+  });
+
+  test('defers rejection until participant startup is ready', async () => {
+    const { rerender, unmount } = render(
+      <StartupInteractionProvider value><TrainingFailed /></StartupInteractionProvider>,
+    );
+    expect(mockReject).not.toHaveBeenCalled();
+    rerender(<StartupInteractionProvider value={false}><TrainingFailed /></StartupInteractionProvider>);
     await waitFor(() => expect(mockReject).toHaveBeenCalledWith('Failed training'));
     unmount();
   });

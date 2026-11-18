@@ -31,7 +31,7 @@ function renderPage(parameters?: ExamplePageParameters) {
   const advance = vi.fn();
   render(
     <MantineProvider>
-      <ExamplePage parameters={parameters} setAnswer={setAnswer} advance={advance} answers={{}} useTrrack={(() => undefined) as never} />
+      <ExamplePage parameters={parameters} setAnswer={setAnswer} advance={advance} answers={{}} useTrrack={(() => undefined) as never} globalVariables={{}} registerGlobalStoreUpdater={(() => undefined) as never} />
     </MantineProvider>,
   );
   return { setAnswer, advance };

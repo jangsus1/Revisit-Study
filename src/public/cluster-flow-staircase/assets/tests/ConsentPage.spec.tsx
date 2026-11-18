@@ -14,7 +14,7 @@ function renderConsent() {
   const advance = vi.fn();
   render(
     <MantineProvider>
-      <ConsentPage parameters={undefined} setAnswer={setAnswer} advance={advance} answers={{}} useTrrack={(() => undefined) as never} />
+      <ConsentPage parameters={undefined} setAnswer={setAnswer} advance={advance} answers={{}} useTrrack={(() => undefined) as never} globalVariables={{}} registerGlobalStoreUpdater={(() => undefined) as never} />
     </MantineProvider>,
   );
   return { setAnswer, advance };

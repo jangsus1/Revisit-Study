@@ -61,7 +61,7 @@ describe('DisplayFailed', () => {
           parameters={{ prolificCode: 'C14JYDHI', redirectUrl: 'https://example.test/return', redirectDelayMs: 8000 }}
           answers={practiceAnswers([{ ...EXACT, s1: 400 }, { ...EXACT, s2: 100 }, EXACT])}
           setAnswer={setAnswer}
-          useTrrack={(() => undefined) as never}
+          useTrrack={(() => undefined) as never} globalVariables={{}} registerGlobalStoreUpdater={(() => undefined) as never}
         />
       </MantineProvider>,
     );

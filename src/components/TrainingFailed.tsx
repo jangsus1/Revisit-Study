@@ -1,22 +1,24 @@
 import { Text } from '@mantine/core';
 import { useEffect } from 'react';
+import { useStartupInteractionBlocked } from './StartupContext';
 import { useStorageEngine } from '../storage/storageEngineHooks';
 import { useStudyConfig } from '../store/hooks/useStudyConfig';
 import { ReactMarkdownWrapper } from './ReactMarkdownWrapper';
 
 export function TrainingFailed() {
   const { storageEngine } = useStorageEngine();
+  const startupInteractionBlocked = useStartupInteractionBlocked();
   const studyConfig = useStudyConfig();
   const { trainingFailedMsg, trainingFailedRedirectURL, trainingFailedRedirectDelay } = studyConfig.uiConfig;
 
   useEffect(() => {
-    if (storageEngine) {
+    if (!startupInteractionBlocked && storageEngine) {
       storageEngine.rejectCurrentParticipant('Failed training')
         .catch(() => {
           console.error('Failed to reject participant who failed training');
         });
     }
-  }, [storageEngine]);
+  }, [startupInteractionBlocked, storageEngine]);
 
   useEffect(() => {
     if (!trainingFailedRedirectURL) {
