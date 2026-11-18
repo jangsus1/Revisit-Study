@@ -62,7 +62,7 @@ describe('RecordingAudioWaveform', () => {
     vi.stubGlobal('cancelAnimationFrame', vi.fn());
 
     // Make canvas.getContext return a workable mock in jsdom
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(mockCtx as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(mockCtx as never);
 
     Object.defineProperty(navigator, 'mediaDevices', {
       value: { getUserMedia: mockGetUserMedia },

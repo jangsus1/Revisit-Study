@@ -323,7 +323,7 @@ describe('PDF export helpers', () => {
     Object.defineProperty(video, 'videoHeight', { value: 720 });
     vi.spyOn(video, 'getBoundingClientRect').mockReturnValue({ height: 360, width: 640 } as DOMRect);
     const drawImage = vi.fn();
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as never);
     vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,video-frame');
 
     await expect(capturePdfVideoSnapshots(element)).resolves.toEqual([{
@@ -368,7 +368,7 @@ describe('PDF export helpers', () => {
     element.append(canvas);
     vi.spyOn(canvas, 'getBoundingClientRect').mockReturnValue({ height: 500, width: 500 } as DOMRect);
     const drawImage = vi.fn();
-    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage } as never);
     vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,canvas');
 
     expect(capturePdfCanvasSnapshots(element)).toEqual([{

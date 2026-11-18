@@ -1639,6 +1639,14 @@
       ],
       "description": "A primitive level or an atomic object-valued condition stored by a factor."
     },
+    "GazeEngineName": {
+      "description": "The gaze estimation engines.",
+      "enum": [
+        "webeyetrack",
+        "realeye"
+      ],
+      "type": "string"
+    },
     "GlobalStoreAction": {
       "additionalProperties": false,
       "properties": {
@@ -5845,12 +5853,8 @@
           "type": "boolean"
         },
         "gazeEngine": {
-          "description": "The gaze estimation engine. `webeyetrack` (MIT) is bundled. `realeye` (AGPL-3.0 or commercial license) is loaded from a CDN at runtime; check its license terms before using it. Defaults to `webeyetrack`.",
-          "enum": [
-            "webeyetrack",
-            "realeye"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/GazeEngineName",
+          "description": "The gaze estimation engine. `webeyetrack` (MIT) is bundled. `realeye` (AGPL-3.0 or commercial license) is loaded from a CDN at runtime; check its license terms before using it. Defaults to `webeyetrack`."
         },
         "helpTextPath": {
           "description": "The path to the help text file. This is displayed when a participant clicks help. Markdown is supported.",

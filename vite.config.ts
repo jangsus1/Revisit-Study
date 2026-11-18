@@ -20,6 +20,9 @@ export default defineConfig(({ command, mode }) => {
         '@trrack/vis-react': fileURLToPath(new URL('./src/shims/trrackVisReact.ts', import.meta.url)),
       },
     },
+    worker: {
+      format: 'es',
+    },
     test: {
       environment: 'jsdom',
       exclude: ['./tests/**', 'node_modules/**'],
