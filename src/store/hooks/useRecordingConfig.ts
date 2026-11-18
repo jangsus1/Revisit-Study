@@ -48,6 +48,7 @@ export function useRecordingConfig() {
     recordScreen,
     recordAudio,
     recordWebcam,
+    recordGaze,
     clickToRecord,
   } = studyConfig.uiConfig;
 
@@ -55,6 +56,7 @@ export function useRecordingConfig() {
     hasAudioRecording: studyHasAudioRecording,
     hasScreenRecording: studyHasScreenRecording,
     hasWebcamRecording: studyHasWebcamRecording,
+    hasGazeRecording: studyHasGazeRecording,
   } = useMemo(() => getStudyRecordings(
     studyConfig,
     getAssignedComponentNames(participantSequence, funcSequence),
@@ -75,6 +77,11 @@ export function useRecordingConfig() {
     [recordWebcam, resolvedStepConfig],
   );
 
+  const currentComponentHasGazeRecording = useMemo(
+    () => resolvedStepConfig?.recordGaze ?? !!recordGaze,
+    [recordGaze, resolvedStepConfig],
+  );
+
   const currentComponentHasClickToRecord = useMemo(
     () => resolvedStepConfig?.clickToRecord ?? !!clickToRecord,
     [clickToRecord, resolvedStepConfig],
@@ -84,9 +91,11 @@ export function useRecordingConfig() {
     studyHasAudioRecording,
     studyHasScreenRecording,
     studyHasWebcamRecording,
+    studyHasGazeRecording,
     currentComponentHasAudioRecording,
     currentComponentHasScreenRecording,
     currentComponentHasWebcamRecording,
+    currentComponentHasGazeRecording,
     currentComponentHasClickToRecord,
   };
 }

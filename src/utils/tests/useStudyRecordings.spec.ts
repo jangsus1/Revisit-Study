@@ -64,6 +64,19 @@ describe('useStudyRecordings', () => {
     await waitFor(() => expect(result.current.hasWebcamRecording).toBe(true));
   });
 
+  test('hasGazeRecording is true when gaze recording is configured', async () => {
+    const config = makeStudyConfig({ uiConfig: { recordGaze: true } });
+    const { result } = renderHook(() => useStudyRecordings(config));
+    await waitFor(() => expect(result.current.hasGazeRecording).toBe(true));
+    expect(result.current.hasWebcamRecording).toBe(false);
+  });
+
+  test('hasGazeRecording is true when a component enables it', async () => {
+    const config = makeStudyConfig({ components: { trial1: { recordGaze: true } } });
+    const { result } = renderHook(() => useStudyRecordings(config));
+    await waitFor(() => expect(result.current.hasGazeRecording).toBe(true));
+  });
+
   test('both flags are false when config has no recording options', async () => {
     const config = makeStudyConfig({ components: { trial1: { recordScreen: false } } });
     const { result } = renderHook(() => useStudyRecordings(config));
@@ -71,6 +84,7 @@ describe('useStudyRecordings', () => {
       expect(result.current.hasScreenRecording).toBe(false);
       expect(result.current.hasAudioRecording).toBe(false);
       expect(result.current.hasWebcamRecording).toBe(false);
+      expect(result.current.hasGazeRecording).toBe(false);
     });
   });
 });

@@ -8,10 +8,13 @@ export function getStudyRecordings(studyConfig: StudyConfig | undefined, compone
       hasAudioRecording: false,
       hasScreenRecording: false,
       hasWebcamRecording: false,
+      hasGazeRecording: false,
     };
   }
 
-  const { recordAudio, recordScreen, recordWebcam } = studyConfig.uiConfig;
+  const {
+    recordAudio, recordScreen, recordWebcam, recordGaze,
+  } = studyConfig.uiConfig;
   const componentConfig = (componentNames ?? Object.keys(studyConfig.components)).flatMap((componentId) => {
     const component = studyConfig.components[componentId];
     return component ? [studyComponentToIndividualComponent(component, studyConfig)] : [];
@@ -21,27 +24,31 @@ export function getStudyRecordings(studyConfig: StudyConfig | undefined, compone
     hasAudioRecording: !!recordAudio || componentConfig.some((component) => component.recordAudio),
     hasScreenRecording: !!recordScreen || componentConfig.some((component) => component.recordScreen),
     hasWebcamRecording: !!recordWebcam || componentConfig.some((component) => component.recordWebcam),
+    hasGazeRecording: !!recordGaze || componentConfig.some((component) => component.recordGaze),
   };
 }
 
 /**
- * Determines if the study has audio, screen, and webcam recordings.
+ * Determines if the study has audio, screen, webcam, and gaze recordings.
  */
 export function useStudyRecordings(studyConfig: StudyConfig | undefined) {
   const [hasAudioRecording, setHasAudioRecording] = useState(false);
   const [hasScreenRecording, setHasScreenRecording] = useState(false);
   const [hasWebcamRecording, setHasWebcamRecording] = useState(false);
+  const [hasGazeRecording, setHasGazeRecording] = useState(false);
 
   useEffect(() => {
     const recordings = getStudyRecordings(studyConfig);
     setHasAudioRecording(recordings.hasAudioRecording);
     setHasScreenRecording(recordings.hasScreenRecording);
     setHasWebcamRecording(recordings.hasWebcamRecording);
+    setHasGazeRecording(recordings.hasGazeRecording);
   }, [studyConfig]);
 
   return {
     hasAudioRecording,
     hasScreenRecording,
     hasWebcamRecording,
+    hasGazeRecording,
   };
 }

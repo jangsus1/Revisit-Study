@@ -662,9 +662,11 @@ describe('ComponentController — effect coverage (render-based)', () => {
       studyHasScreenRecording: false,
       studyHasAudioRecording: false,
       studyHasWebcamRecording: false,
+      studyHasGazeRecording: false,
       currentComponentHasAudioRecording: false,
       currentComponentHasScreenRecording: false,
       currentComponentHasWebcamRecording: false,
+      currentComponentHasGazeRecording: false,
       currentComponentHasClickToRecord: false,
     });
     vi.mocked(findBlockForStep).mockReturnValue([]);
@@ -886,9 +888,11 @@ describe('ComponentController — effect coverage (render-based)', () => {
       studyHasScreenRecording: true,
       studyHasAudioRecording: false,
       studyHasWebcamRecording: false,
+      studyHasGazeRecording: false,
       currentComponentHasAudioRecording: false,
       currentComponentHasScreenRecording: false,
       currentComponentHasWebcamRecording: false,
+      currentComponentHasGazeRecording: false,
       currentComponentHasClickToRecord: false,
     });
     const stableStateCanPlay = makeStableState({ analysisCanPlayScreenRecording: true });
@@ -911,9 +915,11 @@ describe('ComponentController — effect coverage (render-based)', () => {
       studyHasScreenRecording: false,
       studyHasAudioRecording: false,
       studyHasWebcamRecording: true,
+      studyHasGazeRecording: false,
       currentComponentHasAudioRecording: false,
       currentComponentHasScreenRecording: false,
       currentComponentHasWebcamRecording: true,
+      currentComponentHasGazeRecording: false,
       currentComponentHasClickToRecord: false,
     });
     const stableStateCanPlay = makeStableState({ analysisCanPlayScreenRecording: true });

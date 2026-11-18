@@ -348,6 +348,10 @@ export interface UIConfig {
   recordScreen?: boolean;
   /** Whether or not we want to utilize webcam recording. If true, will record webcam video on all components unless deactivated on individual components. Defaults to false. Studies using webcam without screen capture should include the webcam permission component before any recorded component. Studies combining webcam with screen capture should use the screen recording permission component. */
   recordWebcam?: boolean;
+  /** Whether or not to record webcam gaze estimates. If true, gaze is recorded on all components unless deactivated on individual components. Defaults to false. The eye-tracking library's calibration component must run before any recorded component. */
+  recordGaze?: boolean;
+  /** The gaze estimation engine. `webeyetrack` (MIT) is bundled. `realeye` (AGPL-3.0 or commercial license) is loaded from a CDN at runtime; check its license terms before using it. Defaults to `webeyetrack`. */
+  gazeEngine?: 'webeyetrack' | 'realeye';
   /** Desired fps for recording screen. If possible, this value will be used, but if it's not possible, the user agent will use the closest possible match. */
   recordScreenFPS?: number;
   /** Whether or not to capture game controller input into windowEvents. If true, gamepad button and axis events are recorded on all components unless deactivated on individual components. Defaults to false. Browsers do not expose a gamepad to the page until the participant presses a button on it, so nothing is captured before that first press. */
@@ -1425,6 +1429,8 @@ export interface BaseIndividualComponent {
   recordScreen?: boolean;
   /** Whether or not we want to utilize webcam recording. If present, will override the record webcam setting in the uiConfig. Studies using webcam without screen capture should include the webcam permission component before this component. Studies combining webcam with screen capture should use the screen recording permission component. */
   recordWebcam?: boolean;
+  /** Whether or not to record webcam gaze estimates. If present, will override the record gaze setting in the uiConfig. */
+  recordGaze?: boolean;
   /** Whether or not to capture game controller input into windowEvents. If present, will override the capture gamepad setting in the uiConfig. */
   captureGamepad?: boolean;
   /** Whether to prepend questions with their index (+ 1). This should only be used when all questions are in the same location, e.g. all are in the side bar. If present, will override the enumeration of questions setting in the uiConfig. */

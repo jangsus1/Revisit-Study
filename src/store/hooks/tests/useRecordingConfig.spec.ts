@@ -49,6 +49,8 @@ describe('useRecordingConfig', () => {
     expect(result.current.currentComponentHasScreenRecording).toBe(false);
     expect(result.current.currentComponentHasAudioRecording).toBe(false);
     expect(result.current.currentComponentHasWebcamRecording).toBe(false);
+    expect(result.current.studyHasGazeRecording).toBe(false);
+    expect(result.current.currentComponentHasGazeRecording).toBe(false);
     expect(result.current.currentComponentHasClickToRecord).toBe(false);
   });
 
@@ -85,6 +87,23 @@ describe('useRecordingConfig', () => {
     const { result } = renderHook(() => useRecordingConfig());
     expect(result.current.studyHasWebcamRecording).toBe(true);
     expect(result.current.currentComponentHasWebcamRecording).toBe(true);
+  });
+
+  test('gaze recording can be enabled globally', () => {
+    vi.mocked(useStudyConfig).mockReturnValueOnce(makeStudyConfig({ uiConfig: { recordGaze: true } }));
+    const { result } = renderHook(() => useRecordingConfig());
+    expect(result.current.studyHasGazeRecording).toBe(true);
+    expect(result.current.currentComponentHasGazeRecording).toBe(true);
+  });
+
+  test('a component can turn off global gaze recording', () => {
+    vi.mocked(useStudyConfig).mockReturnValueOnce(makeStudyConfig({
+      uiConfig: { recordGaze: true },
+      components: { trial1: { recordGaze: false } },
+    }));
+    const { result } = renderHook(() => useRecordingConfig());
+    expect(result.current.studyHasGazeRecording).toBe(true);
+    expect(result.current.currentComponentHasGazeRecording).toBe(false);
   });
 
   test('finds recording options on components inside dynamic blocks', () => {
