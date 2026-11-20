@@ -83,8 +83,8 @@ export function layoutModeFor(cue: Cue): LayoutMode {
 
 /** An axis-aligned rectangle in canvas px. */
 /** Line strength of a flowchart (`GENERATOR_CONFIG.FLOW_INK`). */
-export type FlowInk = 'dark' | 'medium' | 'light';
-export const FLOW_INKS: FlowInk[] = ['dark', 'medium', 'light'];
+export type FlowInk = 'dark' | 'light';
+export const FLOW_INKS: FlowInk[] = ['dark', 'light'];
 
 export interface Rect {
   x: number;

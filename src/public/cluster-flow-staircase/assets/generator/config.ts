@@ -225,15 +225,12 @@ export const GENERATOR_CONFIG = {
   },
   /**
    * Line strength of the flowchart boxes and links (`Display.ink`, exploration of 2026-11-16):
-   * `dark` is the drawing used so far (`FLOW_BOX` stroke, `LINK_STROKE` at `LINK_WIDTH`); `medium`
-   * and `light` draw both in a lighter grey and thinner, with a smaller arrowhead (`head` scales it).
+   * `dark` is the drawing used so far (`FLOW_BOX` stroke, `LINK_STROKE` at `LINK_WIDTH`); `light`
+   * draws both in a lighter grey and thinner, with a smaller arrowhead (`head` scales it).
    */
   FLOW_INK: {
     dark: {
       box: '#111111', boxWidth: 1.5, link: '#111111', linkScale: 1, head: 1,
-    },
-    medium: {
-      box: '#555555', boxWidth: 1.2, link: '#666666', linkScale: 0.7, head: 0.85,
     },
     light: {
       box: '#A6A6A6', boxWidth: 0.9, link: '#B0B0B0', linkScale: 0.45, head: 0.7,
