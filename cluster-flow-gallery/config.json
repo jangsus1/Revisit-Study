@@ -33,13 +33,20 @@
       "path": "cluster-flow-staircase/assets/Gallery.tsx",
       "response": [],
       "withSidebar": false
+    },
+    "realism": {
+      "type": "react-component",
+      "path": "cluster-flow-staircase/assets/RealismGallery.tsx",
+      "response": [],
+      "withSidebar": false
     }
   },
   "sequence": {
     "order": "fixed",
     "components": [
       "introduction",
-      "gallery"
+      "gallery",
+      "realism"
     ]
   }
 }
