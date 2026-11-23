@@ -33,7 +33,7 @@ import {
 const D = C.FLOW_DAGRE;
 type Pt = { x: number; y: number };
 
-interface FlowGraph {
+export interface FlowGraph {
   /** group index of every node */
   group: number[];
   /** [source, target, extra] with source < target, so the flow is a DAG */
@@ -248,6 +248,15 @@ function near(a: Rect, b: Rect, gap: number): boolean {
   return a.x < b.x + b.w + gap && b.x < a.x + a.w + gap && a.y < b.y + b.h + gap && b.y < a.y + a.h + gap;
 }
 
+/** Bounding rectangle of `rects`. */
+export function unionOf(rects: Rect[]): Rect {
+  const x = Math.min(...rects.map((r) => r.x));
+  const y = Math.min(...rects.map((r) => r.y));
+  return {
+    x, y, w: Math.max(...rects.map((r) => r.x + r.w)) - x, h: Math.max(...rects.map((r) => r.y + r.h)) - y,
+  };
+}
+
 /** The box drawn at `p`. */
 function boxAt(p: Pt): Rect {
   return {
@@ -264,8 +273,11 @@ function boxAt(p: Pt): Rect {
  * rectangle is then padded by up to `highlightPad`, never past half the free space to its
  * neighbours. Returns per group (in `graph.group` order of first appearance) the rectangle, or `null`.
  */
-export function highlightRects(graph: FlowGraph, pts: Pt[]): Map<number, { rect: Rect; nodeIds: number[] } | null> {
-  const boxes = pts.map(boxAt);
+export function highlightRects(
+  graph: Pick<FlowGraph, 'group'>,
+  pts: Pt[],
+  boxes: Rect[] = pts.map(boxAt),
+): Map<number, { rect: Rect; nodeIds: number[] } | null> {
   const groups = [...new Set(graph.group)];
   const members = new Map(groups.map((k) => [k, graph.group.map((g, id) => (g === k ? id : -1)).filter((id) => id >= 0)]));
   const foreign = (k: number) => boxes.filter((_, id) => graph.group[id] !== k);
@@ -277,7 +289,7 @@ export function highlightRects(graph: FlowGraph, pts: Pt[]): Map<number, { rect:
     for (let mask = 1; mask < (1 << ids.length); mask += 1) {
       const pick = ids.filter((_, i) => mask & (1 << i));
       if (pick.length >= 2) {
-        const rect = boxBounds(pick.map((id) => pts[id]));
+        const rect = unionOf(pick.map((id) => boxes[id]));
         if (!others.some((o) => near(rect, o, D.highlightClear)) && !taken.some((t) => near(rect, t, D.highlightGap))) {
           const held = ids.filter((id) => near(boxes[id], rect, -1));
           if (!best || held.length > best.nodeIds.length
