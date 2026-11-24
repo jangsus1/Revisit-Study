@@ -1,6 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/GlobalConfigSchema.json",
   "configsList": [
+    "gaze_tracker_pilot",
     "scatterplot_gaze_basic",
     "gaze_aoi_validation",
     "scatterplot_timing",
@@ -326,6 +327,9 @@
     },
     "gaze_aoi_validation": {
       "path": "gaze_aoi_validation/config.json"
+    },
+    "gaze_tracker_pilot": {
+      "path": "gaze_tracker_pilot/config.json"
     }
   }
 }
