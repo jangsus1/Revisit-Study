@@ -1,0 +1,57 @@
+{
+  "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/StudyConfigSchema.json",
+  "studyMetadata": {
+    "title": "Webcam eye-tracker pilot",
+    "version": "1",
+    "authors": [
+      "Minsuk Chang"
+    ],
+    "date": "2026-11-24",
+    "description": "Fixed-protocol comparison of RealEye Light 1.1, WebEyeTrack and EyeGesturesLite on one camera: 15 calibration dots, 16 held-out check dots; accuracy, precision and data loss per tracker. Invited participants only.",
+    "organizations": [
+      "Georgia Institute of Technology"
+    ]
+  },
+  "uiConfig": {
+    "contactEmail": "minsuk@gatech.edu",
+    "logoPath": "revisitAssets/gt_logo.png",
+    "withProgressBar": false,
+    "autoDownloadStudy": false,
+    "withSidebar": false,
+    "showTitle": false,
+    "urlParticipantIdParam": "pid",
+    "studyEndMsg": "Thank you! Your results are saved. You can close this tab.",
+    "nextButtonDisabledUntilValid": true
+  },
+  "studyRules": {
+    "devices": {
+      "allowed": [
+        "desktop"
+      ],
+      "blockedMessage": "Please open this link on a laptop or desktop computer with a webcam."
+    }
+  },
+  "components": {
+    "pilot": {
+      "type": "react-component",
+      "path": "gaze_tracker_pilot/assets/TrackerPilot.tsx",
+      "response": [
+        {
+          "id": "pilot",
+          "prompt": "",
+          "required": true,
+          "location": "belowStimulus",
+          "type": "reactive",
+          "hidden": true
+        }
+      ],
+      "nextButtonLocation": "belowStimulus"
+    }
+  },
+  "sequence": {
+    "order": "fixed",
+    "components": [
+      "pilot"
+    ]
+  }
+}
