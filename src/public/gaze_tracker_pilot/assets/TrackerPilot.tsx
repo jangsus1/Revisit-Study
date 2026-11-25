@@ -7,7 +7,9 @@
  * model change can be refitted on them.
  *   1. camera + full screen, framing preview (no live face tracking),
  *   2. calibration dots: the study's 15 (3x3 grid + 6 on the trial plot), random order, 1.8 s each,
- *   3. check dots: 16 never used for calibration (8 task region + 8 off-grid), random order, 1.5 s each.
+ *   3. check dots: 16 never used for calibration (8 task region + 8 off-grid), random order, 1.5 s each,
+ *   4. re-positioning: 10 s sitting back / looking away, back into the oval (participant-paced), then the
+ *      8 task-region check dots again (phase 'recheck'): accuracy after a head move, per tracker.
  * The video (WebM, ~2.5 Mbit/s, ~1 min) is uploaded with reVISit's recording upload
  * (Firebase Storage `<study>/screenRecording/<participantId>_<VIDEO_NAME>`); answer `pilot` holds the log.
  */
@@ -34,12 +36,13 @@ const CALIB_DWELL = 1800;
 const CALIB_COLLECT = 1000;
 const CHECK_DWELL = 1500;
 const CHECK_COLLECT = 800;
+const AWAY_MS = 10000;
 const BITRATE = 2_500_000;
 const VIDEO_NAME = 'webcam';
 
-type Stage = 'intro' | 'starting' | 'preview' | 'running' | 'uploading' | 'uploadFailed' | 'failed';
+type Stage = 'intro' | 'starting' | 'preview' | 'running' | 'away' | 'return' | 'uploading' | 'uploadFailed' | 'failed';
 type DotEvent = {
-  phase: 'calib' | 'check'; set: string; i: number; nx: number; ny: number; x: number; y: number;
+  phase: 'calib' | 'check' | 'recheck'; set: string; i: number; nx: number; ny: number; x: number; y: number;
   onset: number; collectStart: number; offset: number;
 };
 
@@ -63,6 +66,8 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
   const [dot, setDot] = useState<NormPoint | null>(null);
   const [collecting, setCollecting] = useState(false);
   const [message, setMessage] = useState('');
+  const [awayLeft, setAwayLeft] = useState(0);
+  const returnResolve = useRef<(() => void) | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
   const frameVideo = useRef<HTMLVideoElement | null>(null);
@@ -75,7 +80,7 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
 
   // Preview element gets the stream whenever it mounts
   useEffect(() => {
-    if (stage === 'preview' && previewRef.current && stream.current) {
+    if ((stage === 'preview' || stage === 'return') && previewRef.current && stream.current) {
       previewRef.current.srcObject = stream.current;
       previewRef.current.play().catch(() => undefined);
     }
@@ -151,7 +156,7 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
       await started;
       await sleep(500);
 
-      const showDots = async (points: (NormPoint & { set: string })[], phase: 'calib' | 'check', dwell: number, collect: number, text: string) => {
+      const showDots = async (points: (NormPoint & { set: string })[], phase: DotEvent['phase'], dwell: number, collect: number, text: string) => {
         for (let i = 0; i < points.length; i += 1) {
           const p = points[i];
           setMessage(`${text} (${i + 1} / ${points.length})`);
@@ -186,6 +191,25 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
       await sleep(1000);
       const checkPts = shuffle([...TASK_CHECK.map((p) => ({ ...p, set: 'task' })), ...OFF_GRID.map((p) => ({ ...p, set: 'offgrid' }))]);
       await showDots(checkPts, 'check', CHECK_DWELL, CHECK_COLLECT, 'Look at the dot');
+
+      // Re-positioning: move away, come back, check again (recording continues throughout)
+      const awayStart = now();
+      setStage('away');
+      for (let left = AWAY_MS / 1000; left > 0; left -= 1) {
+        setAwayLeft(left);
+        // eslint-disable-next-line no-await-in-loop
+        await sleep(1000);
+      }
+      const awayEnd = now();
+      setStage('return');
+      await new Promise<void>((res) => { returnResolve.current = res; });
+      const returned = now();
+      setStage('running');
+      await sleep(500);
+      await showDots(shuffle(TASK_CHECK.map((p) => ({ ...p, set: 'task' }))), 'recheck', CHECK_DWELL, CHECK_COLLECT, 'Look at the dot');
+      const reposition = {
+        awayStart, awayEnd, returned, awayMs: AWAY_MS,
+      };
 
       await sleep(300);
       logging.current = false;
@@ -224,6 +248,7 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
           frameColumns: ['callbackTime', 'mediaTime_s', 'captureTime', 'presentedFrames'],
         },
         events,
+        reposition,
         frames: frames.current,
       };
       await upload();
@@ -246,6 +271,26 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
     });
   };
 
+  const previewBox = (
+    <div style={{
+      position: 'relative', width: 400, height: 225, margin: '14px auto 0', borderRadius: 10, overflow: 'hidden', background: '#000',
+    }}
+    >
+      <video
+        ref={previewRef}
+        muted
+        playsInline
+        style={{
+          width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)',
+        }}
+      />
+      <div style={{
+        position: 'absolute', left: '50%', top: '50%', width: 110, height: 150, transform: 'translate(-50%, -50%)', border: '3px dashed rgba(255,255,255,0.85)', borderRadius: '50%',
+      }}
+      />
+    </div>
+  );
+
   if (dot) return <CalibrationOverlay dot={dot} collecting={collecting} message={message} />;
 
   if (stage === 'intro' || stage === 'starting') {
@@ -255,7 +300,7 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
         title="Webcam eye-tracking test"
         actions={<Button size="lg" loading={stage === 'starting'} onClick={start}>Start camera</Button>}
       >
-        About 2 minutes: you look at a series of dots while your webcam
+        About 3 minutes: you look at a series of dots while your webcam
         {' '}
         <b>records a video of your face</b>
         . The video is uploaded for this research only and is used to test eye-tracking software.
@@ -271,23 +316,32 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
         actions={<Button size="lg" onClick={run}>Start the dots</Button>}
       >
         Centre your face in the oval, about an arm&apos;s length from the screen, with light in front of you. Then keep your head still and follow each dot with your eyes.
+        {previewBox}
+      </Panel>
+    );
+  }
+  if (stage === 'away') {
+    return (
+      <Panel progress={false} title="Sit back and relax">
+        Lean back, stretch or look away from the screen for a moment.
         <div style={{
-          position: 'relative', width: 400, height: 225, margin: '14px auto 0', borderRadius: 10, overflow: 'hidden', background: '#000',
+          fontSize: 44, fontWeight: 700, marginTop: 12, color: '#1c7ed6',
         }}
         >
-          <video
-            ref={previewRef}
-            muted
-            playsInline
-            style={{
-              width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)',
-            }}
-          />
-          <div style={{
-            position: 'absolute', left: '50%', top: '50%', width: 110, height: 150, transform: 'translate(-50%, -50%)', border: '3px dashed rgba(255,255,255,0.85)', borderRadius: '50%',
-          }}
-          />
+          {awayLeft}
         </div>
+      </Panel>
+    );
+  }
+  if (stage === 'return') {
+    return (
+      <Panel
+        progress={false}
+        title="Come back to your position"
+        actions={<Button size="lg" onClick={() => returnResolve.current?.()}>Continue</Button>}
+      >
+        Centre your face in the oval again, at the same distance as before. Then keep your head still for a few more dots.
+        {previewBox}
       </Panel>
     );
   }
