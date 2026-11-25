@@ -1,32 +1,27 @@
 /**
- * Tracker pilot (gaze_tracker_pilot, 2026-11-24): the formal, fixed-protocol version of the
- * gaze_playground bench, used to choose the study's tracker. RealEye Light 1.1 (as in the study),
- * WebEyeTrack and EyeGesturesLite run together on one camera and see the same dots:
- *   1. camera start + full screen, 2. position guide (45-70 cm),
- *   3. calibration: the study's 15 dots (3x3 grid + 6 on the trial plot), random order, 1.8 s each,
- *   4. check: 16 held-out dots (8 in the task region + 8 off-grid), random order, 1.5 s each,
- *      none on a calibration target; no drift correction.
- * Saved as answer `pilot`: per tracker accuracy (mean over dots of the median sample error), precision
- * (spread SD, sample-to-sample RMS), data loss, Hz, per-dot metrics and the raw check samples
- * ([t_ms since check start, x, y, valid 0/1], viewport px). Camera video never leaves the browser.
+ * Tracker pilot (gaze_tracker_pilot), recording version (2026-11-25). No tracker runs in the browser:
+ * the page records the webcam video while showing a fixed dot sequence and logs, on one clock
+ * (performance.now), when each dot appeared, where, and when its collection window started and ended,
+ * plus one entry per camera frame (requestVideoFrameCallback). Every tracker (RealEye Light, WebEyeTrack,
+ * EyeGesturesLite, offline models) is then run on the same frames afterwards, and any calibration or
+ * model change can be refitted on them.
+ *   1. camera + full screen, framing preview (no live face tracking),
+ *   2. calibration dots: the study's 15 (3x3 grid + 6 on the trial plot), random order, 1.8 s each,
+ *   3. check dots: 16 never used for calibration (8 task region + 8 off-grid), random order, 1.5 s each.
+ * The video (WebM, ~2.5 Mbit/s, ~1 min) is uploaded with reVISit's recording upload
+ * (Firebase Storage `<study>/screenRecording/<participantId>_<VIDEO_NAME>`); answer `pilot` holds the log.
  */
 import { Button } from '@mantine/core';
 import {
   useCallback, useEffect, useRef, useState,
 } from 'react';
 import { StimulusParams } from '../../../store/types';
-import { GazeTracker, gazeTracker, normToPx } from '../../scatterplot_gaze/assets/gazeTracker';
-import { CalibrationOverlay, FULL_GRID, nextPaint } from '../../scatterplot_gaze/assets/CalibrationOverlay';
+import { useStorageEngine } from '../../../storage/storageEngineHooks';
+import { CalibrationOverlay, FULL_GRID } from '../../scatterplot_gaze/assets/CalibrationOverlay';
 import type { NormPoint } from '../../scatterplot_gaze/assets/CalibrationOverlay';
 import { taskCalibPoints } from '../../scatterplot_gaze/assets/taskLayout';
-import { PositionGuide } from '../../scatterplot_gaze/assets/PositionGuide';
-import type { PositionState } from '../../scatterplot_gaze/assets/PositionGuide';
 import { Panel, enterFullscreen } from '../../scatterplot_gaze/assets/FullScreen';
-import type { GazeEngineBase, EngineSample } from '../../../gazeEngine/compare/types';
-import { runMetrics } from '../../../gazeEngine/compare/metrics';
-import type { DotSamples } from '../../../gazeEngine/compare/metrics';
 
-// Held-out check dots: 8 in the task region (plot + labels) and 8 off-grid; none is a calibration target.
 const TASK_CHECK: NormPoint[] = [
   { nx: -0.1, ny: -0.15 }, { nx: 0.1, ny: -0.15 }, { nx: -0.1, ny: 0.15 }, { nx: 0.1, ny: 0.15 },
   { nx: -0.17, ny: 0.07 }, { nx: 0.05, ny: 0.24 }, { nx: 0.05, ny: -0.25 }, { nx: 0.17, ny: 0.07 },
@@ -39,9 +34,14 @@ const CALIB_DWELL = 1800;
 const CALIB_COLLECT = 1000;
 const CHECK_DWELL = 1500;
 const CHECK_COLLECT = 800;
-const OVERRIDE_MS = 20000;
+const BITRATE = 2_500_000;
+const VIDEO_NAME = 'webcam';
 
-type Stage = 'intro' | 'starting' | 'position' | 'running' | 'saving' | 'failed';
+type Stage = 'intro' | 'starting' | 'preview' | 'running' | 'uploading' | 'uploadFailed' | 'failed';
+type DotEvent = {
+  phase: 'calib' | 'check'; set: string; i: number; nx: number; ny: number; x: number; y: number;
+  onset: number; collectStart: number; offset: number;
+};
 
 const shuffle = <T, >(a: T[]) => {
   const b = [...a];
@@ -52,173 +52,201 @@ const shuffle = <T, >(a: T[]) => {
   return b;
 };
 const sleep = (ms: number) => new Promise<void>((r) => { setTimeout(r, ms); });
-const r1 = (v: number | null | undefined) => (v === null || v === undefined || !Number.isFinite(v) ? null : Math.round(v * 10) / 10);
+const now = () => Math.round(performance.now() * 10) / 10;
+const pickMime = () => ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm', 'video/mp4']
+  .find((m) => typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(m)) ?? '';
 
 function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, never>>) {
+  const storageEngine = useStorageEngine()?.storageEngine;
   const [stage, setStage] = useState<Stage>('intro');
   const [error, setError] = useState<string | null>(null);
   const [dot, setDot] = useState<NormPoint | null>(null);
   const [collecting, setCollecting] = useState(false);
-  const [fitting, setFitting] = useState(false);
   const [message, setMessage] = useState('');
-  const [pos, setPos] = useState<PositionState | null>(null);
-  const [canOverride, setCanOverride] = useState(false); // the guide can misjudge unusual cameras
-  const engines = useRef<GazeEngineBase[]>([]);
-  const startErrors = useRef<Record<string, string>>({});
-  const startedAt = useRef(0);
-  const posLog = useRef<PositionState | null>(null);
+  const stream = useRef<MediaStream | null>(null);
+  const previewRef = useRef<HTMLVideoElement | null>(null);
+  const frameVideo = useRef<HTMLVideoElement | null>(null);
+  const frames = useRef<number[][]>([]);
+  const logging = useRef(false);
+  const blob = useRef<Blob | null>(null);
+  const result = useRef<Record<string, unknown> | null>(null);
 
-  useEffect(() => () => { engines.current.forEach((e) => { if (e.state !== 'idle') e.stop(); }); }, []);
+  useEffect(() => () => { stream.current?.getTracks().forEach((t) => t.stop()); }, []);
 
+  // Preview element gets the stream whenever it mounts
   useEffect(() => {
-    if (stage !== 'position') return undefined;
-    const t = setTimeout(() => setCanOverride(true), OVERRIDE_MS);
-    return () => clearTimeout(t);
+    if (stage === 'preview' && previewRef.current && stream.current) {
+      previewRef.current.srcObject = stream.current;
+      previewRef.current.play().catch(() => undefined);
+    }
   }, [stage]);
-
-  const ready = () => engines.current.filter((e) => e.state === 'ready');
 
   const start = useCallback(async () => {
     enterFullscreen();
     setStage('starting');
     try {
-      const m = await import('../../../gazeEngine/compare');
-      engines.current = [
-        new m.StudyTrackerEngine(gazeTracker), // RealEye Light 1.1, as in the study
-        new m.StudyTrackerEngine(new GazeTracker('webeyetrack')),
-        new m.EyeGesturesEngine(),
-      ];
-      const res = await Promise.allSettled(engines.current.map((e) => e.start()));
-      res.forEach((r, i) => {
-        if (r.status === 'rejected') startErrors.current[engines.current[i].info.id] = String(r.reason?.message ?? r.reason);
+      stream.current = await navigator.mediaDevices.getUserMedia({
+        video: { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } }, audio: false,
       });
-      if (!ready().length) throw new Error('No tracker could start. Check that the camera is allowed and not used by another app.');
-      startedAt.current = performance.now();
-      setStage('position');
+      if (!pickMime()) throw new Error('This browser cannot record video. Please use Chrome or Edge.');
+      setStage('preview');
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       setStage('failed');
     }
   }, []);
 
-  /** One dot sequence shown to every running tracker at once. */
-  const sequence = useCallback(async (points: NormPoint[], calib: boolean, dwell: number, collect: number, text: string) => {
-    const list = ready();
-    const out: Record<string, DotSamples[]> = Object.fromEntries(list.map((e) => [e.info.id, []]));
-    for (let i = 0; i < points.length; i += 1) {
-      const [tx, ty] = normToPx(points[i].nx, points[i].ny);
-      setMessage(`${text} (${i + 1} / ${points.length})`);
-      setDot(points[i]);
-      setCollecting(false);
-      // eslint-disable-next-line no-await-in-loop
-      await sleep(dwell - collect);
-      setCollecting(true);
-      const bufs = list.map((e) => ({ e, s: [] as EngineSample[] }));
-      const unsubs = bufs.map((b) => b.e.onSample((s) => { b.s.push(s); }));
-      if (calib) list.forEach((e) => e.beginPoint(tx, ty));
-      // eslint-disable-next-line no-await-in-loop
-      await sleep(collect);
-      unsubs.forEach((u) => u());
-      if (calib) {
-        // eslint-disable-next-line no-await-in-loop
-        await Promise.all(list.map((e) => e.endPoint().catch((err) => console.warn(e.info.id, err))));
-      }
-      bufs.forEach((b) => out[b.e.info.id].push({
-        tx, ty, samples: b.s, collectMs: collect,
-      }));
-    }
-    setDot(null);
-    setCollecting(false);
-    return out;
-  }, []);
+  /** One entry per camera frame: [performance.now at the callback, mediaTime s, captureTime ms or -1, presentedFrames]. */
+  const startFrameLog = () => {
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.srcObject = stream.current;
+    v.play().catch(() => undefined);
+    frameVideo.current = v;
+    logging.current = true;
+    type Meta = { mediaTime: number; captureTime?: number; presentedFrames: number };
+    const rvfc = (v as unknown as { requestVideoFrameCallback?: (cb: (t: number, m: Meta) => void) => number }).requestVideoFrameCallback?.bind(v);
+    if (!rvfc) return;
+    const cb = (t: number, m: Meta) => {
+      if (!logging.current) return;
+      frames.current.push([Math.round(t * 10) / 10, Math.round(m.mediaTime * 1e4) / 1e4, m.captureTime === undefined ? -1 : Math.round(m.captureTime * 10) / 10, m.presentedFrames]);
+      rvfc(cb);
+    };
+    rvfc(cb);
+  };
 
-  const run = useCallback(async () => {
-    posLog.current = pos;
-    setStage('running');
+  const upload = useCallback(async () => {
+    if (!blob.current || !result.current) return;
+    setStage('uploading');
     try {
-      const list = ready();
-      await Promise.all(list.map((e) => e.reset()));
-      const calibPts = shuffle([...FULL_GRID, ...taskCalibPoints()]);
-      await sequence(calibPts, true, CALIB_DWELL, CALIB_COLLECT, 'Look at the dot. Keep your head still');
-      setFitting(true);
-      await nextPaint();
-      await Promise.all(list.map((e) => e.finishCalibration().catch((err) => console.warn(e.info.id, err))));
-      setFitting(false);
-      const checkPts = shuffle([...TASK_CHECK.map((p) => ({ ...p, set: 'task' })), ...OFF_GRID.map((p) => ({ ...p, set: 'offgrid' }))]);
-      const t0 = performance.now();
-      const dots = await sequence(checkPts, false, CHECK_DWELL, CHECK_COLLECT, 'Look at the dot');
-      setStage('saving');
-      const vw = window.innerWidth;
-      const trackers = Object.fromEntries(list.map((e) => {
-        const d = dots[e.info.id];
-        const all = runMetrics(d, vw);
-        const sub = (set: string) => runMetrics(d.filter((_, i) => (checkPts.at(i) as { set: string }).set === set), vw);
-        const summary = (mm: ReturnType<typeof runMetrics>) => ({
-          accuracyPx: r1(mm.accuracyPx),
-          accuracyPctW: mm.accuracyPctW === null ? null : Math.round(mm.accuracyPctW * 10000) / 10000,
-          spreadSdPx: r1(mm.sdPx),
-          s2sPx: r1(mm.s2sPx),
-          lossPct: r1(mm.lossPct),
-          hz: r1(mm.hz),
-          biasPx: mm.biasPx ? mm.biasPx.map((v) => r1(v)) : null,
-          worstDotPx: r1(mm.dotErr?.max),
-          bestDotPx: r1(mm.dotErr?.min),
-        });
-        return [e.info.id, {
-          name: e.info.name,
-          ...summary(all),
-          taskRegion: summary(sub('task')),
-          offGrid: summary(sub('offgrid')),
-          dots: all.dots.map((dm, i) => ({
-            set: (checkPts.at(i) as { set: string }).set,
-            tx: Math.round(dm.tx),
-            ty: Math.round(dm.ty),
-            n: dm.n,
-            nValid: dm.nValid,
-            errorPx: r1(dm.errorPx),
-            offsetPx: dm.offsetPx ? dm.offsetPx.map((v) => r1(v)) : null,
-            sdPx: r1(dm.sdPx),
-            s2sPx: r1(dm.s2sPx),
-          })),
-          samples: d.map((ds) => ds.samples.map((s) => [Math.round(s.t - t0), Math.round(s.x), Math.round(s.y), s.valid ? 1 : 0])),
-        }];
-      }));
-      const result = {
-        version: 1,
-        at: new Date().toISOString(),
-        device: {
-          userAgent: navigator.userAgent,
-          viewport: [vw, window.innerHeight],
-          screen: [window.screen.width, window.screen.height],
-          dpr: window.devicePixelRatio,
-          fullscreen: !!document.fullscreenElement,
-        },
-        position: { distanceCm: r1(posLog.current?.distanceCm), inRange: !!posLog.current?.ready, face: !!posLog.current?.face },
-        protocol: {
-          calibDots: calibPts.length,
-          calibDwellMs: CALIB_DWELL,
-          calibCollectMs: CALIB_COLLECT,
-          checkDots: checkPts.length,
-          checkDwellMs: CHECK_DWELL,
-          checkCollectMs: CHECK_COLLECT,
-          driftCorrection: false,
-        },
-        startErrors: startErrors.current,
-        trackers,
-      };
-      engines.current.forEach((e) => { if (e.state !== 'idle') e.stop(); });
-      setAnswer({ status: true, answers: { pilot: JSON.stringify(result) } });
+      if (!storageEngine) throw new Error('storage not ready');
+      await storageEngine.saveScreenRecording(blob.current, VIDEO_NAME);
+      setAnswer({ status: true, answers: { pilot: JSON.stringify({ ...result.current, videoUploaded: true }) } });
       if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
       setTimeout(() => advance?.(), 300);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      setStage('uploadFailed');
+    }
+  }, [storageEngine, setAnswer, advance]);
+
+  const run = useCallback(async () => {
+    if (!stream.current) return;
+    setStage('running');
+    const events: DotEvent[] = [];
+    try {
+      const mimeType = pickMime();
+      const rec = new MediaRecorder(stream.current, { mimeType, videoBitsPerSecond: BITRATE });
+      const chunks: Blob[] = [];
+      const chunkLog: number[][] = [];
+      let recStart = -1;
+      let recStop = -1;
+      rec.ondataavailable = (ev) => { if (ev.data.size) { chunks.push(ev.data); chunkLog.push([now(), ev.data.size]); } };
+      const started = new Promise<void>((res) => { rec.onstart = () => { recStart = now(); res(); }; });
+      const stopped = new Promise<void>((res) => { rec.onstop = () => { recStop = now(); res(); }; });
+      startFrameLog();
+      const recCall = now();
+      rec.start(1000);
+      await started;
+      await sleep(500);
+
+      const showDots = async (points: (NormPoint & { set: string })[], phase: 'calib' | 'check', dwell: number, collect: number, text: string) => {
+        for (let i = 0; i < points.length; i += 1) {
+          const p = points[i];
+          setMessage(`${text} (${i + 1} / ${points.length})`);
+          setDot(p);
+          setCollecting(false);
+          const onset = now();
+          // eslint-disable-next-line no-await-in-loop
+          await sleep(dwell - collect);
+          setCollecting(true);
+          const collectStart = now();
+          // eslint-disable-next-line no-await-in-loop
+          await sleep(collect);
+          events.push({
+            phase,
+            set: p.set,
+            i,
+            nx: p.nx,
+            ny: p.ny,
+            x: Math.round((p.nx + 0.5) * window.innerWidth),
+            y: Math.round((p.ny + 0.5) * window.innerHeight),
+            onset,
+            collectStart,
+            offset: now(),
+          });
+        }
+        setDot(null);
+        setCollecting(false);
+      };
+      const calibPts = shuffle([...FULL_GRID.map((p) => ({ ...p, set: 'grid' })), ...taskCalibPoints().map((p) => ({ ...p, set: 'task' }))]);
+      await showDots(calibPts, 'calib', CALIB_DWELL, CALIB_COLLECT, 'Look at the dot. Keep your head still');
+      setMessage('Short pause');
+      await sleep(1000);
+      const checkPts = shuffle([...TASK_CHECK.map((p) => ({ ...p, set: 'task' })), ...OFF_GRID.map((p) => ({ ...p, set: 'offgrid' }))]);
+      await showDots(checkPts, 'check', CHECK_DWELL, CHECK_COLLECT, 'Look at the dot');
+
+      await sleep(300);
+      logging.current = false;
+      rec.stop();
+      await stopped;
+      const settings = stream.current.getVideoTracks()[0]?.getSettings() ?? {};
+      stream.current.getTracks().forEach((t) => t.stop());
+      blob.current = new Blob(chunks, { type: mimeType });
+      result.current = {
+        version: 2,
+        at: new Date().toISOString(),
+        device: {
+          userAgent: navigator.userAgent,
+          viewport: [window.innerWidth, window.innerHeight],
+          screen: [window.screen.width, window.screen.height],
+          dpr: window.devicePixelRatio,
+          fullscreen: !!document.fullscreenElement,
+        },
+        camera: { width: settings.width ?? null, height: settings.height ?? null, frameRate: settings.frameRate ?? null },
+        recording: {
+          videoName: VIDEO_NAME,
+          mimeType,
+          bitrate: BITRATE,
+          bytes: blob.current.size,
+          startCalled: recCall,
+          started: recStart,
+          stopped: recStop,
+          chunks: chunkLog,
+        },
+        protocol: {
+          calibDwellMs: CALIB_DWELL,
+          calibCollectMs: CALIB_COLLECT,
+          checkDwellMs: CHECK_DWELL,
+          checkCollectMs: CHECK_COLLECT,
+          clock: 'performance.now ms',
+          frameColumns: ['callbackTime', 'mediaTime_s', 'captureTime', 'presentedFrames'],
+        },
+        events,
+        frames: frames.current,
+      };
+      await upload();
+    } catch (e) {
+      logging.current = false;
+      setError(e instanceof Error ? e.message : String(e));
       setStage('failed');
     } finally {
-      setDot(null); setFitting(false);
+      setDot(null);
     }
-  }, [pos, sequence, setAnswer, advance]);
+  }, [upload]);
 
-  if (dot || fitting) return <CalibrationOverlay dot={dot} collecting={collecting} message={message} fitting={fitting} />;
+  const download = () => {
+    if (!blob.current || !result.current) return;
+    [[blob.current, 'webcam.webm'], [new Blob([JSON.stringify(result.current)], { type: 'application/json' }), 'log.json']].forEach(([b, n]) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(b as Blob);
+      a.download = `gaze_pilot_${n as string}`;
+      a.click();
+    });
+  };
+
+  if (dot) return <CalibrationOverlay dot={dot} collecting={collecting} message={message} />;
 
   if (stage === 'intro' || stage === 'starting') {
     return (
@@ -227,33 +255,61 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
         title="Webcam eye-tracking test"
         actions={<Button size="lg" loading={stage === 'starting'} onClick={start}>Start camera</Button>}
       >
-        About 3 minutes. Three eye trackers run at the same time on your webcam; you only look at dots.
-        Sit at arm&apos;s length with your face evenly lit, and keep your head still once the dots start.
-        The camera video stays on your computer; only gaze numbers are saved.
-        {stage === 'starting' && <div style={{ fontSize: 15, color: '#666', marginTop: 10 }}>Loading the trackers (up to a minute)…</div>}
+        About 2 minutes: you look at a series of dots while your webcam
+        {' '}
+        <b>records a video of your face</b>
+        . The video is uploaded for this research only and is used to test eye-tracking software.
+        Sit at arm&apos;s length with your face evenly lit and keep your head still while the dots are shown.
       </Panel>
     );
   }
-  if (stage === 'position') {
+  if (stage === 'preview') {
     return (
       <Panel
         progress={false}
-        title="Find a steady position"
-        actions={<Button size="lg" onClick={run} disabled={!pos?.face && !canOverride}>Start the dots</Button>}
+        title="Check your position"
+        actions={<Button size="lg" onClick={run}>Start the dots</Button>}
       >
-        Move until your face is centred and the distance reads good. Then keep your head still and follow each dot with your eyes.
-        <div style={{ marginTop: 14 }}><PositionGuide stream={gazeTracker.getStream() ?? null} onChange={setPos} /></div>
+        Centre your face in the oval, about an arm&apos;s length from the screen, with light in front of you. Then keep your head still and follow each dot with your eyes.
+        <div style={{
+          position: 'relative', width: 400, height: 225, margin: '14px auto 0', borderRadius: 10, overflow: 'hidden', background: '#000',
+        }}
+        >
+          <video
+            ref={previewRef}
+            muted
+            playsInline
+            style={{
+              width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)',
+            }}
+          />
+          <div style={{
+            position: 'absolute', left: '50%', top: '50%', width: 110, height: 150, transform: 'translate(-50%, -50%)', border: '3px dashed rgba(255,255,255,0.85)', borderRadius: '50%',
+          }}
+          />
+        </div>
       </Panel>
     );
   }
-  if (stage === 'failed') {
+  if (stage === 'uploadFailed') {
     return (
-      <Panel progress={false} title="Something went wrong">
+      <Panel
+        progress={false}
+        title="The upload did not finish"
+        actions={(
+          <>
+            <Button size="lg" onClick={upload}>Try again</Button>
+            <Button size="lg" variant="light" onClick={download}>Download the files instead</Button>
+          </>
+        )}
+      >
         {error}
+        <div style={{ fontSize: 15, color: '#666', marginTop: 8 }}>If it keeps failing, download the two files and send them to the researcher.</div>
       </Panel>
     );
   }
-  return <Panel progress={false} title={stage === 'saving' ? 'Saving…' : 'Calibrating…'} />;
+  if (stage === 'failed') return <Panel progress={false} title="Something went wrong">{error}</Panel>;
+  return <Panel progress={false} title={stage === 'uploading' ? 'Uploading the video… please keep this tab open' : 'Starting…'} />;
 }
 
 export default TrackerPilot;
