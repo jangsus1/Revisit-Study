@@ -2,12 +2,12 @@
   "$schema": "https://raw.githubusercontent.com/revisit-studies/study/v2.4.4/src/parser/StudyConfigSchema.json",
   "studyMetadata": {
     "title": "Webcam eye-tracker pilot",
-    "version": "1",
+    "version": "2",
     "authors": [
       "Minsuk Chang"
     ],
-    "date": "2026-11-24",
-    "description": "Fixed-protocol comparison of RealEye Light 1.1, WebEyeTrack and EyeGesturesLite on one camera: 15 calibration dots, 16 held-out check dots; accuracy, precision and data loss per tracker. Invited participants only.",
+    "date": "2026-11-25",
+    "description": "Records the webcam video while showing 15 calibration and 16 held-out check dots, with a timestamped dot and frame log, so every tracker (RealEye Light, WebEyeTrack, EyeGesturesLite, offline models) can be run and refitted on the same frames afterwards. No tracker runs live. Invited participants only.",
     "organizations": [
       "Georgia Institute of Technology"
     ]
