@@ -6,11 +6,16 @@
  * EyeGesturesLite, offline models) is then run on the same frames afterwards, and any calibration or
  * model change can be refitted on them.
  *   1. camera + full screen, framing preview (no live face tracking),
- *   2. calibration dots: the study's 15 (3x3 grid + 6 on the trial plot), random order, 1.8 s each,
- *   3. check dots: 16 never used for calibration (8 task region + 8 off-grid), random order, 1.5 s each,
- *   4. re-positioning: 10 s sitting back / looking away, back into the oval (participant-paced), then the
- *      8 task-region check dots again (phase 'recheck'): accuracy after a head move, per tracker.
- * The video (WebM, ~2.5 Mbit/s, ~1 min) is uploaded with reVISit's recording upload
+ *   2. calib: the study's 15 dots (3x3 grid + 6 on the trial plot), random order, 1.8 s each,
+ *   3. check: 16 dots never used for calibration (8 task region + 8 off-grid), 1.5 s each,
+ *   4. pursuit: 20 s smooth pursuit on the study's Lissajous path,
+ *   5. map: 5 x 5 grid over the screen, 1.2 s each (spatial error map),
+ *   6. re-positioning: 10 s sitting back / looking away, back into the oval (participant-paced),
+ *   7. anchor: the study's per-trial 3-dot check (plot centre, x label, y label, 1 s each),
+ *   8. recheck: the 16 check dots again (accuracy after a head move: none vs 3-dot re-anchoring vs refit),
+ *   9. recalib: the 15 calibration dots again, 10. final: the 16 check dots again.
+ * About 3.5 min of recording, ~5 min in all.
+ * The video (WebM, ~2.5 Mbit/s, ~3.5 min) is uploaded with reVISit's recording upload
  * (Firebase Storage `<study>/screenRecording/<participantId>_<VIDEO_NAME>`); answer `pilot` holds the log.
  */
 import { Button } from '@mantine/core';
@@ -19,9 +24,11 @@ import {
 } from 'react';
 import { StimulusParams } from '../../../store/types';
 import { useStorageEngine } from '../../../storage/storageEngineHooks';
-import { CalibrationOverlay, FULL_GRID } from '../../scatterplot_gaze/assets/CalibrationOverlay';
+import {
+  CalibrationOverlay, FULL_GRID, PURSUIT_LEAD_MS, PURSUIT_MS, animatePursuit,
+} from '../../scatterplot_gaze/assets/CalibrationOverlay';
 import type { NormPoint } from '../../scatterplot_gaze/assets/CalibrationOverlay';
-import { taskCalibPoints } from '../../scatterplot_gaze/assets/taskLayout';
+import { taskCalibPoints, trialCheckPoints } from '../../scatterplot_gaze/assets/taskLayout';
 import { Panel, enterFullscreen } from '../../scatterplot_gaze/assets/FullScreen';
 
 const TASK_CHECK: NormPoint[] = [
@@ -36,13 +43,18 @@ const CALIB_DWELL = 1800;
 const CALIB_COLLECT = 1000;
 const CHECK_DWELL = 1500;
 const CHECK_COLLECT = 800;
+const MAP_DWELL = 1200;
+const MAP_COLLECT = 600;
+const ANCHOR_DWELL = 1000; // the study's per-trial check timing
+const ANCHOR_COLLECT = 500;
 const AWAY_MS = 10000;
+const GRID_5X5: NormPoint[] = [-0.4, -0.2, 0, 0.2, 0.4].flatMap((ny) => [-0.4, -0.2, 0, 0.2, 0.4].map((nx) => ({ nx, ny })));
 const BITRATE = 2_500_000;
 const VIDEO_NAME = 'webcam';
 
 type Stage = 'intro' | 'starting' | 'preview' | 'running' | 'away' | 'return' | 'uploading' | 'uploadFailed' | 'failed';
 type DotEvent = {
-  phase: 'calib' | 'check' | 'recheck'; set: string; i: number; nx: number; ny: number; x: number; y: number;
+  phase: 'calib' | 'check' | 'map' | 'anchor' | 'recheck' | 'recalib' | 'final'; set: string; i: number; nx: number; ny: number; x: number; y: number;
   onset: number; collectStart: number; offset: number;
 };
 
@@ -67,6 +79,8 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
   const [collecting, setCollecting] = useState(false);
   const [message, setMessage] = useState('');
   const [awayLeft, setAwayLeft] = useState(0);
+  const [pursuitOn, setPursuitOn] = useState(false);
+  const pursuitDot = useRef<HTMLDivElement | null>(null);
   const returnResolve = useRef<(() => void) | null>(null);
   const stream = useRef<MediaStream | null>(null);
   const previewRef = useRef<HTMLVideoElement | null>(null);
@@ -185,14 +199,39 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
         setDot(null);
         setCollecting(false);
       };
-      const calibPts = shuffle([...FULL_GRID.map((p) => ({ ...p, set: 'grid' })), ...taskCalibPoints().map((p) => ({ ...p, set: 'task' }))]);
-      await showDots(calibPts, 'calib', CALIB_DWELL, CALIB_COLLECT, 'Look at the dot. Keep your head still');
-      setMessage('Short pause');
-      await sleep(1000);
-      const checkPts = shuffle([...TASK_CHECK.map((p) => ({ ...p, set: 'task' })), ...OFF_GRID.map((p) => ({ ...p, set: 'offgrid' }))]);
-      await showDots(checkPts, 'check', CHECK_DWELL, CHECK_COLLECT, 'Look at the dot');
+      const blocks: { name: string; start: number; end: number }[] = [];
+      const block = async (name: string, fn: () => Promise<void>) => {
+        const t0 = now();
+        await fn();
+        blocks.push({ name, start: t0, end: now() });
+      };
+      const pause = async (text: string, ms = 2500) => {
+        setMessage(text);
+        await sleep(ms);
+      };
+      const calibSet = () => [...FULL_GRID.map((p) => ({ ...p, set: 'grid' })), ...taskCalibPoints().map((p) => ({ ...p, set: 'task' }))];
+      const checkSet = () => [...TASK_CHECK.map((p) => ({ ...p, set: 'task' })), ...OFF_GRID.map((p) => ({ ...p, set: 'offgrid' }))];
+      const HEAD = 'Look at the dot. Keep your head still';
 
-      // Re-positioning: move away, come back, check again (recording continues throughout)
+      // 1. calibration (15) and 2. first check (16)
+      await block('calib', () => showDots(shuffle(calibSet()), 'calib', CALIB_DWELL, CALIB_COLLECT, HEAD));
+      await pause('Short pause. Keep your head where it is');
+      await block('check', () => showDots(shuffle(checkSet()), 'check', CHECK_DWELL, CHECK_COLLECT, HEAD));
+      await pause('Next: follow the moving dot with your eyes');
+      // 3. smooth pursuit (20 s Lissajous; target position at time t = lissajous((t - motionStart) / PURSUIT_MS))
+      let motionStart = -1;
+      await block('pursuit', async () => {
+        setMessage('Follow the moving dot with your eyes. Keep your head still');
+        setPursuitOn(true);
+        await sleep(50);
+        motionStart = await animatePursuit(() => pursuitDot.current, PURSUIT_MS, () => false, () => undefined);
+        setPursuitOn(false);
+      });
+      await pause('Short pause. Keep your head where it is');
+      // 4. fine map: 5 x 5 grid over the screen
+      await block('map', () => showDots(shuffle(GRID_5X5.map((p) => ({ ...p, set: 'map' }))), 'map', MAP_DWELL, MAP_COLLECT, HEAD));
+
+      // 5. re-positioning: move away, come back
       const awayStart = now();
       setStage('away');
       for (let left = AWAY_MS / 1000; left > 0; left -= 1) {
@@ -205,10 +244,21 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
       await new Promise<void>((res) => { returnResolve.current = res; });
       const returned = now();
       setStage('running');
-      await sleep(500);
-      await showDots(shuffle(TASK_CHECK.map((p) => ({ ...p, set: 'task' }))), 'recheck', CHECK_DWELL, CHECK_COLLECT, 'Look at the dot');
+      await sleep(800);
+      // 6. the study's per-trial check: 3 dots (plot centre, x label, y label), 1 s each, fixed order
+      await block('anchor', () => showDots(trialCheckPoints().map((p) => ({ ...p, set: p.target })), 'anchor', ANCHOR_DWELL, ANCHOR_COLLECT, HEAD));
+      // 7. check after the move (16)
+      await block('recheck', () => showDots(shuffle(checkSet()), 'recheck', CHECK_DWELL, CHECK_COLLECT, HEAD));
+      await pause('Short pause. Keep your head where it is');
+      // 8. full recalibration (15) and 9. final check (16)
+      await block('recalib', () => showDots(shuffle(calibSet()), 'recalib', CALIB_DWELL, CALIB_COLLECT, HEAD));
+      await pause('Almost done. Keep your head where it is');
+      await block('final', () => showDots(shuffle(checkSet()), 'final', CHECK_DWELL, CHECK_COLLECT, HEAD));
       const reposition = {
         awayStart, awayEnd, returned, awayMs: AWAY_MS,
+      };
+      const pursuit = {
+        motionStart, durationMs: PURSUIT_MS, leadMs: PURSUIT_LEAD_MS, path: 'x = (0.5 + 0.4 sin(6 pi u + pi/2)) W, y = (0.5 + 0.4 sin(4 pi u)) H, u = (t - motionStart) / durationMs',
       };
 
       await sleep(300);
@@ -248,7 +298,9 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
           frameColumns: ['callbackTime', 'mediaTime_s', 'captureTime', 'presentedFrames'],
         },
         events,
+        blocks,
         reposition,
+        pursuit,
         frames: frames.current,
       };
       await upload();
@@ -291,7 +343,7 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
     </div>
   );
 
-  if (dot) return <CalibrationOverlay dot={dot} collecting={collecting} message={message} />;
+  if (dot || pursuitOn) return <CalibrationOverlay dot={dot} collecting={collecting} message={message} pursuitOn={pursuitOn} pursuitDotRef={pursuitDot} />;
 
   if (stage === 'intro' || stage === 'starting') {
     return (
@@ -300,7 +352,7 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
         title="Webcam eye-tracking test"
         actions={<Button size="lg" loading={stage === 'starting'} onClick={start}>Start camera</Button>}
       >
-        About 3 minutes: you look at a series of dots while your webcam
+        About 5 minutes: you look at a series of dots while your webcam
         {' '}
         <b>records a video of your face</b>
         . The video is uploaded for this research only and is used to test eye-tracking software.
@@ -363,7 +415,8 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
     );
   }
   if (stage === 'failed') return <Panel progress={false} title="Something went wrong">{error}</Panel>;
-  return <Panel progress={false} title={stage === 'uploading' ? 'Uploading the video… please keep this tab open' : 'Starting…'} />;
+  if (stage === 'running') return <Panel progress={false} title={message || 'Starting…'} />;
+  return <Panel progress={false} title="Uploading the video… please keep this tab open" />;
 }
 
 export default TrackerPilot;
