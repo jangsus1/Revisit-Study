@@ -16,7 +16,9 @@
  *   9. recalib: the 15 calibration dots again, 10. final: the 16 check dots again.
  * About 3.5 min of recording, ~5 min in all.
  * The video (WebM, ~2.5 Mbit/s, ~3.5 min) is uploaded with reVISit's recording upload
- * (Firebase Storage `<study>/screenRecording/<participantId>_<VIDEO_NAME>`); answer `pilot` holds the log.
+ * (Firebase Storage `<study>/screenRecording/<participantId>_webcam_<runId>`) and the log is saved next to it as
+ * `<participantId>_log_<runId>` (JSON), so a browser that reuses a participant id (already completed: reVISit then
+ * ignores the new answer) can neither lose a run's log nor overwrite an earlier video. Answer `pilot` also holds the log.
  */
 import { Button } from '@mantine/core';
 import {
@@ -50,7 +52,10 @@ const ANCHOR_COLLECT = 500;
 const AWAY_MS = 10000;
 const GRID_5X5: NormPoint[] = [-0.4, -0.2, 0, 0.2, 0.4].flatMap((ny) => [-0.4, -0.2, 0, 0.2, 0.4].map((nx) => ({ nx, ny })));
 const BITRATE = 2_500_000;
-const VIDEO_NAME = 'webcam';
+// One id per run: video and log files never collide, even when the browser reuses a participant id
+const RUN_ID = `${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}_${Math.random().toString(36).slice(2, 6)}`;
+const VIDEO_NAME = `webcam_${RUN_ID}`;
+const LOG_NAME = `log_${RUN_ID}`;
 
 type Stage = 'intro' | 'starting' | 'preview' | 'running' | 'away' | 'return' | 'uploading' | 'uploadFailed' | 'failed';
 type DotEvent = {
@@ -140,6 +145,7 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
     setStage('uploading');
     try {
       if (!storageEngine) throw new Error('storage not ready');
+      await storageEngine.saveScreenRecording(new Blob([JSON.stringify(result.current)], { type: 'application/json' }), LOG_NAME);
       await storageEngine.saveScreenRecording(blob.current, VIDEO_NAME);
       setAnswer({ status: true, answers: { pilot: JSON.stringify({ ...result.current, videoUploaded: true }) } });
       if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
@@ -269,7 +275,8 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
       stream.current.getTracks().forEach((t) => t.stop());
       blob.current = new Blob(chunks, { type: mimeType });
       result.current = {
-        version: 2,
+        version: 3,
+        runId: RUN_ID,
         at: new Date().toISOString(),
         device: {
           userAgent: navigator.userAgent,
