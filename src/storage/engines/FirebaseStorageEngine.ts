@@ -313,7 +313,27 @@ export class FirebaseStorageEngine extends CloudStorageEngine {
       sequenceAssignmentCollection,
       this.currentParticipantId,
     );
-    await updateDoc(participantSequenceAssignmentDoc, { completed: serverTimestamp() });
+    const existing = await getDoc(participantSequenceAssignmentDoc);
+    if (existing.exists()) {
+      await updateDoc(participantSequenceAssignmentDoc, { completed: serverTimestamp() });
+      return;
+    }
+    // The assignment can be missing when the browser kept a participant id whose assignment was removed
+    // (e.g. the study's data was reset after the participant first visited). The answers are already
+    // stored, so record the completion instead of failing the end-of-study upload check.
+    const stageData = await this.getStageData(this.studyId);
+    await setDoc(participantSequenceAssignmentDoc, {
+      participantId: this.currentParticipantId,
+      timestamp: serverTimestamp(),
+      createdTime: serverTimestamp(),
+      completed: serverTimestamp(),
+      rejected: false,
+      claimed: false,
+      total: 0,
+      answered: [],
+      isDynamic: false,
+      stage: stageData.currentStage.stageName,
+    });
   }
 
   protected async _rejectParticipantRealtime(participantId: string) {
