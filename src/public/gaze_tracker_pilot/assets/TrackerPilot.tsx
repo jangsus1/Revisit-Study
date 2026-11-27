@@ -97,6 +97,26 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
 
   useEffect(() => () => { stream.current?.getTracks().forEach((t) => t.stop()); }, []);
 
+  // Never run twice under one participant id: reVISit keeps a generated id in the browser (so a reload resumes),
+  // which made a second person on the same browser reuse a completed participant. If this id already holds a
+  // finished run, start a fresh participant: no ?pid -> clear the stored id (reVISit then generates a new random
+  // one); ?pid=NAME -> NAME-<random>. A run interrupted part-way has no answer yet and still resumes.
+  const [idChecked, setIdChecked] = useState(false);
+  useEffect(() => {
+    if (!storageEngine) return;
+    (async () => {
+      const pd = await storageEngine.getParticipantData().catch(() => null) as { answers?: Record<string, { answer?: Record<string, unknown> }> } | null;
+      const used = !!pd && Object.values(pd.answers ?? {}).some((a) => typeof a?.answer?.pilot === 'string' && (a.answer.pilot as string).length > 0);
+      if (!used) { setIdChecked(true); return; }
+      const url = new URL(window.location.href);
+      const studyPath = url.pathname.replace(/(\/gaze_tracker_pilot)(\/.*)?$/, '$1');
+      const pid = url.searchParams.get('pid');
+      if (pid) url.searchParams.set('pid', `${pid}-${Math.random().toString(36).slice(2, 6)}`);
+      else await storageEngine.clearCurrentParticipantId();
+      window.location.replace(`${url.origin}${studyPath}${url.search}`);
+    })();
+  }, [storageEngine]);
+
   // Preview element gets the stream whenever it mounts
   useEffect(() => {
     if ((stage === 'preview' || stage === 'return') && previewRef.current && stream.current) {
@@ -292,6 +312,10 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
           bitrate: BITRATE,
           bytes: blob.current.size,
           startCalled: recCall,
+          // clock sync with external recorders (e.g. a Tobii): epoch ms = clockOrigin + performance.now value
+          clockOrigin: performance.timeOrigin,
+          epochAtStart: Date.now(),
+          perfAtStart: now(),
           started: recStart,
           stopped: recStop,
           chunks: chunkLog,
@@ -357,7 +381,7 @@ function TrackerPilot({ setAnswer, advance }: StimulusParams<Record<string, neve
       <Panel
         progress={false}
         title="Webcam eye-tracking test"
-        actions={<Button size="lg" loading={stage === 'starting'} onClick={start}>Start camera</Button>}
+        actions={<Button size="lg" loading={stage === 'starting' || !idChecked} onClick={start}>Start camera</Button>}
       >
         About 5 minutes: you look at a series of dots while your webcam
         {' '}
